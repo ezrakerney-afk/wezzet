@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lorem ipsum generator: Free Online | Wezzet</title>
+<meta name="description" content="Placeholder text by paragraphs, sentences or words. Copy in one click. Free, no sign up.">
+<link rel="canonical" href="https://wezzet.com/lorem">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Wezzet">
+<meta property="og:title" content="Lorem ipsum generator: Free Online | Wezzet">
+<meta property="og:url" content="https://wezzet.com/lorem">
+<meta property="og:image" content="https://wezzet.com/assets/og/tip.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://wezzet.com/assets/og/tip.png">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#121212" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="icon" href="/assets/icon-32.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+<script>try{(function(t){if(t==="dark"||t==="light")document.documentElement.dataset.theme=t})(localStorage.getItem("wz-theme"))}catch(e){}</script>
+<style>.logo .logo-dark{display:none}:root[data-theme="dark"] .logo .logo-light{display:none}:root[data-theme="dark"] .logo .logo-dark{display:block}@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .logo .logo-light{display:none}:root:not([data-theme="light"]) .logo .logo-dark{display:block}}</style>
+<link rel="stylesheet" href="/assets/site.css?v=5">
+</head>
+<body>
+<header class="site-header">
+  <div class="wrap">
+    <a class="logo" href="/"><img class="logo-light" src="/assets/logo.png" alt="Wezzet" width="113" height="52"><img class="logo-dark" src="/assets/logo-dark.png" alt="Wezzet" width="113" height="52"></a>
+    <nav class="site-nav" aria-label="Main"><a href="/">All tools</a><button class="theme-toggle" type="button" aria-label="Switch between light and dark mode"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm0 2v16a8 8 0 0 1 0-16Z"/></svg></button></nav>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <div class="tool-head">
+      <h1>Lorem ipsum generator</h1>
+      <p class="lede">Placeholder text by paragraphs, sentences or words. Copy in one click.</p>
+    </div>
+<div class="tight" style="display:grid;gap:16px"><div class="field"><label for="k">How many</label><input type="number" id="k" value="3" min="1" max="50" style="max-width:180px"></div><div class="field"><label for="u">Of</label><select id="u"><option>paragraphs</option><option>sentences</option><option>words</option></select></div></div><div class="row-actions"><button class="btn" type="button" id="copy">Copy</button></div><textarea id="o" rows="5" placeholder="" style="width:100%"></textarea>
+  </div>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <p><a href="/">Wezzet</a> · Follow <a href="https://x.com/WezzetX" rel="noopener">@WezzetX</a> on X.</p>
+  </div>
+</footer>
+<script>(()=>{const $=(i)=>document.getElementById(i);
+const W="lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqua enim ad minim veniam quis nostrud exercitation ullamco laboris nisi aliquip ex ea commodo consequat duis aute irure in reprehenderit voluptate velit esse cillum fugiat nulla pariatur excepteur sint occaecat cupidatat non proident sunt culpa qui officia deserunt mollit anim id est laborum".split(" ");
+const w=n=>Array.from({length:n},()=>W[Math.random()*W.length|0]).join(" ");const s=()=>{const x=w(8+Math.random()*10|0);return x[0].toUpperCase()+x.slice(1)+"."};const p=()=>Array.from({length:4+Math.random()*3|0},s).join(" ");
+const go=()=>{const k=Math.min(50,+$("k").value||1),u=$("u").value;$("o").value=u==="words"?w(k):u==="sentences"?Array.from({length:k},s).join(" "):Array.from({length:k},p).join("\n\n")};
+$("k").oninput=go;$("u").onchange=go;$("copy").onclick=()=>navigator.clipboard.writeText($("o").value);go();
+})();</script>
+<script src="/assets/theme.js?v=4" defer></script>
+</body>
+</html>

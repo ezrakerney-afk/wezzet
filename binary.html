@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Text to binary converter: Free Online | Wezzet</title>
+<meta name="description" content="Turn text into binary, hex or base64 and back. Free, no sign up.">
+<link rel="canonical" href="https://wezzet.com/binary">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Wezzet">
+<meta property="og:title" content="Text to binary converter: Free Online | Wezzet">
+<meta property="og:url" content="https://wezzet.com/binary">
+<meta property="og:image" content="https://wezzet.com/assets/og/tip.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://wezzet.com/assets/og/tip.png">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#121212" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="icon" href="/assets/icon-32.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+<script>try{(function(t){if(t==="dark"||t==="light")document.documentElement.dataset.theme=t})(localStorage.getItem("wz-theme"))}catch(e){}</script>
+<style>.logo .logo-dark{display:none}:root[data-theme="dark"] .logo .logo-light{display:none}:root[data-theme="dark"] .logo .logo-dark{display:block}@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .logo .logo-light{display:none}:root:not([data-theme="light"]) .logo .logo-dark{display:block}}</style>
+<link rel="stylesheet" href="/assets/site.css?v=5">
+</head>
+<body>
+<header class="site-header">
+  <div class="wrap">
+    <a class="logo" href="/"><img class="logo-light" src="/assets/logo.png" alt="Wezzet" width="113" height="52"><img class="logo-dark" src="/assets/logo-dark.png" alt="Wezzet" width="113" height="52"></a>
+    <nav class="site-nav" aria-label="Main"><a href="/">All tools</a><button class="theme-toggle" type="button" aria-label="Switch between light and dark mode"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm0 2v16a8 8 0 0 1 0-16Z"/></svg></button></nav>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <div class="tool-head">
+      <h1>Text to binary</h1>
+      <p class="lede">Turn text into binary, hex or base64 and back.</p>
+    </div>
+<div class="field"><label for="t">Text</label><textarea id="t" rows="5" placeholder="hi" style="width:100%"></textarea></div><div class="field"><label for="f">Format</label><select id="f"><option value="2">Binary</option><option value="16">Hex</option><option value="b64">Base64</option></select></div><div class="field"><label for="o">Encoded</label><textarea id="o" rows="5" placeholder="" style="width:100%"></textarea></div>
+  </div>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <p><a href="/">Wezzet</a> · Follow <a href="https://x.com/WezzetX" rel="noopener">@WezzetX</a> on X.</p>
+  </div>
+</footer>
+<script>(()=>{const $=(i)=>document.getElementById(i);
+const enc=new TextEncoder(),dec=new TextDecoder();
+const go=()=>{const b=enc.encode($("t").value),f=$("f").value;$("o").value=f==="b64"?btoa(String.fromCharCode(...b)):[...b].map(x=>x.toString(+f).padStart(f==="2"?8:2,"0")).join(" ")};
+$("t").oninput=go;$("f").onchange=go;
+$("o").oninput=()=>{try{const f=$("f").value,v=$("o").value.trim();const b=f==="b64"?Uint8Array.from(atob(v),c=>c.charCodeAt(0)):Uint8Array.from(v.split(/\s+/).filter(Boolean),x=>parseInt(x,+f));$("t").value=dec.decode(b)}catch(e){}};go();
+})();</script>
+<script src="/assets/theme.js?v=4" defer></script>
+</body>
+</html>

@@ -76,9 +76,51 @@
     ["svg to png", "/svg-to-png", "image photo convert svg to png"],
     ["jpg to webp", "/jpg-to-webp", "image photo convert jpg to webp"],
     ["heic to webp", "/heic-to-webp", "image photo convert heic to webp"],
+    ["roll dice or flip a coin", "/dice", "dice roller and coin flip fun game test calculator"],
+    ["typing speed test", "/typing", "typing speed test fun game test calculator"],
+    ["reaction time test", "/reaction", "reaction time test fun game test calculator"],
+    ["click speed test", "/cps", "click speed test (cps) fun game test calculator"],
+    ["bmi calculator", "/bmi", "bmi calculator fun game test calculator"],
+    ["loan calculator", "/loan", "loan and mortgage calculator fun game test calculator"],
+    ["countdown", "/countdown", "countdown to a date fun game test calculator"],
+    ["morse code translator", "/morse", "morse code translator fun game test calculator"],
+    ["roman numerals", "/roman", "roman numeral converter fun game test calculator"],
+    ["text to binary", "/binary", "text to binary converter fun game test calculator"],
+    ["lorem ipsum generator", "/lorem", "lorem ipsum generator fun game test calculator"],
+    ["spin the wheel", "/wheel", "spin the wheel fun game test calculator"],
     ["people chat", "/chat", "people chat channels dm direct message voice call talk friends"],
     ["agent chat: board for ai agents", "/aicomms", "ai agent agents chat message board llm claude chatgpt mcp coordinate multi agent talk"],
   ].map(([name, url, kw]) => ({ name, url, name_l: name.toLowerCase(), hay: (name + " " + kw).toLowerCase() }));
+
+  // Browse everything by category under the search box
+  (() => {
+    const CATS = [
+      ["start here", (u) => /^\/(convert|compress|remove-bg|resize|qr)$/.test(u)],
+      ["pdf", (u) => /pdf/.test(u)],
+      ["images", (u) => /^\/(image|favicon|color|(heic|webp|png|jpg|avif|gif|bmp|svg)-to-[a-z]+)$/.test(u) && !/pdf/.test(u)],
+      ["video and audio", (u) => /^\/(video|mp3|gif|compress-video|trim-video|[a-z0-9]+-to-(mp4|mp3|wav|webm|m4a|ogg))$/.test(u)],
+      ["files and data", (u) => /^\/(data|json|zip|embroidery|paste|read|binary|[a-z]+-to-(pes|dst|jef))$/.test(u)],
+      ["fun and games", (u) => /^\/(dice|wheel|typing|reaction|cps|random|morse|roman|tumbler|quilt)$/.test(u)],
+      ["calculators and everyday", (u) => /^\/(calc|percent|age|tip|units|bmi|loan|countdown|timer|words|case|password|lorem|domains)$/.test(u)],
+      ["talk", (u) => /^\/(chat|aicomms|forum)$/.test(u)],
+    ];
+    const box = document.createElement("div"); box.className = "dir";
+    box.style.cssText = "max-width:900px;margin:48px auto 0;padding:0 16px;display:grid;gap:24px;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));text-align:left";
+    const used = new Set();
+    for (const [name, test] of CATS) {
+      const items = TOOLS.filter((t) => test(t.url) && (name === "start here" || !used.has(t.url)));
+      if (!items.length) continue;
+      if (name !== "start here") items.forEach((t) => used.add(t.url));
+      const sec = document.createElement("section"), h = document.createElement("h2"), ul = document.createElement("ul");
+      h.textContent = name; h.style.cssText = "font-size:1rem;margin:0 0 8px";
+      ul.style.cssText = "list-style:none;margin:0;padding:0;display:grid;gap:4px";
+      for (const t of items) { const li = document.createElement("li"), a = document.createElement("a"); a.href = t.url; a.textContent = t.name.split(":")[0]; li.append(a); ul.append(li); }
+      sec.append(h, ul); box.append(sec);
+    }
+    const left = TOOLS.filter((t) => !used.has(t.url) && !CATS[0][1](t.url));
+    if (left.length) { const sec = document.createElement("section"); sec.innerHTML = '<h2 style="font-size:1rem;margin:0 0 8px">more</h2><ul style="list-style:none;margin:0;padding:0;display:grid;gap:4px"></ul>'; left.forEach((t) => { const li = document.createElement("li"), a = document.createElement("a"); a.href = t.url; a.textContent = t.name.split(":")[0]; li.append(a); sec.lastChild.append(li); }); box.append(sec); }
+    document.querySelector("main.home").append(box);
+  })();
 
   const q = document.getElementById("q"), list = document.getElementById("results"), form = document.getElementById("search-form");
   let shown = [], active = -1;

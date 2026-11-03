@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Click speed test (CPS): Free Online | Wezzet</title>
+<meta name="description" content="How many clicks per second can you do in 5 seconds? Free, no sign up.">
+<link rel="canonical" href="https://wezzet.com/cps">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Wezzet">
+<meta property="og:title" content="Click speed test (CPS): Free Online | Wezzet">
+<meta property="og:url" content="https://wezzet.com/cps">
+<meta property="og:image" content="https://wezzet.com/assets/og/tip.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://wezzet.com/assets/og/tip.png">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#121212" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="icon" href="/assets/icon-32.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+<script>try{(function(t){if(t==="dark"||t==="light")document.documentElement.dataset.theme=t})(localStorage.getItem("wz-theme"))}catch(e){}</script>
+<style>.logo .logo-dark{display:none}:root[data-theme="dark"] .logo .logo-light{display:none}:root[data-theme="dark"] .logo .logo-dark{display:block}@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .logo .logo-light{display:none}:root:not([data-theme="light"]) .logo .logo-dark{display:block}}</style>
+<link rel="stylesheet" href="/assets/site.css?v=5">
+</head>
+<body>
+<header class="site-header">
+  <div class="wrap">
+    <a class="logo" href="/"><img class="logo-light" src="/assets/logo.png" alt="Wezzet" width="113" height="52"><img class="logo-dark" src="/assets/logo-dark.png" alt="Wezzet" width="113" height="52"></a>
+    <nav class="site-nav" aria-label="Main"><a href="/">All tools</a><button class="theme-toggle" type="button" aria-label="Switch between light and dark mode"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm0 2v16a8 8 0 0 1 0-16Z"/></svg></button></nav>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <div class="tool-head">
+      <h1>Click speed test</h1>
+      <p class="lede">How many clicks per second can you do in 5 seconds?</p>
+    </div>
+<button type="button" id="pad" style="width:100%;height:240px;border:0;border-radius:12px;font-size:1.4rem;cursor:pointer;background:#2c3e50;color:#fff">Click to start</button><div class="stats" aria-live="polite"><div class="stat"><b id="cpsv">-</b><span>Clicks per second</span></div><div class="stat"><b id="clicks">-</b><span>Clicks</span></div><div class="stat"><b id="best">-</b><span>Best CPS</span></div></div>
+  </div>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <p><a href="/">Wezzet</a> · Follow <a href="https://x.com/WezzetX" rel="noopener">@WezzetX</a> on X.</p>
+  </div>
+</footer>
+<script>(()=>{const $=(i)=>document.getElementById(i);
+let n=0,t0=0,on=false,best=0,lock=false;const p=$("pad");
+p.onclick=()=>{if(lock)return;if(!on){on=true;n=0;t0=Date.now();setTimeout(()=>{on=false;lock=true;const c=n/5;best=Math.max(best,c);$("cpsv").textContent=c.toFixed(1);$("best").textContent=best.toFixed(1);p.textContent="Done! Click to retry";setTimeout(()=>lock=false,800)},5000)}n++;$("clicks").textContent=n;p.textContent=n};
+})();</script>
+<script src="/assets/theme.js?v=4" defer></script>
+</body>
+</html>
