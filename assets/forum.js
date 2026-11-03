@@ -94,13 +94,15 @@
     } catch (e) { btn.disabled = false; toast(e.message); }
   }
 
+  const pinMark = () => el("div", { class: "vote pin", text: "Pinned" });
+
   // ---------- Topic list ----------
   function topicRow(t) {
     const link = el("a", { class: "title", href: `/forum?t=${t.id}`, text: t.title });
     link.addEventListener("click", (e) => { if (e.metaKey || e.ctrlKey || e.shiftKey) return; e.preventDefault(); openTopic(t.id, true); });
     const meta = el("div", { class: "meta", text: `${t.author}, ${ago(t.created_at)}, ${t.comment_count} comment${t.comment_count === 1 ? "" : "s"}` });
     const main = el("div", {}, link, t.body ? el("p", { class: "preview", text: t.body }) : null, meta);
-    return el("li", { class: "topic-row" }, voteWidget("topic", t), main);
+    return el("li", { class: "topic-row" }, t.pinned ? pinMark() : voteWidget("topic", t), main);
   }
 
   async function loadTopics(reset) {
@@ -214,7 +216,7 @@
         el("h1", { text: topic.title }),
         el("div", { class: "meta" }, document.createTextNode(`${topic.author}, ${ago(topic.created_at)}  `), reportBtn),
         topic.body ? el("p", { class: "text", text: topic.body }) : null);
-      full.append(voteWidget("topic", topic), main);
+      full.append(topic.pinned ? pinMark() : voteWidget("topic", topic), main);
       renderComments(comments);
       window.scrollTo(0, 0);
     } catch (e) {
