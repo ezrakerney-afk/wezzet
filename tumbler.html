@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tumbler template maker for sublimation (straight and tapered) | Wezzet</title>
+<meta name="description" content="Make a sublimation tumbler wrap that fits your exact cup. Enter the top and bottom circumference and height, add your design, and download a 300 DPI template. Works for tapered tumblers.">
+<link rel="canonical" href="https://wezzet.com/tumbler">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Wezzet">
+<meta property="og:title" content="Tumbler template maker | Wezzet">
+<meta property="og:description" content="Print-ready wraps sized to your exact cup, including tapered tumblers.">
+<meta property="og:url" content="https://wezzet.com/tumbler">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#121212" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="icon" href="/assets/icon-32.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+<script>try{(function(t){if(t==="dark"||t==="light")document.documentElement.dataset.theme=t})(localStorage.getItem("wz-theme"))}catch(e){}</script>
+<style>.logo .logo-dark{display:none}:root[data-theme="dark"] .logo .logo-light{display:none}:root[data-theme="dark"] .logo .logo-dark{display:block}@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .logo .logo-light{display:none}:root:not([data-theme="light"]) .logo .logo-dark{display:block}}</style>
+<link rel="stylesheet" href="/assets/site.css?v=3">
+<style>
+  .layout { display: grid; gap: 28px; margin-top: 24px; align-items: start; }
+  @media (min-width: 960px) { .layout { grid-template-columns: 400px 1fr; } }
+  .panel form { display: grid; gap: 18px; }
+  .unit-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .file-pick { display: grid; gap: 6px; }
+  .file-pick input { font: inherit; }
+  #image-name { font-size: 0.92rem; color: var(--ink-soft); overflow-wrap: anywhere; }
+  .preview-wrap { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px; display: grid; place-items: center; min-height: 280px; }
+  .preview-wrap canvas { background-color: #fff; max-width: 100%; max-height: 520px; height: auto; background-image: linear-gradient(45deg, #eee 25%, transparent 25%), linear-gradient(-45deg, #eee 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #eee 75%), linear-gradient(-45deg, transparent 75%, #eee 75%); background-size: 16px 16px; background-position: 0 0, 0 8px, 8px -8px, -8px 0; }
+  .empty-preview { color: var(--ink-soft); text-align: center; max-width: 34ch; }
+  .facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 20px; margin: 18px 0; }
+  .facts dt { font-size: 0.9rem; color: var(--ink-soft); }
+  .facts dd { margin: 0; font-weight: 600; }
+  .downloads { display: flex; flex-wrap: wrap; gap: 10px; }
+  #flat-size { margin: 0; }
+  ol.steps { padding-left: 1.2em; max-width: 64ch; }
+  ol.steps li { margin-bottom: 8px; }
+</style>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {"@type": "Question", "name": "How do I measure a tapered tumbler for a sublimation template?", "acceptedAnswer": {"@type": "Answer", "text": "Wrap a soft tape measure or a strip of paper around the top of the printable area to get the top circumference, then around the bottom of the printable area for the bottom circumference. Measure the height along the side of the cup, not straight up."}},
+    {"@type": "Question", "name": "Why is a tapered tumbler template curved?", "acceptedAnswer": {"@type": "Answer", "text": "A tapered cup is a slice of a cone. When you unroll a cone it becomes part of a ring, so a flat rectangle would leave gaps or overlaps. The curved template wraps flat against the cup."}},
+    {"@type": "Question", "name": "Should I mirror the template?", "acceptedAnswer": {"@type": "Answer", "text": "Sublimation transfers usually don't need mirroring because the ink side faces the cup. Some printer workflows and other transfer methods do, so follow your printer and paper instructions."}}
+  ]
+}
+</script>
+</head>
+<body>
+<header class="site-header">
+  <div class="wrap">
+    <a class="logo" href="/"><img class="logo-light" src="/assets/logo.png" alt="Wezzet" width="113" height="52"><img class="logo-dark" src="/assets/logo-dark.png" alt="Wezzet" width="113" height="52"></a>
+    <nav class="site-nav" aria-label="Main"><a href="/">All tools</a><button class="theme-toggle" type="button" aria-label="Switch between light and dark mode"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm0 2v16a8 8 0 0 1 0-16Z"/></svg></button></nav>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <section class="tool-head" aria-labelledby="page-title">
+      <h1 id="page-title">Tumbler template maker</h1>
+
+      <div class="layout">
+        <div class="panel">
+          <form id="tumbler-form" novalidate>
+            <div class="unit-row">
+              <span class="label" style="font-weight:600">Measurements in</span>
+              <div class="segmented" role="radiogroup" aria-label="Units">
+                <label><input type="radio" name="unit" value="in" checked><span>inches</span></label>
+                <label><input type="radio" name="unit" value="cm"><span>cm</span></label>
+              </div>
+            </div>
+            <div class="field">
+              <label for="top">Around the top of the print area (<span class="unit-label">in</span>)</label>
+              <input type="number" id="top" inputmode="decimal" step="0.01" min="0" value="9.35">
+            </div>
+            <div class="field">
+              <label for="bottom">Around the bottom of the print area (<span class="unit-label">in</span>)</label>
+              <input type="number" id="bottom" inputmode="decimal" step="0.01" min="0" value="8.15">
+              <p class="hint">Same as the top for a straight cup.</p>
+            </div>
+            <div class="field">
+              <label for="height">Height along the side (<span class="unit-label">in</span>)</label>
+              <input type="number" id="height" inputmode="decimal" step="0.01" min="0" value="8.2">
+            </div>
+            <div class="field-row two">
+              <div class="field">
+                <label for="overlap">Seam overlap (<span class="unit-label">in</span>)</label>
+                <input type="number" id="overlap" inputmode="decimal" step="0.01" min="0" value="0.1">
+              </div>
+              <div class="field">
+                <label for="bleed">Bleed on edges (<span class="unit-label">in</span>)</label>
+                <input type="number" id="bleed" inputmode="decimal" step="0.01" min="0" value="0">
+              </div>
+            </div>
+            <div class="file-pick">
+              <label for="image" style="font-weight:600">Your design (optional)</label>
+              <input type="file" id="image" accept="image/png,image/jpeg,image/webp">
+              <span id="image-name">Leave empty for a blank template you can design on.</span>
+              <p class="hint" id="flat-size"></p>
+            </div>
+            <label class="check"><input type="checkbox" id="mirror"> Mirror the design</label>
+            <label class="check"><input type="checkbox" id="outline" checked> Show the cut line</label>
+            <button class="btn" type="submit" id="build">Make template</button>
+            <p class="note error" id="msg" role="alert" hidden></p>
+          </form>
+        </div>
+
+        <div>
+          <div class="preview-wrap">
+            <canvas id="out" aria-label="Template preview" role="img"></canvas>
+          </div>
+          <div id="result" hidden>
+            <dl class="facts" id="facts"></dl>
+            <div class="downloads">
+              <a class="btn" id="dl-png" href="#">Download PNG (300 DPI)</a>
+              <a class="btn btn-quiet" id="dl-svg" href="#">Download outline (SVG)</a>
+            </div>
+            <p class="note">Print at 100% or "actual size."</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section faq" aria-labelledby="faq-title">
+      <h2 id="faq-title">Questions</h2>
+      <details>
+        <summary>How do I measure my tumbler?</summary>
+        <ol class="steps">
+        <li>Wrap a soft tape measure, or a strip of paper you then measure flat, around the cup where the top of your print will sit. That's the top measurement.</li>
+        <li>Do the same where the bottom of your print will sit. On a straight cup it's the same number.</li>
+        <li>Measure the height along the side of the cup, following the slope, not straight up.</li>
+        <li>Print one blank template on plain paper and wrap it around the cup before using sublimation paper.</li>
+      </ol>
+      </details>
+      <details>
+        <summary>Why is a tapered template curved?</summary>
+        <p>A tapered cup is part of a cone, so only a curved wrap lies flat on it.</p>
+      </details>
+      <details>
+        <summary>What size should I make my design?</summary>
+        <p>Make a flat rectangle the width of the top and the height of the side. The tool bends it to fit.</p>
+      </details>
+      <details>
+        <summary>Should I mirror the design?</summary>
+        <p>Sublimation transfers usually don't need mirroring because the printed side faces the cup. Some printers and other transfer methods do, so follow your paper's instructions.</p>
+      </details>
+      <details>
+        <summary>Is my design uploaded?</summary>
+        <p>No. Everything runs in your browser.</p>
+      </details>
+    </section>
+  </div>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <p><a href="/">Wezzet</a>: free tools that run in your browser.</p>
+  </div>
+</footer>
+<script src="/assets/tumbler.js?v=3" defer></script>
+<script src="/assets/theme.js?v=3" defer></script>
+</body>
+</html>

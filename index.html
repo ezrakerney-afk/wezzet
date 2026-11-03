@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wezzet: free tools that run in your browser</title>
+<meta name="description" content="Search free, no sign-up tools: image and PDF converters, word counter, password and QR generators, calculators, timer, unit converter and more.">
+<link rel="canonical" href="https://wezzet.com/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Wezzet">
+<meta property="og:title" content="Wezzet: free tools that run in your browser">
+<meta property="og:description" content="Simple tools that each do one job. No sign-up, no uploads.">
+<meta property="og:url" content="https://wezzet.com/">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#121212" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="icon" href="/assets/icon-32.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+<script>try{(function(t){if(t==="dark"||t==="light")document.documentElement.dataset.theme=t})(localStorage.getItem("wz-theme"))}catch(e){}</script>
+<style>.logo .logo-dark{display:none}:root[data-theme="dark"] .logo .logo-light{display:none}:root[data-theme="dark"] .logo .logo-dark{display:block}@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .logo .logo-light{display:none}:root:not([data-theme="light"]) .logo .logo-dark{display:block}}</style>
+<link rel="stylesheet" href="/assets/site.css?v=3">
+<style>
+  body { min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; }
+  .top { display: flex; justify-content: flex-end; padding: 16px; }
+  .home { flex: 1; display: flex; flex-direction: column; align-items: center; padding: 10vh 16px 48px; }
+  .home h1 { margin: 0 0 28px; line-height: 0; }
+  .home .logo img { height: 104px; width: auto; }
+  .search { position: relative; width: 100%; max-width: 580px; }
+  .search input {
+    width: 100%; height: 54px; padding: 0 20px 0 50px; border-radius: 27px;
+    border: 1px solid var(--line-strong); background: var(--bg); color: var(--ink); font: inherit; font-size: 1.08rem;
+  }
+  .search input:hover { border-color: var(--ink-soft); }
+  .search input:focus { outline: none; border-color: var(--ink); box-shadow: 0 0 0 3px var(--line); }
+  .search .icon { position: absolute; left: 18px; top: 17px; width: 20px; height: 20px; color: var(--ink-soft); pointer-events: none; }
+  .results {
+    list-style: none; margin: 8px 0 0; padding: 6px; border: 1px solid var(--line); border-radius: 14px;
+    background: var(--bg); max-height: min(420px, 55vh); overflow-y: auto;
+  }
+  .results a { display: block; padding: 10px 14px; border-radius: 9px; color: var(--ink); text-decoration: none; font-weight: 500; }
+  .results a:hover, .results a[aria-selected="true"] { background: var(--surface); }
+  .results .none { padding: 10px 14px; color: var(--ink-soft); }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  noscript ul { margin-top: 16px; }
+</style>
+</head>
+<body>
+<div class="top"><button class="theme-toggle" type="button" aria-label="Switch between light and dark mode"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm0 2v16a8 8 0 0 1 0-16Z"/></svg></button></div>
+
+<main class="home">
+  <h1><a class="logo" href="/" aria-current="page"><img class="logo-light" src="/assets/logo.png" alt="Wezzet" width="226" height="104"><img class="logo-dark" src="/assets/logo-dark.png" alt="Wezzet" width="226" height="104"></a></h1>
+
+  <form class="search" role="search" id="search-form" action="/" autocomplete="off">
+    <label class="sr-only" for="q">Search tools</label>
+    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M10 2a8 8 0 0 1 6.32 12.9l5.39 5.4-1.41 1.4-5.4-5.39A8 8 0 1 1 10 2Zm0 2a6 6 0 1 0 0 12 6 6 0 0 0 0-12Z"/></svg>
+    <input type="search" id="q" name="q" placeholder="Search tools" role="combobox" aria-expanded="false" aria-controls="results" aria-autocomplete="list" autofocus>
+    <ul class="results" id="results" role="listbox" aria-label="Tools" hidden></ul>
+  </form>
+
+  <noscript>
+    <ul>
+      <li><a href="/image">Image converter</a></li><li><a href="/pdf">Merge PDF and images to PDF</a></li>
+      <li><a href="/embroidery">Embroidery file converter</a></li><li><a href="/qr">QR code generator</a></li>
+      <li><a href="/words">Word counter</a></li><li><a href="/case">Case converter</a></li>
+      <li><a href="/password">Password generator</a></li><li><a href="/json">JSON formatter</a></li>
+      <li><a href="/percent">Percentage calculator</a></li><li><a href="/age">Age calculator</a></li>
+      <li><a href="/tip">Tip calculator</a></li><li><a href="/units">Unit converter</a></li>
+      <li><a href="/quilt">Quilt fabric calculator</a></li><li><a href="/timer">Timer and stopwatch</a></li>
+      <li><a href="/random">Random picker</a></li><li><a href="/color">Color picker</a></li>
+      <li><a href="/tumbler">Tumbler template maker</a></li><li><a href="/domains">Domain name checker</a></li>
+      <li><a href="/forum">Forum</a></li>
+    </ul>
+  </noscript>
+</main>
+<script src="/assets/home.js?v=3" defer></script>
+<script src="/assets/theme.js?v=3" defer></script>
+</body>
+</html>

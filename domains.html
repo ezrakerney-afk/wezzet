@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Domain name checker: is my domain available? | Wezzet</title>
+<meta name="description" content="Check if a domain name is available across .com, .net, .org, .io, .co, .ai, .app, .dev and more at once. Free, instant, and it asks the official registries directly.">
+<link rel="canonical" href="https://wezzet.com/domains">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Wezzet">
+<meta property="og:title" content="Domain name checker | Wezzet">
+<meta property="og:description" content="See if a name is free across 10 domain endings at once.">
+<meta property="og:url" content="https://wezzet.com/domains">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#121212" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="icon" href="/assets/icon-32.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+<script>try{(function(t){if(t==="dark"||t==="light")document.documentElement.dataset.theme=t})(localStorage.getItem("wz-theme"))}catch(e){}</script>
+<style>.logo .logo-dark{display:none}:root[data-theme="dark"] .logo .logo-light{display:none}:root[data-theme="dark"] .logo .logo-dark{display:block}@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .logo .logo-light{display:none}:root:not([data-theme="light"]) .logo .logo-dark{display:block}}</style>
+<link rel="stylesheet" href="/assets/site.css?v=3">
+<style>
+  .search { display: grid; gap: 10px; max-width: 640px; margin-top: 24px; }
+  @media (min-width: 560px) { .search { grid-template-columns: 1fr auto; } }
+  .search input { font-size: 1.15rem; min-height: 52px; }
+  .search .btn { min-height: 52px; }
+  .results { list-style: none; padding: 0; margin: 0; max-width: 760px; }
+  .row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 4px 16px;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--line);
+    align-items: center;
+  }
+  .row .name { font-weight: 600; font-size: 1.08rem; overflow-wrap: anywhere; }
+  .row .detail { grid-column: 1 / -1; color: var(--ink-soft); font-size: 0.95rem; }
+  .row .detail:empty { display: none; }
+  .pill { font-size: 0.88rem; font-weight: 600; padding: 3px 10px; border-radius: 999px; background: var(--surface); color: var(--ink-soft); white-space: nowrap; }
+  .state-available .pill { background: var(--good-bg); color: var(--good); }
+  .state-probably .pill { background: var(--maybe-bg); color: var(--maybe); }
+  .state-taken .pill { background: var(--bad-bg); color: var(--bad); }
+  .state-taken .name { color: var(--ink-soft); }
+  .buy a { color: var(--ink); }
+  #results-wrap h2, #ideas h2 { margin-top: 32px; }
+</style>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {"@type": "Question", "name": "How does this domain checker work?", "acceptedAnswer": {"@type": "Answer", "text": "It asks each domain registry directly using RDAP, the official replacement for WHOIS. If a registry has no record of the name, it's available to register."}},
+    {"@type": "Question", "name": "What does 'probably available' mean?", "acceptedAnswer": {"@type": "Answer", "text": "Some registries can't be asked directly from a browser, so the checker looks the name up in DNS instead. No DNS record usually means the name is free, but a few registered names have no DNS, so confirm at a registrar before you count on it."}},
+    {"@type": "Question", "name": "Does checking a domain let someone buy it first?", "acceptedAnswer": {"@type": "Answer", "text": "Searches here go straight from your browser to the registries and aren't stored or shared by Wezzet. When you're ready to buy, go straight to a registrar."}}
+  ]
+}
+</script>
+</head>
+<body>
+<header class="site-header">
+  <div class="wrap">
+    <a class="logo" href="/"><img class="logo-light" src="/assets/logo.png" alt="Wezzet" width="113" height="52"><img class="logo-dark" src="/assets/logo-dark.png" alt="Wezzet" width="113" height="52"></a>
+    <nav class="site-nav" aria-label="Main"><a href="/">All tools</a><button class="theme-toggle" type="button" aria-label="Switch between light and dark mode"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm0 2v16a8 8 0 0 1 0-16Z"/></svg></button></nav>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <section class="tool-head" aria-labelledby="page-title">
+      <h1 id="page-title">Domain name checker</h1>
+      <form class="search" id="domain-form" autocomplete="off">
+        <label class="visually-hidden" for="domain-input" style="position:absolute;left:-9999px">Domain name</label>
+        <input type="text" id="domain-input" placeholder="yourname or yourname.com" spellcheck="false" autocapitalize="off" required>
+        <button class="btn" type="submit">Check names</button>
+      </form>
+      <p class="note error" id="form-msg" role="alert" hidden></p>
+
+      <div id="results-wrap" hidden>
+        <h2>Results</h2>
+        <ul class="results" id="results" aria-live="polite"></ul>
+      </div>
+      <div id="ideas" hidden>
+        <h2>The .com is taken. These are close:</h2>
+        <ul class="results" id="ideas-list" aria-live="polite"></ul>
+      </div>
+    </section>
+
+    <section class="section faq" aria-labelledby="faq-title">
+      <h2 id="faq-title">Questions</h2>
+      <details>
+        <summary>How does the checker work?</summary>
+        <p>It asks each domain registry directly using RDAP, the official replacement for WHOIS. If the registry has no record of the name, it's available to register.</p>
+      </details>
+      <details>
+        <summary>What does "probably available" mean?</summary>
+        <p>For some endings the checker can only look at DNS, which is usually but not always right. Confirm at a registrar.</p>
+      </details>
+      <details>
+        <summary>Why does a registrar say an "available" name costs a lot?</summary>
+        <p>It may be a premium name: available, but priced higher by the registry.</p>
+      </details>
+      <details>
+        <summary>Are my searches saved?</summary>
+        <p>No. Searches go straight from your browser to the registries.</p>
+      </details>
+    </section>
+  </div>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <p><a href="/">Wezzet</a>: free tools that run in your browser.</p>
+  </div>
+</footer>
+<script src="/assets/domains.js?v=3" defer></script>
+<script src="/assets/theme.js?v=3" defer></script>
+</body>
+</html>

@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>QR Code Generator: Links and Wi-Fi | Wezzet</title>
+<meta name="description" content="Make a QR code for a link, text or Wi-Fi network. Download as PNG or SVG. Free, no sign-up, codes never expire.">
+<link rel="canonical" href="https://wezzet.com/qr">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Wezzet">
+<meta property="og:title" content="QR Code Generator | Wezzet">
+<meta property="og:url" content="https://wezzet.com/qr">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#121212" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="icon" href="/assets/icon-32.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+<script>try{(function(t){if(t==="dark"||t==="light")document.documentElement.dataset.theme=t})(localStorage.getItem("wz-theme"))}catch(e){}</script>
+<style>.logo .logo-dark{display:none}:root[data-theme="dark"] .logo .logo-light{display:none}:root[data-theme="dark"] .logo .logo-dark{display:block}@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .logo .logo-light{display:none}:root:not([data-theme="light"]) .logo .logo-dark{display:block}}</style>
+<link rel="stylesheet" href="/assets/site.css?v=3">
+<style>
+  .qr-layout { display: grid; gap: 24px; margin-top: 20px; }
+  @media (min-width: 760px) { .qr-layout { grid-template-columns: 1fr 300px; align-items: start; } }
+  .qr-form { display: grid; gap: 16px; }
+  textarea { width: 100%; min-height: 110px; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--line-strong); font: inherit; color: var(--ink); background: var(--bg); resize: vertical; }
+  textarea:focus { border-color: var(--ink); }
+  #preview { width: 100%; max-width: 300px; aspect-ratio: 1; border: 1px solid var(--line); border-radius: 12px; display: grid; place-items: center; background: #fff; }
+  #preview:empty::before { content: "Your code appears here"; color: var(--ink-soft); font-size: 0.95rem; }
+  #preview svg { width: 100%; height: auto; display: block; }
+</style>
+</head>
+<body>
+<header class="site-header">
+  <div class="wrap">
+    <a class="logo" href="/"><img class="logo-light" src="/assets/logo.png" alt="Wezzet" width="113" height="52"><img class="logo-dark" src="/assets/logo-dark.png" alt="Wezzet" width="113" height="52"></a>
+    <nav class="site-nav" aria-label="Main"><a href="/">All tools</a><button class="theme-toggle" type="button" aria-label="Switch between light and dark mode"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm0 2v16a8 8 0 0 1 0-16Z"/></svg></button></nav>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <div class="tool-head">
+      <h1>QR code generator</h1>
+    </div>
+
+    <div class="qr-layout">
+      <div class="qr-form">
+        <div class="segmented" role="radiogroup" aria-label="QR type" style="justify-self:start">
+          <label><input type="radio" name="mode" value="text" checked><span>Link or text</span></label>
+          <label><input type="radio" name="mode" value="wifi"><span>Wi-Fi</span></label>
+        </div>
+
+        <div class="field" id="text-fields">
+          <label for="text">Link or text</label>
+          <textarea id="text" placeholder="https://"></textarea>
+        </div>
+
+        <div class="qr-form" id="wifi-fields" hidden>
+          <div class="field">
+            <label for="ssid">Network name</label>
+            <input type="text" id="ssid" autocomplete="off">
+          </div>
+          <div class="field-row two">
+            <div class="field">
+              <label for="security">Security</label>
+              <select id="security">
+                <option value="WPA">WPA/WPA2/WPA3</option>
+                <option value="WEP">WEP</option>
+                <option value="nopass">None</option>
+              </select>
+            </div>
+            <div class="field" id="wpass-field">
+              <label for="wpass">Password</label>
+              <input type="text" id="wpass" autocomplete="off">
+            </div>
+          </div>
+          <label class="check"><input type="checkbox" id="hidden-net"> Hidden network</label>
+        </div>
+
+        <div class="field" style="max-width:240px">
+          <label for="ecc">Error correction</label>
+          <select id="ecc">
+            <option value="L">Low</option>
+            <option value="M" selected>Medium</option>
+            <option value="Q">High</option>
+            <option value="H">Highest</option>
+          </select>
+        </div>
+      </div>
+
+      <div>
+        <div id="preview" aria-live="polite"></div>
+        <div class="row-actions" id="downloads" hidden>
+          <button class="btn" type="button" id="png">PNG</button>
+          <button class="btn btn-quiet" type="button" id="svg">SVG</button>
+        </div>
+        <p class="note error" id="msg" role="alert" hidden></p>
+      </div>
+    </div>
+
+    <section class="section faq" aria-labelledby="faq">
+      <h2 id="faq">Questions</h2>
+      <details><summary>Do these QR codes expire?</summary><p>No. The code holds your link or text directly, so it works forever and there's no tracking.</p></details>
+      <details><summary>PNG or SVG?</summary><p>PNG for screens and documents. SVG for printing at any size.</p></details>
+    </section>
+  </div>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <p><a href="/">Wezzet</a>: free tools that run in your browser.</p>
+  </div>
+</footer>
+<script src="/vendor/qrcode-generator-2.0.4.js" defer></script>
+<script src="/assets/qr.js?v=3" defer></script>
+<script src="/assets/theme.js?v=3" defer></script>
+</body>
+</html>
