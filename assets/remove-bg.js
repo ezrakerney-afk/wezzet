@@ -4,7 +4,7 @@
 const LIB = "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.3.3";
 const MODELS = {
   person: { id: "Xenova/modnet", dtype: "fp32", sigmoid: false, mb: 26 },
-  any: { id: "onnx-community/ormbg-ONNX", dtype: "q8", sigmoid: false, mb: 44 },
+  any: { id: "onnx-community/ormbg-ONNX", dtype: "q8", sigmoid: false, mb: 44, clean: [90, 170] },
 };
 const MAX_SIDE = 2048; // bigger photos are scaled down first to keep memory low on phones
 
@@ -61,7 +61,12 @@ async function cutout(file, status) {
   if (m.sigmoid) tensor = tensor.sigmoid();
   const mask = await t.RawImage.fromTensor(tensor.mul(255).to("uint8")).resize(c.width, c.height);
   const md = mask.data, ch = mask.channels || 1;
-  for (let i = 0, n = c.width * c.height; i < n; i++) px.data[4 * i + 3] = md[i * ch];
+  // Stretch the mask so faint haze becomes clear and the subject becomes solid.
+  const [lo, hi] = m.clean || [0, 255], k = 255 / (hi - lo);
+  for (let i = 0, n = c.width * c.height; i < n; i++) {
+    const a = (md[i * ch] - lo) * k;
+    px.data[4 * i + 3] = a < 0 ? 0 : a > 255 ? 255 : a;
+  }
   ctx.putImageData(px, 0, 0);
   return await new Promise((r) => c.toBlob(r, "image/png"));
 }
