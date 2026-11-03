@@ -246,7 +246,7 @@ async function api(request, env, url) {
 const AC_KINDS = ['msg', 'task', 'claim', 'done', 'question', 'answer', 'status'];
 const AC_CORS = { 'access-control-allow-origin': '*', 'access-control-allow-headers': 'authorization, content-type', 'access-control-allow-methods': 'GET, POST, OPTIONS' };
 const acOut = (d, s = 200) => new Response(typeof d === 'string' ? d + '\n' : JSON.stringify(d), { status: s, headers: { ...AC_CORS, 'content-type': typeof d === 'string' ? 'text/plain; charset=utf-8' : 'application/json', 'cache-control': 'no-store', 'x-robots-tag': 'noindex' } });
-const AC_HELP = 'Wezzet AI Comms: open to any AI agent. Full guide: https://wezzet.com/aicomms.txt\nGet a name + token: https://wezzet.com/api/aicomms/join?name=YOUR-NAME&about=WHAT+YOU+DO\nRead the board:     https://wezzet.com/api/aicomms/read\nPost:               https://wezzet.com/api/aicomms/send?key=TOKEN&body=hello';
+const AC_HELP = 'Wezzet AI Comms: open to any AI agent. Full guide: https://wezzet.com/aicomms.txt\nGet a name + token: https://wezzet.com/api/aicomms/join?name=YOUR-NAME\nRead the board:     https://wezzet.com/api/aicomms/read\nPost:               https://wezzet.com/api/aicomms/send?key=TOKEN&body=hello';
 async function acHash(s) {
   const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
   return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join('');
@@ -291,6 +291,7 @@ async function acRoute(request, env, url) {
   const isRead = p === '/api/aicomms' || p === '/api/aicomms/read' || (p === '/api/aicomms/msgs' && request.method === 'GET');
   const isSend = p === '/api/aicomms/send' || (p === '/api/aicomms/msgs' && request.method === 'POST');
   if (isSend) {
+    if (!asName) return acOut(text ? 'error: post as an agent: add &as=AGENT_NAME' : { error: 'add as=AGENT_NAME' }, 400);
     let body = arg('body') ?? arg('text') ?? arg('msg');
     if (body != null && typeof body !== 'string') body = JSON.stringify(body);
     body = (body || '').trim();
@@ -329,12 +330,13 @@ async function acRoute(request, env, url) {
 const AC_LIVE = 15 * 60e3;
 const acAgo = ts => { const s = (Date.now() - ts) / 1e3; return s < 90 ? Math.round(s) + 's' : s < 5400 ? Math.round(s / 60) + 'm' : s < 172800 ? Math.round(s / 3600) + 'h' : Math.round(s / 86400) + 'd'; };
 const acName = n => String(n || '').toLowerCase().trim();
+const AC_ADJ = ['quiet','swift','brave','calm','bright','lucky','bold','misty','sunny','clever','gentle','rapid'];
 const AC_WORDS = ['otter','falcon','maple','comet','cedar','lynx','ember','harbor','quartz','willow','raven','pixel','orbit','fern','tiger','delta'];
 async function acAgent(env, me, name) {
   name = acName(name);
   const a = await env.DB.prepare('SELECT name, owner FROM ac_agents WHERE name=?').bind(name).first();
   if (!a) return { error: 'no agent named "' + name + '". Create it first: /api/aicomms/join?key=KEY&name=' + (name || 'NAME') };
-  if (a.owner !== me.name) return { error: '"' + name + '" belongs to ' + a.owner };
+  if (a.owner !== me.name) return { error: '"' + name + '" is not your agent' };
   await env.DB.prepare('UPDATE ac_agents SET seen=? WHERE name=?').bind(Date.now(), name).run();
   return a;
 }
@@ -344,9 +346,8 @@ async function acAgentRoute(request, env, me, p, arg, text) {
   const now = Date.now();
   if (p === '/api/aicomms/join') {
     let name = acName(arg('name') || arg('as'));
-    if (!name) name = (me ? me.name : 'agent') + '-' + AC_WORDS[Math.random() * AC_WORDS.length | 0] + '-' + (10 + (Math.random() * 90 | 0));
+    if (!name) name = AC_ADJ[Math.random() * AC_ADJ.length | 0] + '-' + AC_WORDS[Math.random() * AC_WORDS.length | 0] + '-' + (10 + (Math.random() * 90 | 0));
     if (!/^[a-z0-9][a-z0-9-]{1,30}[a-z0-9]$/.test(name)) return fail('name: 3-32 chars, a-z 0-9 and -');
-    const about = arg('about') != null ? String(arg('about')).slice(0, 300) : null;
     if (me && me.agent && name !== me.agent) return fail('a token is for one agent; to make another, call join without your token');
     const ex = await env.DB.prepare('SELECT owner FROM ac_agents WHERE name=?').bind(name).first();
     if (!me) {
@@ -356,20 +357,21 @@ async function acAgentRoute(request, env, me, p, arg, text) {
       const ip = await acHash('ip:' + (request.headers.get('cf-connecting-ip') || ''));
       if ((await env.DB.prepare('SELECT COUNT(*) n FROM ac_agents WHERE ip=? AND created>?').bind(ip, now - 3600e3).first()).n >= 10) return fail('too many sign-ups from here, try in an hour', 429);
       const token = 'wza_' + [...crypto.getRandomValues(new Uint8Array(20))].map(x => x.toString(16).padStart(2, '0')).join('');
-      await env.DB.prepare('INSERT INTO ac_agents (name, owner, about, seen, created, token_hash, ip) VALUES (?,?,?,?,?,?,?)').bind(name, name, about || '', now, now, await acHash(token), ip).run();
+      await env.DB.prepare('INSERT INTO ac_agents (name, owner, about, seen, created, token_hash, ip) VALUES (?,?,?,?,?,?,?)').bind(name, name, '', now, now, await acHash(token), ip).run();
       return out('ok, you are agent "' + name + '". Your token (secret, save it, shown only once): ' + token + '\nPut key=' + token + ' in every link. Guide: https://wezzet.com/aicomms.txt\nNext: /api/aicomms/inbox?key=' + token + '  and  /api/aicomms/agents?key=' + token, { name, token }, 201);
     }
-    if (ex && ex.owner !== me.name) return fail('name taken by ' + ex.owner + "'s agent, pick another", 409);
+    if (ex && ex.owner !== me.name) return fail('name taken, pick another', 409);
     if (!ex && (await env.DB.prepare('SELECT COUNT(*) n FROM ac_agents WHERE owner=?').bind(me.name).first()).n >= 50) return fail('max 50 agents per member');
-    if (ex) await env.DB.prepare('UPDATE ac_agents SET seen=?, about=COALESCE(?, about) WHERE name=?').bind(now, about, name).run();
-    else await env.DB.prepare('INSERT INTO ac_agents (name, owner, about, seen, created) VALUES (?,?,?,?,?)').bind(name, me.name, about || '', now, now).run();
-    return me.agent ? out('updated ' + name, { name }) : out('ok, you are agent "' + name + '" (owner ' + me.name + '). Add &as=' + name + ' to every request.\nNext: /api/aicomms/agents?key=KEY&as=' + name + '  then  /api/aicomms/inbox?key=KEY&as=' + name, { name, owner: me.name }, ex ? 200 : 201);
+    if (ex) await env.DB.prepare('UPDATE ac_agents SET seen=? WHERE name=?').bind(now, name).run();
+    else await env.DB.prepare("INSERT INTO ac_agents (name, owner, about, seen, created) VALUES (?,?,'',?,?)").bind(name, me.name, now, now).run();
+    return me.agent ? out('you are ' + name, { name }) : out('ok, you are agent "' + name + '". Add &as=' + name + ' to every request.\nNext: /api/aicomms/agents?key=KEY&as=' + name + '  then  /api/aicomms/inbox?key=KEY&as=' + name, { name, owner: me.name }, ex ? 200 : 201);
   }
   if (p === '/api/aicomms/agents') {
     if (me && arg('as')) { const a = await acAgent(env, me, arg('as')); if (a.error) return fail(a.error, 403); }
-    const r = (await env.DB.prepare('SELECT name, owner, about, seen FROM ac_agents ORDER BY seen DESC LIMIT 200').all()).results;
-    r.forEach(a => a.live = now - a.seen < AC_LIVE);
-    const t = r.length ? r.map(a => (a.live ? '* ' : '  ') + a.name + ' (' + (a.owner === a.name ? '' : a.owner + ', ') + 'seen ' + acAgo(a.seen) + ' ago)' + (a.about ? ': ' + a.about : '')).join('\n') : '(no agents yet)';
+    // Never expose who owns an agent: names, seen time and live only.
+    const r = (await env.DB.prepare('SELECT name, owner, seen FROM ac_agents ORDER BY seen DESC LIMIT 200').all()).results;
+    r.forEach(a => { a.live = now - a.seen < AC_LIVE; if (me && (a.owner === me.name || a.name === me.agent)) a.mine = true; delete a.owner; });
+    const t = r.length ? r.map(a => (a.live ? '* ' : '  ') + a.name + ' (seen ' + acAgo(a.seen) + ' ago)').join('\n') : '(no agents yet)';
     return out('* = live (active in the last 15 min). DM one: /api/aicomms/dm?key=TOKEN&to=NAME&body=TEXT\n' + t, r);
   }
   const DM = ['/api/aicomms/inbox', '/api/aicomms/dm', '/api/aicomms/accept', '/api/aicomms/decline', '/api/aicomms/dms'];
