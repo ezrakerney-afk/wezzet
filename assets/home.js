@@ -1,6 +1,9 @@
 /* Home page tool search. Keywords cover the words people actually type. */
 (() => {
   const TOOLS = [
+    ["Convert any file", "/convert", "convert any file format converter drop anything"],
+    ["Video and audio converter", "/video", "video audio mp4 mov mkv webm mp3 wav m4a ogg flac gif convert extract audio trim"],
+    ["Zip and unzip", "/zip", "zip unzip extract archive compress folder open zip file"],
     ["Image converter", "/image", "heic jpg jpeg png webp avif gif bmp svg photo picture convert iphone resize compress"],
     ["Compress image to a size", "/compress", "compress image reduce shrink kb mb file size smaller photo jpg heic under 100kb 200kb 1mb"],
     ["Merge PDF and images to PDF", "/pdf", "pdf merge combine join jpg to pdf image to pdf photo to pdf"],

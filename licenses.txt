@@ -95,3 +95,8 @@ OR OTHER DEALINGS IN THE SOFTWARE.
 Source: https://github.com/huggingface/transformers.js
 Models: MODNet (Apache-2.0) https://huggingface.co/Xenova/modnet
         BiRefNet lite (MIT) https://huggingface.co/onnx-community/BiRefNet_lite-ONNX
+
+=== ffmpeg.wasm 0.12.15 / @ffmpeg/util 0.12.2 (MIT License) ===
+Source: https://github.com/ffmpegwasm/ffmpeg.wasm
+Copyright (c) 2019 Jerome Wu
+The ffmpeg core (@ffmpeg/core 0.12.6, loaded from jsDelivr) is FFmpeg, licensed under LGPL 2.1 or later: https://ffmpeg.org/legal.html
