@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Compress Image to KB (JPG, PNG, HEIC) | Wezzet</title>
+<meta name="description" content="Shrink photos to an exact size like 100 KB or 1 MB. Works with JPG, PNG, WebP and iPhone HEIC. Free, nothing uploaded.">
+<link rel="canonical" href="https://wezzet.com/compress">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Wezzet">
+<meta property="og:title" content="Compress Image to KB (JPG, PNG, HEIC) | Wezzet">
+<meta property="og:url" content="https://wezzet.com/compress">
+<meta property="og:image" content="https://wezzet.com/assets/og/compress.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://wezzet.com/assets/og/compress.png">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#121212" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="icon" href="/assets/icon-32.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+<script>try{(function(t){if(t==="dark"||t==="light")document.documentElement.dataset.theme=t})(localStorage.getItem("wz-theme"))}catch(e){}</script>
+<style>.logo .logo-dark{display:none}:root[data-theme="dark"] .logo .logo-light{display:none}:root[data-theme="dark"] .logo .logo-dark{display:block}@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .logo .logo-light{display:none}:root:not([data-theme="light"]) .logo .logo-dark{display:block}}</style>
+<link rel="stylesheet" href="/assets/site.css?v=3">
+</head>
+<body>
+<header class="site-header">
+  <div class="wrap">
+    <a class="logo" href="/"><img class="logo-light" src="/assets/logo.png" alt="Wezzet" width="113" height="52"><img class="logo-dark" src="/assets/logo-dark.png" alt="Wezzet" width="113" height="52"></a>
+    <nav class="site-nav" aria-label="Main"><a href="/">All tools</a><button class="theme-toggle" type="button" aria-label="Switch between light and dark mode"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm0 2v16a8 8 0 0 1 0-16Z"/></svg></button></nav>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <div class="tool-head">
+      <h1>Compress image to a size</h1>
+    </div>
+
+    <div class="options">
+      <div class="field">
+        <label for="target">Target size (KB)</label>
+        <input type="number" id="target" min="5" value="200" style="max-width:140px">
+      </div>
+      <div class="field">
+        <span class="label">Quick picks</span>
+        <div class="row-actions" style="margin:0"><button class="btn btn-quiet" type="button" data-kb="50">50 KB</button><button class="btn btn-quiet" type="button" data-kb="100">100 KB</button><button class="btn btn-quiet" type="button" data-kb="500">500 KB</button><button class="btn btn-quiet" type="button" data-kb="1024">1 MB</button><button class="btn btn-quiet" type="button" data-kb="2048">2 MB</button></div>
+      </div>
+      <div class="field">
+        <span class="label">Save as</span>
+        <div class="segmented" role="radiogroup" aria-label="Output format">
+          <label><input type="radio" name="to" value="jpg" checked><span>JPG</span></label>
+          <label><input type="radio" name="to" value="webp"><span>WebP</span></label>
+        </div>
+      </div>
+      <div class="field">
+        <label for="max-width">Max width (px)</label>
+        <input type="number" id="max-width" min="0" placeholder="Original" style="max-width:160px">
+      </div>
+    </div>
+
+    <div class="dropzone" id="drop">
+      <button class="btn" type="button" id="choose">Choose images</button>
+      <p>or drop them here</p>
+      <input type="file" id="files" accept="image/*,.heic,.heif,.avif" multiple hidden>
+    </div>
+
+    <ul class="files" id="list" aria-live="polite"></ul>
+    <div class="row-actions"><button class="btn btn-quiet" type="button" id="zip" hidden>Download all (.zip)</button></div>
+
+    <section class="section faq" aria-labelledby="faq">
+      <h2 id="faq">Questions</h2>
+      <details><summary>How does it hit the size?</summary><p>It tries quality levels until the file fits under your target. If even low quality is too big, it makes the image a little smaller and tries again.</p></details>
+      <details><summary>Are my photos uploaded?</summary><p>No. Compression happens in your browser.</p></details>
+      <details><summary>Why JPG or WebP and not PNG?</summary><p>PNG has no quality setting, so it can't be squeezed to an exact size. WebP keeps transparency and is usually smaller than JPG.</p></details>
+    </section>
+  </div>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <p><a href="/">Wezzet</a>: free tools that run in your browser.</p>
+  </div>
+</footer>
+<script src="/vendor/fflate-0.8.3.min.js" defer></script>
+<script src="/assets/compress.js?v=1" defer></script>
+<script src="/assets/theme.js?v=3" defer></script>
+</body>
+</html>
