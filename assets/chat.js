@@ -8,19 +8,19 @@
     return j;
   };
   const showErr = (el, e) => { el.textContent = e ? e.message || e : ""; el.hidden = !e; };
-  let me = null, cur = null, rooms = { channels: [], dms: [], blocks: [] }, last = 0, sig = 0, timer = 0, busy = false;
+  let me = null, cur = null, rooms = { channels: [], dms: [], requests: [], blocks: [] }, last = 0, sig = 0, timer = 0, busy = false, ticks = 0;
 
   // ---------- sign in / sign up ----------
   const auth = $("auth");
   auth.addEventListener("change", () => {
     const up = auth.mode.value === "signup";
-    $("age-row").hidden = !up; $("a-go").textContent = up ? "Create account" : "Sign in";
+    $("age-row").hidden = $("user-row").hidden = $("name-hint").hidden = !up; $("a-go").textContent = up ? "Create account" : "Sign in";
     $("a-pass").autocomplete = up ? "new-password" : "current-password";
   });
   auth.addEventListener("submit", async (ev) => {
     ev.preventDefault();
     try {
-      const j = await api(auth.mode.value, { name: $("a-name").value.trim(), password: $("a-pass").value, age13: $("a-age").checked });
+      const j = await api(auth.mode.value, { name: $("a-name").value.trim(), password: $("a-pass").value, username: $("a-user").value.trim(), age13: $("a-age").checked });
       $("a-pass").value = ""; showErr($("a-err")); start(j.me);
     } catch (e) { showErr($("a-err"), e); }
   });
@@ -28,7 +28,7 @@
 
   async function start(user) {
     me = user; auth.hidden = true; $("app").hidden = false; $("me-name").textContent = me.name;
-    await loadRooms(); open(location.hash.slice(1) || "c:1");
+    await loadRooms(); open(location.hash.slice(1));
     poll();
   }
 
@@ -41,16 +41,38 @@
       if (online !== undefined) { const d = document.createElement("span"); d.className = "dot" + (online ? " on" : ""); b.append(d); }
       b.append(label); b.onclick = () => open(key); li.append(b); return li;
     };
+    const row = (name, label, buttons) => {
+      const li = document.createElement("li"), sp = document.createElement("span");
+      li.className = "req"; sp.textContent = name; if (label) sp.append(" (" + label + ")"); li.append(sp);
+      for (const [text, path] of buttons) {
+        const b = document.createElement("button"); b.type = "button"; b.textContent = text;
+        b.onclick = async () => { try { const j = await api(path, { name }); await loadRooms(); if (j.room) open(j.room); else if (!roomInfo(cur)) open(""); } catch (e) { showErr($("err"), e); } };
+        li.append(b);
+      }
+      return li;
+    };
+    $("ch-wrap").hidden = !rooms.channels.length;
     $("channels").replaceChildren(...rooms.channels.map((c) => item("c:" + c.id, "# " + c.name)));
+    $("req-wrap").hidden = !rooms.requests.length;
+    $("requests").replaceChildren(...rooms.requests.map((r) => r.incoming ? row(r.name, "", [["Accept", "friend"], ["Decline", "unfriend"]]) : row(r.name, "sent", [["Cancel", "unfriend"]])));
     $("dms").replaceChildren(...rooms.dms.map((d) => item("d:" + d.id, d.name, d.online)));
+    $("blk-wrap").hidden = !rooms.blocks.length;
+    $("blocks").replaceChildren(...rooms.blocks.map((n) => row(n, "", [["Unblock", "unblock"]])));
     mark();
   }
   const mark = () => document.querySelectorAll("button.room").forEach((b) => b.setAttribute("aria-current", b.dataset.room === cur));
   const roomInfo = (key) => key[0] === "c" ? rooms.channels.find((c) => "c:" + c.id === key) : rooms.dms.find((d) => "d:" + d.id === key);
 
   function open(key) {
-    if (!roomInfo(key)) key = "c:1";
-    cur = key; last = 0; $("log").replaceChildren(); history.replaceState(null, "", "#" + key);
+    if (!roomInfo(key)) key = rooms.dms[0] ? "d:" + rooms.dms[0].id : rooms.channels[0] ? "c:" + rooms.channels[0].id : "";
+    cur = key; last = 0; history.replaceState(null, "", key ? "#" + key : location.pathname);
+    $("send-form").hidden = !key;
+    if (!key) {
+      const p = document.createElement("p"); p.className = "empty";
+      p.textContent = "Add a friend by their username to start chatting. Once they accept, you can message and call them.";
+      $("log").replaceChildren(p); $("room-title").textContent = "No friends yet"; $("call-btn").hidden = $("block-btn").hidden = true; mark(); return;
+    }
+    $("log").replaceChildren();
     const info = roomInfo(key), dm = key[0] === "d";
     $("room-title").textContent = dm ? info.name : "# " + info.name;
     $("call-btn").hidden = !dm; $("block-btn").hidden = !dm;
@@ -60,12 +82,16 @@
 
   $("dm-form").addEventListener("submit", async (ev) => {
     ev.preventDefault();
-    try { const j = await api("dm", { name: $("dm-name").value.trim() }); $("dm-name").value = ""; await loadRooms(); open(j.room); showErr($("err")); }
+    try {
+      const j = await api("friend", { name: $("dm-name").value.trim() }); $("dm-name").value = ""; await loadRooms();
+      if (j.room) open(j.room); else if (!cur) open("");
+      showErr($("err"), j.room ? "" : "Request sent to " + j.name + ".");
+    }
     catch (e) { showErr($("err"), e); }
   });
   $("block-btn").addEventListener("click", async () => {
     const name = roomInfo(cur).name, blocked = rooms.blocks.includes(name);
-    if (!blocked && !confirm("Block " + name + "? They won't be able to message or call you.")) return;
+    if (!blocked && !confirm("Block " + name + "? They'll be removed from your friends and can't message or call you.")) return;
     try { await api(blocked ? "unblock" : "block", { name }); await loadRooms(); open(cur); } catch (e) { showErr($("err"), e); }
   });
 
@@ -87,8 +113,9 @@
       busy = true;
       try {
         const want = cur;
+        if (++ticks % 5 === 0) await loadRooms();
         const j = await api("poll?room=" + encodeURIComponent(cur) + "&after=" + last + "&sig=" + sig);
-        if (want === cur && j.msgs.length) {
+        if (want === cur && cur && j.msgs.length) {
           const log = $("log"), atEnd = log.scrollHeight - log.scrollTop - log.clientHeight < 60;
           j.msgs.forEach((m) => { if (m.id > last) { log.append(render(m)); last = m.id; } });
           if (atEnd || last === j.msgs[j.msgs.length - 1].id) log.scrollTop = log.scrollHeight;

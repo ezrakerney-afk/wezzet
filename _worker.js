@@ -552,8 +552,14 @@ const CH_SCHEMA = [
   "CREATE TABLE IF NOT EXISTS ch_reports (msg INTEGER, uid INTEGER, ts INTEGER, PRIMARY KEY (msg, uid))",
   "CREATE TABLE IF NOT EXISTS ch_signals (id INTEGER PRIMARY KEY, dm INTEGER, frm INTEGER, too INTEGER, kind TEXT, data TEXT, ts INTEGER)",
   "CREATE INDEX IF NOT EXISTS ch_signals_too ON ch_signals (too, id)",
-  "INSERT OR IGNORE INTO ch_channels (id, name, created) VALUES (1, 'general', 0), (2, 'help', 0), (3, 'off-topic', 0)",
+  "CREATE TABLE IF NOT EXISTS ch_friends (a INTEGER, b INTEGER, by INTEGER, status TEXT, ts INTEGER, PRIMARY KEY (a, b))",
+  // Default channels removed 2026-11-03 (Ezra): chat is friends + DMs for now. Channel code stays for later.
+  "DELETE FROM ch_channels WHERE id IN (1, 2, 3)",
+  "DELETE FROM ch_msgs WHERE room LIKE 'c:%'",
 ];
+// Public username shown to others ("display"); ch_users.name is the private login name.
+const CH_ALTER = ["ALTER TABLE ch_users ADD COLUMN display TEXT", "CREATE UNIQUE INDEX IF NOT EXISTS ch_users_display ON ch_users (display COLLATE NOCASE)"];
+const CH_NAME = "COALESCE(u.display, u.name)";
 let chReady = false;
 const CH_MAX = 2000, CH_HIDE_AT = 3;
 const chOut = (d, s = 200, h = {}) => json(d, s, { "x-robots-tag": "noindex", ...h });
@@ -568,7 +574,11 @@ async function chPass(pw, salt) {
 async function chat(request, env, url) {
   if (!env.DB) return chOut({ error: "Chat database isn't connected yet." }, 503);
   try {
-    if (!chReady) { await env.DB.batch(CH_SCHEMA.map((s) => env.DB.prepare(s))); chReady = true; }
+    if (!chReady) {
+      await env.DB.batch(CH_SCHEMA.map((s) => env.DB.prepare(s)));
+      for (const s of CH_ALTER) { try { await env.DB.prepare(s).run(); } catch {} }
+      chReady = true;
+    }
     return await chRoute(request, env, url);
   } catch (e) {
     return chOut({ error: "Something went wrong on our side. Try again in a moment." }, 500);
@@ -595,17 +605,20 @@ async function chRoute(request, env, url) {
     if (pw.length < 8 || pw.length > 200) return chOut({ error: "Passwords need at least 8 characters." }, 400);
     let user;
     if (p === "/signup") {
+      const display = clean(d.username, 24);
+      if (!/^[A-Za-z0-9_.-]{3,24}$/.test(display)) return chOut({ error: "Usernames are 3 to 24 letters, numbers, . - or _." }, 400);
       if (!d.age13) return chOut({ error: "You must be 13 or older to use chat." }, 400);
       const n = (await DB.prepare("SELECT COUNT(*) n FROM ch_users WHERE ip = ? AND created > ?").bind(ip, now - 3600e3).first()).n;
       if (n >= 3) return chOut({ error: "Too many new accounts from here. Try again later." }, 429);
-      if (await DB.prepare("SELECT 1 FROM ch_users WHERE name = ?").bind(name).first()) return chOut({ error: "That name is taken." }, 409);
+      if (await DB.prepare("SELECT 1 FROM ch_users WHERE name = ?").bind(name).first()) return chOut({ error: "That login name is taken." }, 409);
+      if (await DB.prepare("SELECT 1 FROM ch_users WHERE display = ? COLLATE NOCASE OR (display IS NULL AND name = ?)").bind(display, display).first()) return chOut({ error: "That username is taken." }, 409);
       const salt = crypto.randomUUID();
-      user = await DB.prepare("INSERT INTO ch_users (name, pass, salt, ip, created, seen) VALUES (?, ?, ?, ?, ?, ?) RETURNING id, name, banned")
-        .bind(name, await chPass(pw, salt), salt, ip, now, now).first();
+      user = await DB.prepare("INSERT INTO ch_users (name, display, pass, salt, ip, created, seen) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id, display AS name, banned")
+        .bind(name, display, await chPass(pw, salt), salt, ip, now, now).first();
     } else {
       const fails = (await DB.prepare("SELECT COUNT(*) n FROM actions WHERE who = ? AND action = 'chat-login' AND created_at > ?").bind(ip, now - 900e3).first()).n;
       if (fails >= 10) return chOut({ error: "Too many tries. Wait 15 minutes." }, 429);
-      const u = await DB.prepare("SELECT id, name, pass, salt, banned FROM ch_users WHERE name = ?").bind(name).first();
+      const u = await DB.prepare("SELECT id, COALESCE(display, name) AS name, pass, salt, banned FROM ch_users WHERE name = ?").bind(name).first();
       if (!u || (await chPass(pw, u.salt)) !== u.pass) {
         await DB.prepare("INSERT INTO actions (who, action, created_at) VALUES (?, 'chat-login', ?)").bind(ip, now).run();
         return chOut({ error: "Wrong name or password." }, 401);
@@ -619,7 +632,7 @@ async function chRoute(request, env, url) {
   }
 
   const raw = (request.headers.get("cookie") || "").match(/(?:^|;\s*)wzc=([a-f0-9-]{64,80})/);
-  const sess = raw && await DB.prepare("SELECT u.id, u.name, u.role, u.banned, s.token FROM ch_sessions s JOIN ch_users u ON u.id = s.uid WHERE s.token = ? AND s.created > ?")
+  const sess = raw && await DB.prepare(`SELECT u.id, ${CH_NAME} AS name, u.role, u.banned, s.token FROM ch_sessions s JOIN ch_users u ON u.id = s.uid WHERE s.token = ? AND s.created > ?`)
     .bind(await acHash(raw[1]), now - 30 * 86400e3).first();
   if (!sess || sess.banned) return chOut({ me: null, error: sess ? "This account is suspended." : "Sign in to chat." }, p === "/me" ? 200 : 401);
   const me = sess.id;
@@ -638,7 +651,8 @@ async function chRoute(request, env, url) {
     if (!dm) return null;
     const other = dm.a === me ? dm.b : dm.a;
     const blocked = await DB.prepare("SELECT 1 FROM ch_blocks WHERE (uid = ? AND blocked = ?) OR (uid = ? AND blocked = ?)").bind(me, other, other, me).first();
-    return { key: r, dm: dm.id, other, blocked: !!blocked };
+    const fr = await DB.prepare("SELECT status FROM ch_friends WHERE a = ? AND b = ?").bind(dm.a, dm.b).first();
+    return { key: r, dm: dm.id, other, blocked: !!blocked || !fr || fr.status !== "ok" };
   };
 
   if (p === "/me") {
@@ -648,10 +662,14 @@ async function chRoute(request, env, url) {
 
   if (p === "/rooms") {
     const ch = (await DB.prepare("SELECT id, name FROM ch_channels ORDER BY id").all()).results;
-    const dms = (await DB.prepare("SELECT d.id, u.name, u.seen FROM ch_dms d JOIN ch_users u ON u.id = CASE WHEN d.a = ? THEN d.b ELSE d.a END WHERE d.a = ? OR d.b = ? ORDER BY d.updated DESC LIMIT 100")
-      .bind(me, me, me).all()).results.map((x) => ({ id: x.id, name: x.name, online: now - (x.seen || 0) < 120e3 }));
-    const blocks = (await DB.prepare("SELECT u.name FROM ch_blocks b JOIN ch_users u ON u.id = b.blocked WHERE b.uid = ?").bind(me).all()).results.map((x) => x.name);
-    return chOut({ channels: ch, dms, blocks });
+    // Friends (status ok) each get a DM room; pending requests show as incoming/outgoing.
+    const fr = (await DB.prepare(`SELECT f.status, f.by, ${CH_NAME} AS name, u.seen, d.id AS dm FROM ch_friends f
+      JOIN ch_users u ON u.id = CASE WHEN f.a = ? THEN f.b ELSE f.a END LEFT JOIN ch_dms d ON d.a = f.a AND d.b = f.b
+      WHERE (f.a = ? OR f.b = ?) AND u.banned = 0 ORDER BY d.updated DESC, f.ts DESC LIMIT 300`).bind(me, me, me).all()).results;
+    const dms = fr.filter((x) => x.status === "ok" && x.dm).map((x) => ({ id: x.dm, name: x.name, online: now - (x.seen || 0) < 120e3 }));
+    const requests = fr.filter((x) => x.status === "pending").map((x) => ({ name: x.name, incoming: x.by !== me }));
+    const blocks = (await DB.prepare(`SELECT ${CH_NAME} AS name FROM ch_blocks b JOIN ch_users u ON u.id = b.blocked WHERE b.uid = ?`).bind(me).all()).results.map((x) => x.name);
+    return chOut({ channels: ch, dms, requests, blocks });
   }
 
   // One poll returns new messages for the open room plus any call signals for me.
@@ -660,12 +678,12 @@ async function chRoute(request, env, url) {
     const after = Math.max(0, parseInt(q.get("after") || "0", 10) || 0);
     let msgs = [];
     if (r) {
-      msgs = (await DB.prepare(`SELECT m.id, m.uid, u.name, m.body, m.ts FROM ch_msgs m JOIN ch_users u ON u.id = m.uid
+      msgs = (await DB.prepare(`SELECT m.id, m.uid, ${CH_NAME} AS name, m.body, m.ts FROM ch_msgs m JOIN ch_users u ON u.id = m.uid
         WHERE m.room = ? AND m.id > ? AND m.hidden = 0 AND m.uid NOT IN (SELECT blocked FROM ch_blocks WHERE uid = ?) ORDER BY m.id DESC LIMIT 100`)
         .bind(r.key, after, me).all()).results.reverse();
     }
     const sigAfter = Math.max(0, parseInt(q.get("sig") || "0", 10) || 0);
-    const signals = (await DB.prepare("SELECT s.id, s.dm, s.kind, s.data, s.ts, u.name FROM ch_signals s JOIN ch_users u ON u.id = s.frm WHERE s.too = ? AND s.id > ? AND s.ts > ? ORDER BY s.id LIMIT 20")
+    const signals = (await DB.prepare(`SELECT s.id, s.dm, s.kind, s.data, s.ts, ${CH_NAME} AS name FROM ch_signals s JOIN ch_users u ON u.id = s.frm WHERE s.too = ? AND s.id > ? AND s.ts > ? ORDER BY s.id LIMIT 20`)
       .bind(me, sigAfter, now - 60e3).all()).results;
     const maxSig = sigAfter ? null : (await DB.prepare("SELECT MAX(id) m FROM ch_signals").first()).m || 0;
     await DB.prepare("UPDATE ch_users SET seen = ? WHERE id = ?").bind(now, me).run();
@@ -675,7 +693,7 @@ async function chRoute(request, env, url) {
   if (post && p === "/send") {
     const r = await room(d.room);
     if (!r) return chOut({ error: "That room doesn't exist." }, 404);
-    if (r.blocked) return chOut({ error: "You can't message this person." }, 403);
+    if (r.blocked) return chOut({ error: "You can only message friends who haven't blocked you." }, 403);
     const text = clean(d.body, CH_MAX);
     if (!text) return chOut({ error: "Write a message first." }, 400);
     if (AC_SECRET.test(text)) return chOut({ error: "That looks like a password or secret key. Don't post those." }, 400);
@@ -688,22 +706,39 @@ async function chRoute(request, env, url) {
     return chOut({ id: m.id });
   }
 
-  const userByName = (n) => DB.prepare("SELECT id, name FROM ch_users WHERE name = ? AND banned = 0").bind(clean(n, 24)).first();
+  const userByName = (n) => { n = clean(n, 24).replace(/^@/, ""); return DB.prepare("SELECT id, COALESCE(display, name) AS name FROM ch_users WHERE (display = ? COLLATE NOCASE OR (display IS NULL AND name = ?)) AND banned = 0").bind(n, n).first(); };
 
-  if (post && p === "/dm") {
+  // Add a friend by username. If they already asked you, this accepts. Friends get a DM room.
+  if (post && (p === "/friend" || p === "/unfriend")) {
     const u = await userByName(d.name);
-    if (!u) return chOut({ error: "No one has that name." }, 404);
+    if (!u) return chOut({ error: "No one has that username." }, 404);
     if (u.id === me) return chOut({ error: "That's you." }, 400);
     const [a, b] = me < u.id ? [me, u.id] : [u.id, me];
+    if (p === "/unfriend") {
+      await DB.prepare("DELETE FROM ch_friends WHERE a = ? AND b = ?").bind(a, b).run();
+      return chOut({ ok: true });
+    }
+    if (await DB.prepare("SELECT 1 FROM ch_blocks WHERE (uid = ? AND blocked = ?) OR (uid = ? AND blocked = ?)").bind(me, u.id, u.id, me).first()) return chOut({ error: "You can't add this person." }, 403);
+    const f = await DB.prepare("SELECT by, status FROM ch_friends WHERE a = ? AND b = ?").bind(a, b).first();
+    if (!f) {
+      const n = (await DB.prepare("SELECT COUNT(*) n FROM ch_friends WHERE by = ? AND ts > ?").bind(me, now - 3600e3).first()).n;
+      if (n >= 30) return chOut({ error: "Too many friend requests. Try later." }, 429);
+      await DB.prepare("INSERT INTO ch_friends (a, b, by, status, ts) VALUES (?, ?, ?, 'pending', ?)").bind(a, b, me, now).run();
+      return chOut({ status: "pending", name: u.name });
+    }
+    if (f.status === "pending" && f.by !== me) await DB.prepare("UPDATE ch_friends SET status = 'ok', ts = ? WHERE a = ? AND b = ?").bind(now, a, b).run();
+    else if (f.status !== "ok") return chOut({ status: "pending", name: u.name });
     await DB.prepare("INSERT OR IGNORE INTO ch_dms (a, b, updated) VALUES (?, ?, ?)").bind(a, b, now).run();
     const dm = await DB.prepare("SELECT id FROM ch_dms WHERE a = ? AND b = ?").bind(a, b).first();
-    return chOut({ room: "d:" + dm.id, name: u.name });
+    return chOut({ status: "ok", room: "d:" + dm.id, name: u.name });
   }
 
   if (post && (p === "/block" || p === "/unblock")) {
     const u = await userByName(d.name);
     if (!u || u.id === me) return chOut({ error: "No one has that name." }, 404);
     await DB.prepare(p === "/block" ? "INSERT OR IGNORE INTO ch_blocks (uid, blocked) VALUES (?, ?)" : "DELETE FROM ch_blocks WHERE uid = ? AND blocked = ?").bind(me, u.id).run();
+    // Blocking also ends the friendship and any pending request.
+    if (p === "/block") await DB.prepare("DELETE FROM ch_friends WHERE a = ? AND b = ?").bind(Math.min(me, u.id), Math.max(me, u.id)).run();
     return chOut({ ok: true });
   }
 

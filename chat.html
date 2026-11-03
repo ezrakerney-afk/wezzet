@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Chat | Wezzet</title>
-<meta name="description" content="Free chat on Wezzet: text channels, direct messages and 1-on-1 voice calls in your browser.">
+<meta name="description" content="Free chat on Wezzet: add friends, send direct messages and make voice calls in your browser.">
 <link rel="canonical" href="https://wezzet.com/chat">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Wezzet">
@@ -29,6 +29,10 @@
   .side button.room:hover, .side button.room[aria-current="true"] { background: var(--surface); }
   .side .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--line-strong); margin-right: 6px; }
   .side .dot.on { background: var(--good); }
+  .side .req { display: flex; gap: 6px; align-items: center; padding: 4px 8px; flex-wrap: wrap; }
+  .side .req span { margin-right: auto; overflow-wrap: anywhere; }
+  .side .req button { border: 1px solid var(--line-strong); background: var(--bg); color: var(--ink); border-radius: 6px; font: inherit; font-size: .85rem; padding: 2px 8px; cursor: pointer; }
+  .empty { color: var(--ink-soft); padding: 24px 12px; }
   .side form { display: flex; gap: 6px; }
   .side input { min-height: 38px; }
   .pane { border: 1px solid var(--line); border-radius: 10px; display: grid; grid-template-rows: auto 1fr auto; height: min(70vh, 640px); min-width: 0; }
@@ -63,7 +67,7 @@
   <div class="wrap">
     <div class="tool-head" style="padding-bottom:0">
       <h1>Chat</h1>
-      <p class="lede">Channels, direct messages and voice calls. Free, in your browser.</p>
+      <p class="lede">Add friends, message them and call them. Free, in your browser.</p>
     </div>
 
     <form class="auth" id="auth" hidden novalidate>
@@ -71,7 +75,8 @@
         <label><input type="radio" name="mode" value="login" checked><span>Sign in</span></label>
         <label><input type="radio" name="mode" value="signup"><span>Sign up</span></label>
       </div>
-      <div class="field"><label for="a-name">Name</label><input type="text" id="a-name" maxlength="24" autocomplete="username" required></div>
+      <div class="field"><label for="a-name">Login name</label><input type="text" id="a-name" maxlength="24" autocomplete="username" required><p class="hint" id="name-hint" hidden>Private. Only used to sign in.</p></div>
+      <div class="field" id="user-row" hidden><label for="a-user">Username</label><input type="text" id="a-user" maxlength="24" autocomplete="nickname"><p class="hint">What people see, and how friends find you.</p></div>
       <div class="field"><label for="a-pass">Password</label><input type="password" id="a-pass" maxlength="200" autocomplete="current-password" required></div>
       <label class="check" id="age-row" hidden><input type="checkbox" id="a-age"> I'm 13 or older</label>
       <button class="btn" type="submit" id="a-go">Sign in</button>
@@ -81,9 +86,11 @@
 
     <div class="chat-app" id="app" hidden>
       <aside class="side">
-        <div><h2>Channels</h2><ul id="channels"></ul></div>
-        <div><h2>Direct messages</h2><ul id="dms"></ul></div>
-        <form id="dm-form"><input type="text" id="dm-name" placeholder="Name" maxlength="24" aria-label="Message someone by name"><button class="btn btn-quiet" type="submit" style="min-height:38px;padding:0 12px">DM</button></form>
+        <div id="ch-wrap" hidden><h2>Channels</h2><ul id="channels"></ul></div>
+        <div id="req-wrap" hidden><h2>Friend requests</h2><ul id="requests"></ul></div>
+        <div><h2>Friends</h2><ul id="dms"></ul></div>
+        <form id="dm-form"><input type="text" id="dm-name" placeholder="Username" maxlength="25" aria-label="Add a friend by username"><button class="btn btn-quiet" type="submit" style="min-height:38px;padding:0 12px">Add</button></form>
+        <div id="blk-wrap" hidden><h2>Blocked</h2><ul id="blocks"></ul></div>
         <p class="meta">Signed in as <b id="me-name"></b> &middot; <a href="#" id="logout">Sign out</a></p>
       </aside>
       <section class="pane" aria-live="polite">
@@ -112,7 +119,7 @@
     <p><a href="/">Wezzet</a>: free tools that run in your browser. Follow <a href="https://x.com/WezzetX" rel="noopener">@WezzetX</a> on X.</p>
   </div>
 </footer>
-<script src="/assets/chat.js?v=1" defer></script>
+<script src="/assets/chat.js?v=2" defer></script>
 <script src="/assets/theme.js?v=4" defer></script>
 </body>
 </html>
