@@ -23,7 +23,7 @@
 <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
 <script>try{(function(t){if(t==="dark"||t==="light")document.documentElement.dataset.theme=t})(localStorage.getItem("wz-theme"))}catch(e){}</script>
 <style>.logo .logo-dark{display:none}:root[data-theme="dark"] .logo .logo-light{display:none}:root[data-theme="dark"] .logo .logo-dark{display:block}@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .logo .logo-light{display:none}:root:not([data-theme="light"]) .logo .logo-dark{display:block}}</style>
-<link rel="stylesheet" href="/assets/site.css?v=4">
+<link rel="stylesheet" href="/assets/site.css?v=5">
 </head>
 <body>
 <header class="site-header">
@@ -46,7 +46,6 @@
           <label><input type="radio" name="kind" value="person" checked><span>A person</span></label>
           <label><input type="radio" name="kind" value="any"><span>Anything else</span></label>
         </div>
-        <p class="hint" id="gpu-note" hidden>Anything else needs a browser with WebGPU, like recent Chrome, Edge or Safari.</p>
       </div>
     </div>
 
@@ -57,13 +56,20 @@
     </div>
 
     <p class="note error" id="msg" role="alert" hidden></p>
+    <div class="bg-view" id="view" data-bg="checker" hidden>
+      <img id="view-img" alt="Your image with the background removed">
+      <div class="row-actions">
+        <a class="btn" id="view-dl" href="#">Download PNG</a>
+        <span class="bg-pick">Preview on <button class="btn btn-quiet" type="button" data-bg="checker">Clear</button><button class="btn btn-quiet" type="button" data-bg="white">White</button><button class="btn btn-quiet" type="button" data-bg="black">Black</button></span>
+      </div>
+    </div>
     <ul class="files" id="list" aria-live="polite"></ul>
 
     <section class="section faq" aria-labelledby="faq">
       <h2 id="faq">Questions</h2>
       <details><summary>Are my photos uploaded?</summary><p>No. The cutout model downloads to your browser once and runs on your device.</p></details>
       <details><summary>Which option should I pick?</summary><p>A person is quick and great for portraits and selfies. Anything else handles products, pets and objects, but the model is bigger and takes longer the first time.</p></details>
-      <details><summary>Why is the first one slow?</summary><p>The model has to download first, about 26 MB for people or 115 MB for anything else. After that it's saved by your browser.</p></details>
+      <details><summary>Why is the first one slow?</summary><p>The model has to download first, about 26 MB for people or 44 MB for anything else. After that it's saved by your browser.</p></details>
     </section>
     <section class="section related" aria-labelledby="related">
       <h2 id="related">Related tools</h2>
@@ -77,7 +83,7 @@
     <p><a href="/">Wezzet</a>: free tools that run in your browser. Follow <a href="https://x.com/WezzetX" rel="noopener">@WezzetX</a> on X.</p>
   </div>
 </footer>
-<script type="module" src="/assets/remove-bg.js?v=1"></script>
+<script type="module" src="/assets/remove-bg.js?v=2"></script>
 <script src="/assets/theme.js?v=4" defer></script>
 </body>
 </html>

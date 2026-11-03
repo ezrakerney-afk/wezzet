@@ -344,3 +344,10 @@ textarea.mono, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consola
 .gif-out { display: block; max-width: 100%; margin: 16px 0 12px; border-radius: 8px; }
 .hint { font-size: 0.9rem; color: var(--ink-soft); margin: 6px 0 0; }
 .segmented input:disabled + span { opacity: 0.45; cursor: not-allowed; }
+.bg-view { margin: 20px 0 8px; }
+.bg-view img { display: block; max-width: 100%; max-height: 70vh; margin: 0 auto; border-radius: 10px; border: 1px solid var(--line); }
+.bg-view[data-bg="checker"] img { background: repeating-conic-gradient(#ddd 0 25%, #fff 0 50%) 0 0 / 20px 20px; }
+.bg-view[data-bg="white"] img { background: #fff; }
+.bg-view[data-bg="black"] img { background: #000; }
+.bg-view .row-actions { justify-content: center; flex-wrap: wrap; align-items: center; }
+.bg-pick { display: inline-flex; gap: 6px; align-items: center; color: var(--ink-soft); font-size: 0.95rem; }
