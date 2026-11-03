@@ -8,7 +8,7 @@
     return j;
   };
   const showErr = (el, e) => { el.textContent = e ? e.message || e : ""; el.hidden = !e; };
-  let me = null, cur = null, rooms = { channels: [], dms: [], requests: [], blocks: [] }, last = 0, sig = 0, timer = 0, busy = false, ticks = 0;
+  let me = null, cur = null, rooms = { channels: [], dms: [], requests: [], blocks: [] }, last = 0, sig = 0, timer = 0, busy = false, ticks = 0, noteAt = -1, pushOn = false;
 
   // ---------- sign in / sign up ----------
   const auth = $("auth");
@@ -24,10 +24,13 @@
       $("a-pass").value = ""; showErr($("a-err")); start(j.me);
     } catch (e) { showErr($("a-err"), e); }
   });
-  $("logout").addEventListener("click", async (ev) => { ev.preventDefault(); hangup(true); await api("logout", {}).catch(() => {}); location.reload(); });
+  $("logout").addEventListener("click", async (ev) => {
+    ev.preventDefault(); hangup(true);
+    try { const reg = await navigator.serviceWorker.getRegistration("/chat"); const sub = reg && await reg.pushManager.getSubscription(); if (sub) { await api("unpush", { endpoint: sub.endpoint }); await sub.unsubscribe(); } } catch {} await api("logout", {}).catch(() => {}); location.reload(); });
 
   async function start(user) {
     me = user; auth.hidden = true; $("app").hidden = false; $("me-name").textContent = me.name;
+    if ("Notification" in window) enablePush(false);
     await loadRooms(); open(location.hash.slice(1));
     poll();
   }
@@ -35,11 +38,12 @@
   // ---------- rooms ----------
   async function loadRooms() {
     rooms = await api("rooms");
-    const item = (key, label, online) => {
+    const item = (key, label, online, unread) => {
       const li = document.createElement("li"), b = document.createElement("button");
       b.className = "room"; b.type = "button"; b.dataset.room = key;
       if (online !== undefined) { const d = document.createElement("span"); d.className = "dot" + (online ? " on" : ""); b.append(d); }
-      b.append(label); b.onclick = () => open(key); li.append(b); return li;
+      b.append(label);
+      if (unread && key !== cur) { const n = document.createElement("span"); n.className = "badge"; n.textContent = unread > 99 ? "99+" : unread; b.append(n); } b.onclick = () => open(key); li.append(b); return li;
     };
     const row = (name, label, buttons) => {
       const li = document.createElement("li"), sp = document.createElement("span");
@@ -55,11 +59,17 @@
     $("channels").replaceChildren(...rooms.channels.map((c) => item("c:" + c.id, "# " + c.name)));
     $("req-wrap").hidden = !rooms.requests.length;
     $("requests").replaceChildren(...rooms.requests.map((r) => r.incoming ? row(r.name, "", [["Accept", "friend"], ["Decline", "unfriend"]]) : row(r.name, "sent", [["Cancel", "unfriend"]])));
-    $("dms").replaceChildren(...rooms.dms.map((d) => item("d:" + d.id, d.name, d.online)));
+    $("dms").replaceChildren(...rooms.dms.map((d) => item("d:" + d.id, d.name, d.online, d.unread)));
+    badge();
     $("blk-wrap").hidden = !rooms.blocks.length;
     $("blocks").replaceChildren(...rooms.blocks.map((n) => row(n, "", [["Unblock", "unblock"]])));
     mark();
   }
+  // Unread total in the tab title.
+  const badge = () => {
+    const n = rooms.dms.reduce((t, d) => t + ("d:" + d.id === cur && !document.hidden ? 0 : d.unread || 0), 0) + rooms.requests.filter((r) => r.incoming).length;
+    document.title = (n ? "(" + n + ") " : "") + "Chat | Wezzet";
+  };
   const mark = () => document.querySelectorAll("button.room").forEach((b) => b.setAttribute("aria-current", b.dataset.room === cur));
   const roomInfo = (key) => key[0] === "c" ? rooms.channels.find((c) => "c:" + c.id === key) : rooms.dms.find((d) => "d:" + d.id === key);
 
@@ -77,7 +87,7 @@
     $("room-title").textContent = dm ? info.name : "# " + info.name;
     $("call-btn").hidden = !dm; $("block-btn").hidden = !dm;
     if (dm) $("block-btn").textContent = rooms.blocks.includes(info.name) ? "Unblock" : "Block";
-    mark(); poll();
+    mark(); badge(); poll();
   }
 
   $("dm-form").addEventListener("submit", async (ev) => {
@@ -109,12 +119,16 @@
   async function poll() {
     clearTimeout(timer);
     if (!me) return;
-    if (!busy && !document.hidden) {
+    if (!busy) {
       busy = true;
       try {
         const want = cur;
         if (++ticks % 5 === 0) await loadRooms();
-        const j = await api("poll?room=" + encodeURIComponent(cur) + "&after=" + last + "&sig=" + sig);
+        const seen = !document.hidden && document.hasFocus() ? "&seen=1" : "";
+        const j = await api("poll?room=" + encodeURIComponent(cur) + "&after=" + last + "&sig=" + sig + "&note=" + noteAt + seen);
+        if (j.noteBase !== null && j.noteBase !== undefined) noteAt = Math.max(noteAt, j.noteBase);
+        if (j.notes && j.notes.length) { noteAt = j.notes[j.notes.length - 1].id; onNotes(j.notes); }
+        if (seen && cur) { const dm = roomInfo(cur); if (dm && dm.unread) { dm.unread = 0; badge(); } }
         if (want === cur && cur && j.msgs.length) {
           const log = $("log"), atEnd = log.scrollHeight - log.scrollTop - log.clientHeight < 60;
           j.msgs.forEach((m) => { if (m.id > last) { log.append(render(m)); last = m.id; } });
@@ -127,9 +141,57 @@
       busy = false;
     }
     // Poll faster while a call is being set up. Pause while the tab is hidden to save requests.
-    timer = setTimeout(poll, call && !call.live ? 1000 : 3000);
+    timer = setTimeout(poll, call && !call.live ? 1000 : document.hidden ? 15000 : 3000);
   }
-  document.addEventListener("visibilitychange", () => { if (!document.hidden) poll(); });
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) poll(); badge(); });
+  window.addEventListener("focus", () => poll());
+
+  // ---------- notifications ----------
+  let audio = null;
+  const ding = () => {
+    try {
+      audio = audio || new AudioContext();
+      const o = audio.createOscillator(), g = audio.createGain();
+      o.frequency.value = 880; g.gain.setValueAtTime(0.08, audio.currentTime); g.gain.exponentialRampToValueAtTime(0.0001, audio.currentTime + 0.25);
+      o.connect(g).connect(audio.destination); o.start(); o.stop(audio.currentTime + 0.25);
+    } catch {}
+  };
+  async function onNotes(notes) {
+    const away = document.hidden || !document.hasFocus();
+    const fresh = notes.filter((n) => away || n.room !== cur || n.kind === "friend");
+    if (!fresh.length) return;
+    await loadRooms();
+    if (fresh.some((n) => n.kind !== "call")) ding();
+    // With push turned on, the service worker shows the pop-up instead (no doubles).
+    if (away && !pushOn && "Notification" in window && Notification.permission === "granted") {
+      for (const n of fresh.slice(-3)) {
+        try {
+          const pop = new Notification(n.title, { body: n.body, tag: n.room || n.kind, icon: "/assets/icon-192.png" });
+          pop.onclick = () => { window.focus(); if (n.room) open(n.room); pop.close(); };
+        } catch {}
+      }
+    }
+  }
+  const pushable = () => "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+  async function enablePush(ask) {
+    if (!("Notification" in window)) return;
+    if (ask && Notification.permission === "default") await Notification.requestPermission();
+    $("notif-btn").hidden = Notification.permission !== "default";
+    if (Notification.permission !== "granted" || !pushable()) return;
+    try {
+      const reg = await navigator.serviceWorker.register("/chat-sw.js", { scope: "/chat" });
+      await navigator.serviceWorker.ready;
+      let sub = await reg.pushManager.getSubscription();
+      if (!sub) {
+        const { key } = await api("vapid");
+        const raw = Uint8Array.from(atob(key.replace(/-/g, "+").replace(/_/g, "/")), (c) => c.charCodeAt(0));
+        sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: raw });
+      }
+      await api("push", { endpoint: sub.endpoint });
+      pushOn = true;
+    } catch (e) { pushOn = false; }
+  }
+  $("notif-btn").addEventListener("click", () => enablePush(true));
   $("send-form").addEventListener("submit", async (ev) => {
     ev.preventDefault();
     const box = $("text"), body = box.value.trim();
