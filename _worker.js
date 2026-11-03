@@ -12,6 +12,7 @@ export default {
     const url = new URL(request.url);
     if (url.pathname.startsWith("/api/aicomms")) return aicomms(request, env, url);
     if (url.pathname === "/mcp" || url.pathname === "/mcp/") return mcp(request, env);
+    if (url.pathname.startsWith("/api/chat/")) return chat(request, env, url);
     if (url.pathname.startsWith("/api/forum/")) {
       if (!env.DB) return json({ error: "The forum database isn't connected yet." }, 503);
       try {
@@ -533,3 +534,221 @@ async function mcpOne(m, request, env) {
   return ok({ content: [{ type: 'text', text: (await r.text()).trim() }], isError: r.status >= 400 });
 }
 // ---- end mcp ----
+
+/* ---------- /chat: accounts, channels, DMs, 1-on-1 voice signaling (all in D1) ----------
+   v1 uses short polling. Plan: move live delivery to Durable Objects + WebSockets (needs Workers Paid),
+   and group voice to Cloudflare Calls (SFU). TURN relay turns on when CALLS_TURN_KEY_ID/_TOKEN secrets are set. */
+const CH_SCHEMA = [
+  "CREATE TABLE IF NOT EXISTS ch_users (id INTEGER PRIMARY KEY, name TEXT UNIQUE COLLATE NOCASE, pass TEXT, salt TEXT, ip TEXT, role TEXT DEFAULT '', banned INTEGER DEFAULT 0, created INTEGER, seen INTEGER)",
+  "CREATE TABLE IF NOT EXISTS ch_sessions (token TEXT PRIMARY KEY, uid INTEGER, created INTEGER)",
+  "CREATE TABLE IF NOT EXISTS ch_channels (id INTEGER PRIMARY KEY, name TEXT UNIQUE, created INTEGER)",
+  "CREATE TABLE IF NOT EXISTS ch_dms (id INTEGER PRIMARY KEY, a INTEGER, b INTEGER, updated INTEGER, UNIQUE(a, b))",
+  "CREATE TABLE IF NOT EXISTS ch_msgs (id INTEGER PRIMARY KEY, room TEXT, uid INTEGER, body TEXT, ts INTEGER, reports INTEGER DEFAULT 0, hidden INTEGER DEFAULT 0)",
+  "CREATE INDEX IF NOT EXISTS ch_msgs_room ON ch_msgs (room, id)",
+  "CREATE TABLE IF NOT EXISTS ch_blocks (uid INTEGER, blocked INTEGER, PRIMARY KEY (uid, blocked))",
+  "CREATE TABLE IF NOT EXISTS ch_reports (msg INTEGER, uid INTEGER, ts INTEGER, PRIMARY KEY (msg, uid))",
+  "CREATE TABLE IF NOT EXISTS ch_signals (id INTEGER PRIMARY KEY, dm INTEGER, frm INTEGER, too INTEGER, kind TEXT, data TEXT, ts INTEGER)",
+  "CREATE INDEX IF NOT EXISTS ch_signals_too ON ch_signals (too, id)",
+  "INSERT OR IGNORE INTO ch_channels (id, name, created) VALUES (1, 'general', 0), (2, 'help', 0), (3, 'off-topic', 0)",
+];
+let chReady = false;
+const CH_MAX = 2000, CH_HIDE_AT = 3;
+const chOut = (d, s = 200, h = {}) => json(d, s, { "x-robots-tag": "noindex", ...h });
+const chCookie = (v, age) => `wzc=${v}; Path=/api/chat; Max-Age=${age}; HttpOnly; Secure; SameSite=Lax`;
+const chB64 = (u8) => btoa(String.fromCharCode(...u8));
+async function chPass(pw, salt) {
+  const k = await crypto.subtle.importKey("raw", new TextEncoder().encode(pw), "PBKDF2", false, ["deriveBits"]);
+  const bits = await crypto.subtle.deriveBits({ name: "PBKDF2", hash: "SHA-256", salt: new TextEncoder().encode(salt), iterations: 100000 }, k, 256);
+  return chB64(new Uint8Array(bits));
+}
+
+async function chat(request, env, url) {
+  if (!env.DB) return chOut({ error: "Chat database isn't connected yet." }, 503);
+  try {
+    if (!chReady) { await env.DB.batch(CH_SCHEMA.map((s) => env.DB.prepare(s))); chReady = true; }
+    return await chRoute(request, env, url);
+  } catch (e) {
+    return chOut({ error: "Something went wrong on our side. Try again in a moment." }, 500);
+  }
+}
+
+async function chRoute(request, env, url) {
+  const p = url.pathname.replace(/\/+$/, "").slice("/api/chat".length) || "/";
+  const post = request.method === "POST";
+  if (post) {
+    // CSRF guard: JSON only, and same origin when the browser says where it came from.
+    const origin = request.headers.get("origin");
+    if (!/application\/json/.test(request.headers.get("content-type") || "") || (origin && new URL(origin).host !== url.host)) return chOut({ error: "Bad request." }, 400);
+  }
+  const d = post ? await body(request) : {};
+  const q = url.searchParams;
+  const now = Date.now();
+  const ip = await sha(SALT + "|ip|" + (request.headers.get("cf-connecting-ip") || "local"));
+  const DB = env.DB;
+
+  if (post && (p === "/signup" || p === "/login")) {
+    const name = clean(d.name, 24), pw = String(d.password || "");
+    if (!/^[A-Za-z0-9_-]{3,24}$/.test(name)) return chOut({ error: "Names are 3 to 24 letters, numbers, - or _." }, 400);
+    if (pw.length < 8 || pw.length > 200) return chOut({ error: "Passwords need at least 8 characters." }, 400);
+    let user;
+    if (p === "/signup") {
+      if (!d.age13) return chOut({ error: "You must be 13 or older to use chat." }, 400);
+      const n = (await DB.prepare("SELECT COUNT(*) n FROM ch_users WHERE ip = ? AND created > ?").bind(ip, now - 3600e3).first()).n;
+      if (n >= 3) return chOut({ error: "Too many new accounts from here. Try again later." }, 429);
+      if (await DB.prepare("SELECT 1 FROM ch_users WHERE name = ?").bind(name).first()) return chOut({ error: "That name is taken." }, 409);
+      const salt = crypto.randomUUID();
+      user = await DB.prepare("INSERT INTO ch_users (name, pass, salt, ip, created, seen) VALUES (?, ?, ?, ?, ?, ?) RETURNING id, name, banned")
+        .bind(name, await chPass(pw, salt), salt, ip, now, now).first();
+    } else {
+      const fails = (await DB.prepare("SELECT COUNT(*) n FROM actions WHERE who = ? AND action = 'chat-login' AND created_at > ?").bind(ip, now - 900e3).first()).n;
+      if (fails >= 10) return chOut({ error: "Too many tries. Wait 15 minutes." }, 429);
+      const u = await DB.prepare("SELECT id, name, pass, salt, banned FROM ch_users WHERE name = ?").bind(name).first();
+      if (!u || (await chPass(pw, u.salt)) !== u.pass) {
+        await DB.prepare("INSERT INTO actions (who, action, created_at) VALUES (?, 'chat-login', ?)").bind(ip, now).run();
+        return chOut({ error: "Wrong name or password." }, 401);
+      }
+      user = u;
+    }
+    if (user.banned) return chOut({ error: "This account is suspended." }, 403);
+    const token = crypto.randomUUID() + crypto.randomUUID();
+    await DB.prepare("INSERT INTO ch_sessions (token, uid, created) VALUES (?, ?, ?)").bind(await acHash(token), user.id, now).run();
+    return chOut({ me: { id: user.id, name: user.name } }, 200, { "set-cookie": chCookie(token, 2592000) });
+  }
+
+  const raw = (request.headers.get("cookie") || "").match(/(?:^|;\s*)wzc=([a-f0-9-]{64,80})/);
+  const sess = raw && await DB.prepare("SELECT u.id, u.name, u.role, u.banned, s.token FROM ch_sessions s JOIN ch_users u ON u.id = s.uid WHERE s.token = ? AND s.created > ?")
+    .bind(await acHash(raw[1]), now - 30 * 86400e3).first();
+  if (!sess || sess.banned) return chOut({ me: null, error: sess ? "This account is suspended." : "Sign in to chat." }, p === "/me" ? 200 : 401);
+  const me = sess.id;
+
+  if (post && p === "/logout") {
+    await DB.prepare("DELETE FROM ch_sessions WHERE token = ?").bind(sess.token).run();
+    return chOut({ ok: true }, 200, { "set-cookie": chCookie("x", 0) });
+  }
+
+  // Which room is this, and may I use it? Rooms are "c:<channel id>" or "d:<dm id>".
+  const room = async (r) => {
+    const m = String(r || "").match(/^([cd]):(\d{1,9})$/);
+    if (!m) return null;
+    if (m[1] === "c") return (await DB.prepare("SELECT id FROM ch_channels WHERE id = ?").bind(+m[2]).first()) ? { key: r } : null;
+    const dm = await DB.prepare("SELECT id, a, b FROM ch_dms WHERE id = ? AND (a = ? OR b = ?)").bind(+m[2], me, me).first();
+    if (!dm) return null;
+    const other = dm.a === me ? dm.b : dm.a;
+    const blocked = await DB.prepare("SELECT 1 FROM ch_blocks WHERE (uid = ? AND blocked = ?) OR (uid = ? AND blocked = ?)").bind(me, other, other, me).first();
+    return { key: r, dm: dm.id, other, blocked: !!blocked };
+  };
+
+  if (p === "/me") {
+    await DB.prepare("UPDATE ch_users SET seen = ? WHERE id = ?").bind(now, me).run();
+    return chOut({ me: { id: me, name: sess.name } });
+  }
+
+  if (p === "/rooms") {
+    const ch = (await DB.prepare("SELECT id, name FROM ch_channels ORDER BY id").all()).results;
+    const dms = (await DB.prepare("SELECT d.id, u.name, u.seen FROM ch_dms d JOIN ch_users u ON u.id = CASE WHEN d.a = ? THEN d.b ELSE d.a END WHERE d.a = ? OR d.b = ? ORDER BY d.updated DESC LIMIT 100")
+      .bind(me, me, me).all()).results.map((x) => ({ id: x.id, name: x.name, online: now - (x.seen || 0) < 120e3 }));
+    const blocks = (await DB.prepare("SELECT u.name FROM ch_blocks b JOIN ch_users u ON u.id = b.blocked WHERE b.uid = ?").bind(me).all()).results.map((x) => x.name);
+    return chOut({ channels: ch, dms, blocks });
+  }
+
+  // One poll returns new messages for the open room plus any call signals for me.
+  if (p === "/poll") {
+    const r = await room(q.get("room"));
+    const after = Math.max(0, parseInt(q.get("after") || "0", 10) || 0);
+    let msgs = [];
+    if (r) {
+      msgs = (await DB.prepare(`SELECT m.id, m.uid, u.name, m.body, m.ts FROM ch_msgs m JOIN ch_users u ON u.id = m.uid
+        WHERE m.room = ? AND m.id > ? AND m.hidden = 0 AND m.uid NOT IN (SELECT blocked FROM ch_blocks WHERE uid = ?) ORDER BY m.id DESC LIMIT 100`)
+        .bind(r.key, after, me).all()).results.reverse();
+    }
+    const sigAfter = Math.max(0, parseInt(q.get("sig") || "0", 10) || 0);
+    const signals = (await DB.prepare("SELECT s.id, s.dm, s.kind, s.data, s.ts, u.name FROM ch_signals s JOIN ch_users u ON u.id = s.frm WHERE s.too = ? AND s.id > ? AND s.ts > ? ORDER BY s.id LIMIT 20")
+      .bind(me, sigAfter, now - 60e3).all()).results;
+    const maxSig = sigAfter ? null : (await DB.prepare("SELECT MAX(id) m FROM ch_signals").first()).m || 0;
+    await DB.prepare("UPDATE ch_users SET seen = ? WHERE id = ?").bind(now, me).run();
+    return chOut({ msgs, signals, sigBase: maxSig, blocked: r ? r.blocked : false });
+  }
+
+  if (post && p === "/send") {
+    const r = await room(d.room);
+    if (!r) return chOut({ error: "That room doesn't exist." }, 404);
+    if (r.blocked) return chOut({ error: "You can't message this person." }, 403);
+    const text = clean(d.body, CH_MAX);
+    if (!text) return chOut({ error: "Write a message first." }, 400);
+    if (AC_SECRET.test(text)) return chOut({ error: "That looks like a password or secret key. Don't post those." }, 400);
+    if (tooManyLinks(text)) return chOut({ error: "Max 3 links per message." }, 400);
+    const rate = await DB.prepare("SELECT COUNT(*) n, SUM(ts > ?) m, SUM(hidden) h FROM ch_msgs WHERE uid = ? AND ts > ?").bind(now - 60e3, me, now - 3600e3).first();
+    if (rate.m >= 15 || rate.n >= 300) return chOut({ error: "Slow down a little." }, 429);
+    if (rate.h >= 3) return chOut({ error: "Several of your messages were reported. Try again later." }, 403);
+    const m = await DB.prepare("INSERT INTO ch_msgs (room, uid, body, ts) VALUES (?, ?, ?, ?) RETURNING id").bind(r.key, me, text, now).first();
+    if (r.dm) await DB.prepare("UPDATE ch_dms SET updated = ? WHERE id = ?").bind(now, r.dm).run();
+    return chOut({ id: m.id });
+  }
+
+  const userByName = (n) => DB.prepare("SELECT id, name FROM ch_users WHERE name = ? AND banned = 0").bind(clean(n, 24)).first();
+
+  if (post && p === "/dm") {
+    const u = await userByName(d.name);
+    if (!u) return chOut({ error: "No one has that name." }, 404);
+    if (u.id === me) return chOut({ error: "That's you." }, 400);
+    const [a, b] = me < u.id ? [me, u.id] : [u.id, me];
+    await DB.prepare("INSERT OR IGNORE INTO ch_dms (a, b, updated) VALUES (?, ?, ?)").bind(a, b, now).run();
+    const dm = await DB.prepare("SELECT id FROM ch_dms WHERE a = ? AND b = ?").bind(a, b).first();
+    return chOut({ room: "d:" + dm.id, name: u.name });
+  }
+
+  if (post && (p === "/block" || p === "/unblock")) {
+    const u = await userByName(d.name);
+    if (!u || u.id === me) return chOut({ error: "No one has that name." }, 404);
+    await DB.prepare(p === "/block" ? "INSERT OR IGNORE INTO ch_blocks (uid, blocked) VALUES (?, ?)" : "DELETE FROM ch_blocks WHERE uid = ? AND blocked = ?").bind(me, u.id).run();
+    return chOut({ ok: true });
+  }
+
+  if (post && p === "/report") {
+    const id = parseInt(d.id, 10) || 0;
+    const m = await DB.prepare("SELECT id, uid, room FROM ch_msgs WHERE id = ?").bind(id).first();
+    if (!m || !(await room(m.room))) return chOut({ error: "Message not found." }, 404);
+    const n = (await DB.prepare("SELECT COUNT(*) n FROM ch_reports WHERE uid = ? AND ts > ?").bind(me, now - 3600e3).first()).n;
+    if (n >= 30) return chOut({ error: "Too many reports. Try later." }, 429);
+    const res = await DB.prepare("INSERT OR IGNORE INTO ch_reports (msg, uid, ts) VALUES (?, ?, ?)").bind(id, me, now).run();
+    if (res.meta.changes) await DB.batch([
+      DB.prepare("UPDATE ch_msgs SET reports = reports + 1 WHERE id = ?").bind(id),
+      // In a DM one report is enough: the other person is the only reader.
+      DB.prepare("UPDATE ch_msgs SET hidden = 1 WHERE id = ? AND (reports >= ? OR room LIKE 'd:%')").bind(id, CH_HIDE_AT),
+    ]);
+    return chOut({ ok: true });
+  }
+
+  // WebRTC signaling for 1-on-1 calls in a DM: ring/offer, answer, bye. SDP carries all ICE candidates.
+  if (post && p === "/signal") {
+    const r = await room(d.room);
+    if (!r || !r.dm) return chOut({ error: "Calls work in DMs." }, 400);
+    if (r.blocked) return chOut({ error: "You can't call this person." }, 403);
+    const kind = String(d.kind || "");
+    if (!["offer", "answer", "bye", "busy"].includes(kind)) return chOut({ error: "Bad signal." }, 400);
+    const data = String(d.data || "").slice(0, 20000);
+    const n = (await DB.prepare("SELECT COUNT(*) n FROM ch_signals WHERE frm = ? AND ts > ?").bind(me, now - 60e3).first()).n;
+    if (n >= 20) return chOut({ error: "Slow down a little." }, 429);
+    await DB.batch([
+      DB.prepare("INSERT INTO ch_signals (dm, frm, too, kind, data, ts) VALUES (?, ?, ?, ?, ?, ?)").bind(r.dm, me, r.other, kind, data, now),
+      DB.prepare("DELETE FROM ch_signals WHERE ts < ?").bind(now - 600e3),
+    ]);
+    return chOut({ ok: true });
+  }
+
+  if (p === "/ice") {
+    const ice = [{ urls: "stun:stun.cloudflare.com:3478" }];
+    if (env.CALLS_TURN_KEY_ID && env.CALLS_TURN_KEY_TOKEN) {
+      try {
+        const r = await fetch(`https://rtc.live.cloudflare.com/v1/turn/keys/${env.CALLS_TURN_KEY_ID}/credentials/generate`, {
+          method: "POST", headers: { authorization: "Bearer " + env.CALLS_TURN_KEY_TOKEN, "content-type": "application/json" }, body: JSON.stringify({ ttl: 7200 }),
+        });
+        const j = await r.json();
+        if (j.iceServers) ice.push(...[].concat(j.iceServers));
+      } catch {}
+    }
+    return chOut({ iceServers: ice });
+  }
+
+  return chOut({ error: "Not found." }, 404);
+}

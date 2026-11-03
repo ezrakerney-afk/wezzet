@@ -28,6 +28,7 @@
     ["Tumbler template maker", "/tumbler", "tumbler sublimation cup wrap template tapered skinny"],
     ["Domain name checker", "/domains", "domain name available website whois com"],
     ["Forum", "/forum", "forum community discuss questions talk"],
+    ["Chat", "/chat", "chat channels dm direct message voice call talk friends"],
   ].map(([name, url, kw]) => ({ name, url, name_l: name.toLowerCase(), hay: (name + " " + kw).toLowerCase() }));
 
   const q = document.getElementById("q"), list = document.getElementById("results"), form = document.getElementById("search-form");
