@@ -100,7 +100,7 @@ async function myVotes(env, voter, kind, ids) {
   return out;
 }
 
-const TOPIC_FIELDS = "id, title, body, author, created_at, score, comment_count";
+const TOPIC_FIELDS = "id, title, body, author, created_at, score, comment_count, pinned";
 
 async function api(request, env, url) {
   const id = await identity(request);
@@ -115,17 +115,22 @@ async function api(request, env, url) {
     const page = Math.max(0, Math.min(50, parseInt(url.searchParams.get("page") || "0", 10) || 0));
     let topics;
     if (sort === "hot") {
-      const rows = await env.DB.prepare(`SELECT ${TOPIC_FIELDS} FROM topics WHERE hidden = 0 ORDER BY created_at DESC LIMIT 500`).all();
+      const rows = await env.DB.prepare(`SELECT ${TOPIC_FIELDS} FROM topics WHERE hidden = 0 AND pinned = 0 ORDER BY created_at DESC LIMIT 500`).all();
       const now = Date.now();
       topics = (rows.results || []).sort((a, b) => hotRank(b, now) - hotRank(a, now)).slice(page * PAGE, page * PAGE + PAGE + 1);
     } else {
       const order = sort === "new" ? "created_at DESC" : "score DESC, created_at DESC";
-      const rows = await env.DB.prepare(`SELECT ${TOPIC_FIELDS} FROM topics WHERE hidden = 0 ORDER BY ${order} LIMIT ? OFFSET ?`)
+      const rows = await env.DB.prepare(`SELECT ${TOPIC_FIELDS} FROM topics WHERE hidden = 0 AND pinned = 0 ORDER BY ${order} LIMIT ? OFFSET ?`)
         .bind(PAGE + 1, page * PAGE).all();
       topics = rows.results || [];
     }
     const more = topics.length > PAGE;
-    topics = topics.slice(0, PAGE).map((t) => ({ ...t, body: t.body.slice(0, 240) }));
+    topics = topics.slice(0, PAGE);
+    if (page === 0) {
+      const pins = await env.DB.prepare(`SELECT ${TOPIC_FIELDS} FROM topics WHERE hidden = 0 AND pinned = 1 ORDER BY created_at ASC`).all();
+      topics = [...(pins.results || []), ...topics];
+    }
+    topics = topics.map((t) => ({ ...t, body: t.body.slice(0, 240) }));
     const votes = await myVotes(env, id.voter, "t", topics.map((t) => t.id));
     for (const t of topics) t.my_vote = votes[t.id] || 0;
     return reply({ topics, more, sort, page });
@@ -206,6 +211,7 @@ async function api(request, env, url) {
     const table = kind === "t" ? "topics" : "comments";
     const exists = await env.DB.prepare(`SELECT id FROM ${table} WHERE id = ? AND hidden = 0`).bind(target).first();
     if (!exists) return reply({ error: "This post no longer exists." }, 404);
+    if (kind === "t" && (await env.DB.prepare("SELECT pinned FROM topics WHERE id = ?").bind(target).first())?.pinned) return reply({ error: "Voting is off for pinned topics." }, 403);
     if (!(await allowed(env, id.who, "vote"))) return reply({ error: "You're voting very fast. Try again later." }, 429);
     const old = await env.DB.prepare("SELECT value FROM votes WHERE kind = ? AND target_id = ? AND voter = ?").bind(kind, target, id.voter).first();
     const delta = value - (old ? old.value : 0);
