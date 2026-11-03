@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Typing speed test: Free Online | Wezzet</title>
+<meta name="description" content="Find your words per minute and accuracy in 30 seconds. Free, no sign up.">
+<link rel="canonical" href="https://wezzet.com/typing">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Wezzet">
+<meta property="og:title" content="Typing speed test: Free Online | Wezzet">
+<meta property="og:url" content="https://wezzet.com/typing">
+<meta property="og:image" content="https://wezzet.com/assets/og/tip.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://wezzet.com/assets/og/tip.png">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#121212" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="icon" href="/assets/icon-32.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+<script>try{(function(t){if(t==="dark"||t==="light")document.documentElement.dataset.theme=t})(localStorage.getItem("wz-theme"))}catch(e){}</script>
+<style>.logo .logo-dark{display:none}:root[data-theme="dark"] .logo .logo-light{display:none}:root[data-theme="dark"] .logo .logo-dark{display:block}@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .logo .logo-light{display:none}:root:not([data-theme="light"]) .logo .logo-dark{display:block}}</style>
+<link rel="stylesheet" href="/assets/site.css?v=5">
+</head>
+<body>
+<header class="site-header">
+  <div class="wrap">
+    <a class="logo" href="/"><img class="logo-light" src="/assets/logo.png" alt="Wezzet" width="113" height="52"><img class="logo-dark" src="/assets/logo-dark.png" alt="Wezzet" width="113" height="52"></a>
+    <nav class="site-nav" aria-label="Main"><a href="/">All tools</a><button class="theme-toggle" type="button" aria-label="Switch between light and dark mode"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm0 2v16a8 8 0 0 1 0-16Z"/></svg></button></nav>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <div class="tool-head">
+      <h1>Typing speed test</h1>
+      <p class="lede">Find your words per minute and accuracy in 30 seconds.</p>
+    </div>
+<p id="prompt" style="font-size:1.2rem;line-height:1.6"></p><textarea id="in" rows="5" placeholder="Start typing to begin" style="width:100%"></textarea><div class="row-actions"><button class="btn" type="button" id="again">New test</button></div><div class="stats" aria-live="polite"><div class="stat"><b id="wpm">-</b><span>WPM</span></div><div class="stat"><b id="acc">-</b><span>Accuracy</span></div><div class="stat"><b id="left">-</b><span>Seconds left</span></div></div>
+  </div>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <p><a href="/">Wezzet</a> · Follow <a href="https://x.com/WezzetX" rel="noopener">@WezzetX</a> on X.</p>
+  </div>
+</footer>
+<script>(()=>{const $=(i)=>document.getElementById(i);
+const W="the of and to in is you that it he was for on are as with his they at be this have from or one had by word but not what all were we when your can said there use an each which she do how their if will up other about out many then them these so some her would make like him into time has look two more write go see number no way could people my than first water been call who oil its now find long down day did get come made may part".split(" ");
+let t0=0,timer=0,text="";const left=$("left");
+function reset(){clearInterval(timer);t0=0;text=Array.from({length:60},()=>W[Math.random()*W.length|0]).join(" ");$("prompt").textContent=text;$("in").value="";$("in").disabled=false;$("wpm").textContent=$("acc").textContent="-";left.textContent=30}
+function score(){const v=$("in").value;let ok=0;for(let i=0;i<v.length;i++)if(v[i]===text[i])ok++;const min=Math.max(1,(Date.now()-t0))/60000;$("wpm").textContent=Math.round(ok/5/min);$("acc").textContent=v.length?Math.round(ok/v.length*100)+"%":"-"}
+$("in").oninput=()=>{if(!t0){t0=Date.now();timer=setInterval(()=>{const s=30-Math.floor((Date.now()-t0)/1000);left.textContent=Math.max(0,s);score();if(s<=0){clearInterval(timer);$("in").disabled=true}},250)}};
+$("again").onclick=reset;reset();
+})();</script>
+<script src="/assets/theme.js?v=4" defer></script>
+</body>
+</html>

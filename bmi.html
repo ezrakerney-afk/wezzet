@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BMI calculator: Free Online | Wezzet</title>
+<meta name="description" content="Work out your body mass index in pounds and inches or kilograms and centimeters. Free, no sign up.">
+<link rel="canonical" href="https://wezzet.com/bmi">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Wezzet">
+<meta property="og:title" content="BMI calculator: Free Online | Wezzet">
+<meta property="og:url" content="https://wezzet.com/bmi">
+<meta property="og:image" content="https://wezzet.com/assets/og/tip.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://wezzet.com/assets/og/tip.png">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#121212" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="icon" href="/assets/icon-32.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+<script>try{(function(t){if(t==="dark"||t==="light")document.documentElement.dataset.theme=t})(localStorage.getItem("wz-theme"))}catch(e){}</script>
+<style>.logo .logo-dark{display:none}:root[data-theme="dark"] .logo .logo-light{display:none}:root[data-theme="dark"] .logo .logo-dark{display:block}@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .logo .logo-light{display:none}:root:not([data-theme="light"]) .logo .logo-dark{display:block}}</style>
+<link rel="stylesheet" href="/assets/site.css?v=5">
+</head>
+<body>
+<header class="site-header">
+  <div class="wrap">
+    <a class="logo" href="/"><img class="logo-light" src="/assets/logo.png" alt="Wezzet" width="113" height="52"><img class="logo-dark" src="/assets/logo-dark.png" alt="Wezzet" width="113" height="52"></a>
+    <nav class="site-nav" aria-label="Main"><a href="/">All tools</a><button class="theme-toggle" type="button" aria-label="Switch between light and dark mode"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm0 2v16a8 8 0 0 1 0-16Z"/></svg></button></nav>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <div class="tool-head">
+      <h1>BMI calculator</h1>
+      <p class="lede">Work out your body mass index in pounds and inches or kilograms and centimeters.</p>
+    </div>
+<div class="tight" style="display:grid;gap:16px"><div class="segmented" role="radiogroup" style="justify-self:start"><label><input type="radio" name="u" value="us" checked><span>lb / in</span></label><label><input type="radio" name="u" value="m"><span>kg / cm</span></label></div><div class="field"><label for="w">Weight</label><input type="number" id="w" value=""  style="max-width:180px"></div><div class="field"><label for="h">Height</label><input type="number" id="h" value=""  style="max-width:180px"></div></div><div class="stats" aria-live="polite"><div class="stat"><b id="b">-</b><span>BMI</span></div><div class="stat"><b id="c">-</b><span>Category</span></div></div>
+  </div>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <p><a href="/">Wezzet</a> · Follow <a href="https://x.com/WezzetX" rel="noopener">@WezzetX</a> on X.</p>
+  </div>
+</footer>
+<script>(()=>{const $=(i)=>document.getElementById(i);
+const go=()=>{const us=document.querySelector("input[name=u]:checked").value==="us",w=+$("w").value,h=+$("h").value;if(!w||!h){$("b").textContent=$("c").textContent="-";return}
+const v=us?703*w/(h*h):w/((h/100)**2);$("b").textContent=v.toFixed(1);$("c").textContent=v<18.5?"Underweight":v<25?"Healthy":v<30?"Overweight":"Obese"};
+document.querySelectorAll("input").forEach(i=>i.addEventListener("input",go));
+})();</script>
+<script src="/assets/theme.js?v=4" defer></script>
+</body>
+</html>
