@@ -60,6 +60,10 @@
     $("req-wrap").hidden = !rooms.requests.length;
     $("requests").replaceChildren(...rooms.requests.map((r) => r.incoming ? row(r.name, "", [["Accept", "friend"], ["Decline", "unfriend"]]) : row(r.name, "sent", [["Cancel", "unfriend"]])));
     $("dms").replaceChildren(...rooms.dms.map((d) => item("d:" + d.id, d.name, d.online, d.unread)));
+    const friends = new Set(rooms.dms.map((d) => d.name));
+    const on = (rooms.online || []).filter((n) => !friends.has(n));
+    $("on-wrap").hidden = !on.length;
+    $("online").replaceChildren(...on.map((n) => row(n, "", [["Message", "dm"]])));
     badge();
     $("blk-wrap").hidden = !rooms.blocks.length;
     $("blocks").replaceChildren(...rooms.blocks.map((n) => row(n, "", [["Unblock", "unblock"]])));
@@ -79,7 +83,7 @@
     $("send-form").hidden = !key;
     if (!key) {
       const p = document.createElement("p"); p.className = "empty";
-      p.textContent = "Add a friend by their username to start chatting. Once they accept, you can message and call them.";
+      p.textContent = "Message anyone under Online now, or add a friend by their username.";
       $("log").replaceChildren(p); $("room-title").textContent = "No friends yet"; $("call-btn").hidden = $("block-btn").hidden = true; mark(); return;
     }
     $("log").replaceChildren();

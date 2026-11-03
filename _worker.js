@@ -1077,7 +1077,10 @@ async function chRoute(request, env, url, ctx) {
     const dms = fr.filter((x) => x.status === "ok" && x.dm).map((x) => ({ id: x.dm, name: x.name, unread: x.unread, online: now - (x.seen || 0) < 120e3 }));
     const requests = fr.filter((x) => x.status === "pending").map((x) => ({ name: x.name, incoming: x.by !== me }));
     const blocks = (await DB.prepare(`SELECT ${CH_NAME} AS name FROM ch_blocks b JOIN ch_users u ON u.id = b.blocked WHERE b.uid = ?`).bind(me).all()).results.map((x) => x.name);
-    return chOut({ channels: ch, dms, requests, blocks });
+    // Everyone seen in the last 2 minutes, minus me and anyone blocked either way.
+    const online = (await DB.prepare(`SELECT ${CH_NAME} AS name FROM ch_users u WHERE u.seen > ? AND u.id <> ? AND u.banned = 0
+      AND u.id NOT IN (SELECT blocked FROM ch_blocks WHERE uid = ?) AND u.id NOT IN (SELECT uid FROM ch_blocks WHERE blocked = ?) ORDER BY u.seen DESC LIMIT 100`).bind(now - 120e3, me, me, me).all()).results.map((x) => x.name);
+    return chOut({ channels: ch, dms, requests, blocks, online });
   }
 
   // One poll returns new messages for the open room plus any call signals for me.
@@ -1171,6 +1174,24 @@ async function chRoute(request, env, url, ctx) {
     const dm = await DB.prepare("SELECT id FROM ch_dms WHERE a = ? AND b = ?").bind(a, b).first();
     if (accepting) await note(u.id, "d:" + dm.id, "friend", "Friend request accepted", sess.name + " accepted. Say hi!");
     return chOut({ status: "ok", room: "d:" + dm.id, name: u.name });
+  }
+
+  // Message anyone directly: opens (or reuses) a DM room without waiting for a friend request.
+  if (post && p === "/dm") {
+    const u = await userByName(d.name);
+    if (!u) return chOut({ error: "No one has that username." }, 404);
+    if (u.id === me) return chOut({ error: "That's you." }, 400);
+    if (await DB.prepare("SELECT 1 FROM ch_blocks WHERE (uid = ? AND blocked = ?) OR (uid = ? AND blocked = ?)").bind(me, u.id, u.id, me).first()) return chOut({ error: "You can't message this person." }, 403);
+    const [a, b] = me < u.id ? [me, u.id] : [u.id, me];
+    const f = await DB.prepare("SELECT status FROM ch_friends WHERE a = ? AND b = ?").bind(a, b).first();
+    if (!f) {
+      const n = (await DB.prepare("SELECT COUNT(*) n FROM ch_friends WHERE by = ? AND ts > ?").bind(me, now - 3600e3).first()).n;
+      if (n >= 30) return chOut({ error: "You've started a lot of chats. Try later." }, 429);
+      await DB.prepare("INSERT INTO ch_friends (a, b, by, status, ts) VALUES (?, ?, ?, 'ok', ?)").bind(a, b, me, now).run();
+    } else if (f.status !== "ok") await DB.prepare("UPDATE ch_friends SET status = 'ok', ts = ? WHERE a = ? AND b = ?").bind(now, a, b).run();
+    await DB.prepare("INSERT OR IGNORE INTO ch_dms (a, b, updated) VALUES (?, ?, ?)").bind(a, b, now).run();
+    const dm = await DB.prepare("SELECT id FROM ch_dms WHERE a = ? AND b = ?").bind(a, b).first();
+    return chOut({ room: "d:" + dm.id, name: u.name });
   }
 
   if (post && (p === "/block" || p === "/unblock")) {
