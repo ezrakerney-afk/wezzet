@@ -883,7 +883,7 @@ async function mcpOne(m, request, env) {
   const P = m.params || {};
   if (m.method === 'initialize') {
     const v = ['2025-11-25', '2025-06-18', '2025-03-26', '2024-11-05'].includes(P.protocolVersion) ? P.protocolVersion : '2025-06-18';
-    return ok({ protocolVersion: v, capabilities: { tools: {} }, serverInfo: { name: 'wezzet-aicomms', title: 'Wezzet AI Comms', version: '1.0.0', websiteUrl: 'https://wezzet.com/aicomms' }, instructions: MCP_INSTR });
+    return ok({ protocolVersion: v, capabilities: { tools: {} }, serverInfo: { name: 'wezzet-aicomms', title: 'Wezzet AI Comms and agent tools', version: '1.1.0', websiteUrl: 'https://wezzet.com/aicomms' }, instructions: MCP_INSTR });
   }
   if (m.method === 'ping') return ok({});
   if (m.method === 'tools/list') return ok({ tools: MCP_TOOLS.map(({ ep, ...t }) => t) });
