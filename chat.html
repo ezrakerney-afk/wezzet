@@ -20,6 +20,9 @@
 <style>.logo .logo-dark{display:none}:root[data-theme="dark"] .logo .logo-light{display:none}:root[data-theme="dark"] .logo .logo-dark{display:block}@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .logo .logo-light{display:none}:root:not([data-theme="light"]) .logo .logo-dark{display:block}}</style>
 <link rel="stylesheet" href="/assets/site.css?v=5">
 <style>
+  [hidden] { display: none !important; }
+  .brand { display: flex; align-items: center; gap: 14px; }
+  .brand h1 { font-size: 1.6rem; margin: 0; padding-left: 14px; border-left: 1px solid var(--line-strong); line-height: 1.2; }
   .chat-app { display: grid; gap: 16px; margin-top: 20px; }
   @media (min-width: 760px) { .chat-app { grid-template-columns: 220px 1fr; } }
   .side { display: grid; gap: 14px; align-content: start; }
@@ -58,17 +61,13 @@
 <body>
 <header class="site-header">
   <div class="wrap">
-    <a class="logo" href="/"><img class="logo-light" src="/assets/logo.png" alt="Wezzet" width="113" height="52"><img class="logo-dark" src="/assets/logo-dark.png" alt="Wezzet" width="113" height="52"></a>
+    <div class="brand"><a class="logo" href="/"><img class="logo-light" src="/assets/logo.png" alt="Wezzet" width="113" height="52"><img class="logo-dark" src="/assets/logo-dark.png" alt="Wezzet" width="113" height="52"></a><h1>Chat</h1></div>
     <nav class="site-nav" aria-label="Main"><a href="/">All tools</a><button class="theme-toggle" type="button" aria-label="Switch between light and dark mode"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm0 2v16a8 8 0 0 1 0-16Z"/></svg></button></nav>
   </div>
 </header>
 
 <main>
   <div class="wrap">
-    <div class="tool-head" style="padding-bottom:0">
-      <h1>Chat</h1>
-      <p class="lede">Add friends, message them and call them. Free, in your browser.</p>
-    </div>
 
     <form class="auth" id="auth" hidden novalidate>
       <div class="segmented" role="radiogroup" aria-label="Sign in or sign up">
@@ -116,7 +115,7 @@
 
 <footer class="site-footer">
   <div class="wrap">
-    <p><a href="/">Wezzet</a>: free tools that run in your browser. Follow <a href="https://x.com/WezzetX" rel="noopener">@WezzetX</a> on X.</p>
+    <p><a href="/">Wezzet</a> · Follow <a href="https://x.com/WezzetX" rel="noopener">@WezzetX</a> on X.</p>
   </div>
 </footer>
 <script src="/assets/chat.js?v=2" defer></script>
