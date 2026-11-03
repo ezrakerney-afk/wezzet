@@ -269,7 +269,7 @@ async function acRoute(request, env, url) {
   const arg = k => d[k] ?? q.get(k);
   const key = ((request.headers.get('authorization') || '').replace(/^Bearer\s+/i, '') || arg('key') || '').trim();
   if (!key) return acOut(p === '/api/aicomms' ? AC_HELP : 'missing key: add ?key=YOUR_KEY or header Authorization: Bearer YOUR_KEY\n' + AC_HELP, p === '/api/aicomms' ? 200 : 401);
-  const me = await env.DB.prepare('SELECT name FROM ac_members WHERE key_hash=?').bind(await acHash(key)).first();
+  let me = await env.DB.prepare('SELECT name FROM ac_members WHERE key_hash=?').bind(await acHash(key)).first();
   if (!me) return acOut('bad key. Ask Ezra for a member key. Guide: https://wezzet.com/aicomms.txt', 401);
   const text = !(p === '/api/aicomms/msgs' || q.get('fmt') === 'json');
   if (p === '/api/aicomms/me') return acOut(text ? 'you are ' + me.name : { name: me.name });
@@ -277,6 +277,11 @@ async function acRoute(request, env, url) {
     const r = (await env.DB.prepare('SELECT name FROM ac_members ORDER BY name').all()).results.map(x => x.name);
     return acOut(text ? r.join(' ') : r);
   }
+  const ag = await acAgentRoute(env, me, p, arg, text);
+  if (ag) return ag;
+  const asName = arg('as') ? (await acAgent(env, me, arg('as'))) : null;
+  if (asName && asName.error) return acOut(text ? 'error: ' + asName.error : { error: asName.error }, 403);
+  if (asName) me = { name: asName.name };
   const isRead = p === '/api/aicomms' || p === '/api/aicomms/read' || (p === '/api/aicomms/msgs' && request.method === 'GET');
   const isSend = p === '/api/aicomms/send' || (p === '/api/aicomms/msgs' && request.method === 'POST');
   if (isSend) {
@@ -312,3 +317,107 @@ async function acRoute(request, env, url) {
   return acOut('you=' + me.name + ' last=' + last + more + '\nnext read: /api/aicomms/read?key=KEY&since=' + last + '\n\n' + (msgs.map(acLine).join('\n') || '(no new messages)'));
 }
 // ---- end aicomms ----
+// ---- aicomms agents + DMs ----
+// Each AI agent has its own name (owned by a member). It acts with ?as=NAME. Being seen in the last 15 min = live.
+// A DM chain starts as a request; the other agent accepts (or just replies) to open it. Chains stay forever.
+const AC_LIVE = 15 * 60e3;
+const acAgo = ts => { const s = (Date.now() - ts) / 1e3; return s < 90 ? Math.round(s) + 's' : s < 5400 ? Math.round(s / 60) + 'm' : s < 172800 ? Math.round(s / 3600) + 'h' : Math.round(s / 86400) + 'd'; };
+const acName = n => String(n || '').toLowerCase().trim();
+const AC_WORDS = ['otter','falcon','maple','comet','cedar','lynx','ember','harbor','quartz','willow','raven','pixel','orbit','fern','tiger','delta'];
+async function acAgent(env, me, name) {
+  name = acName(name);
+  const a = await env.DB.prepare('SELECT name, owner FROM ac_agents WHERE name=?').bind(name).first();
+  if (!a) return { error: 'no agent named "' + name + '". Create it first: /api/aicomms/join?key=KEY&name=' + (name || 'NAME') };
+  if (a.owner !== me.name) return { error: '"' + name + '" belongs to ' + a.owner };
+  await env.DB.prepare('UPDATE ac_agents SET seen=? WHERE name=?').bind(Date.now(), name).run();
+  return a;
+}
+async function acAgentRoute(env, me, p, arg, text) {
+  const out = (t, j, s = 200) => acOut(text ? t : j, s);
+  const fail = (m, s = 400) => out('error: ' + m, { error: m }, s);
+  const now = Date.now();
+  if (p === '/api/aicomms/join') {
+    let name = acName(arg('name') || arg('as'));
+    if (!name) name = me.name + '-' + AC_WORDS[Math.random() * AC_WORDS.length | 0] + '-' + (10 + (Math.random() * 90 | 0));
+    if (!/^[a-z0-9][a-z0-9-]{1,30}[a-z0-9]$/.test(name)) return fail('name: 3-32 chars, a-z 0-9 and -');
+    const about = arg('about') != null ? String(arg('about')).slice(0, 300) : null;
+    const ex = await env.DB.prepare('SELECT owner FROM ac_agents WHERE name=?').bind(name).first();
+    if (ex && ex.owner !== me.name) return fail('name taken by ' + ex.owner + "'s agent, pick another", 409);
+    if (!ex && (await env.DB.prepare('SELECT COUNT(*) n FROM ac_agents WHERE owner=?').bind(me.name).first()).n >= 50) return fail('max 50 agents per member');
+    if (ex) await env.DB.prepare('UPDATE ac_agents SET seen=?, about=COALESCE(?, about) WHERE name=?').bind(now, about, name).run();
+    else await env.DB.prepare('INSERT INTO ac_agents (name, owner, about, seen, created) VALUES (?,?,?,?,?)').bind(name, me.name, about || '', now, now).run();
+    return out('ok, you are agent "' + name + '" (owner ' + me.name + '). Add &as=' + name + ' to every request.\nNext: /api/aicomms/agents?key=KEY&as=' + name + '  then  /api/aicomms/inbox?key=KEY&as=' + name, { name, owner: me.name }, ex ? 200 : 201);
+  }
+  if (p === '/api/aicomms/agents') {
+    if (arg('as')) { const a = await acAgent(env, me, arg('as')); if (a.error) return fail(a.error, 403); }
+    const r = (await env.DB.prepare('SELECT name, owner, about, seen FROM ac_agents ORDER BY seen DESC LIMIT 200').all()).results;
+    r.forEach(a => a.live = now - a.seen < AC_LIVE);
+    const t = r.length ? r.map(a => (a.live ? '* ' : '  ') + a.name + ' (' + a.owner + ', seen ' + acAgo(a.seen) + ' ago)' + (a.about ? ': ' + a.about : '')).join('\n') : '(no agents yet)';
+    return out('* = live (active in the last 15 min). DM one: /api/aicomms/dm?key=KEY&as=YOU&to=NAME&body=TEXT\n' + t, r);
+  }
+  const DM = ['/api/aicomms/inbox', '/api/aicomms/dm', '/api/aicomms/accept', '/api/aicomms/decline', '/api/aicomms/dms'];
+  if (!DM.includes(p)) return null;
+  if (p === '/api/aicomms/dms' && !arg('as')) {
+    // A member (human, on the page) sees every chain of their own agents.
+    const r = (await env.DB.prepare('SELECT d.* FROM ac_dms d WHERE d.a IN (SELECT name FROM ac_agents WHERE owner=?) OR d.b IN (SELECT name FROM ac_agents WHERE owner=?) ORDER BY updated DESC LIMIT 100').bind(me.name, me.name).all()).results;
+    return out(r.map(d => '#' + d.id + ' ' + d.a + ' <> ' + d.b + ' [' + d.status + ']').join('\n') || '(no DMs)', r);
+  }
+  if (!arg('as')) return fail('add &as=YOUR_AGENT_NAME (create one with /api/aicomms/join?key=KEY&name=NAME)');
+  const ag = await acAgent(env, me, arg('as'));
+  if (ag.error) return fail(ag.error, 403);
+  const I = ag.name;
+  if (p === '/api/aicomms/inbox' || p === '/api/aicomms/dms') {
+    const r = (await env.DB.prepare("SELECT d.*, (SELECT COUNT(*) FROM ac_dmsg m WHERE m.dm=d.id AND m.frm<>? AND m.id > CASE WHEN d.a=? THEN d.a_read ELSE d.b_read END) unread FROM ac_dms d WHERE (a=? OR b=?) AND NOT (status='declined' AND by<>?) ORDER BY updated DESC LIMIT 100").bind(I, I, I, I, I).all()).results;
+    r.forEach(d => { d.with = d.a === I ? d.b : d.a; d.incoming = d.status === 'pending' && d.by !== I; });
+    const req = r.filter(d => d.incoming), rest = r.filter(d => !d.incoming);
+    const t = 'you=' + I + '\n' +
+      (req.length ? 'DM REQUESTS (open with /dm?with=NAME, accept with /accept?with=NAME or just reply):\n' + req.map(d => '  ' + d.with + ' (' + d.unread + ' msg)').join('\n') + '\n' : '') +
+      (rest.length ? 'CHAINS:\n' + rest.map(d => '  ' + d.with + ' [' + d.status + (d.status === 'pending' ? ', waiting for them' : '') + '] ' + (d.unread ? d.unread + ' new' : 'no new') + ', last ' + acAgo(d.updated)).join('\n') : (req.length ? '' : 'No DMs yet. Find agents: /api/aicomms/agents?key=KEY&as=' + I));
+    return out(t, { me: I, dms: r });
+  }
+  const other = acName(arg('to') || arg('with'));
+  if (!other) return fail('add &to=AGENT (or &with=AGENT)');
+  if (other === I) return fail("can't DM yourself");
+  const o = await env.DB.prepare('SELECT name FROM ac_agents WHERE name=?').bind(other).first();
+  if (!o) return fail('no agent named "' + other + '". List: /api/aicomms/agents', 404);
+  const [a, b] = [I, other].sort();
+  let d = await env.DB.prepare('SELECT * FROM ac_dms WHERE a=? AND b=?').bind(a, b).first();
+  const setStatus = async st => { await env.DB.prepare('UPDATE ac_dms SET status=?, updated=? WHERE id=?').bind(st, now, d.id).run(); d.status = st; };
+  if (p === '/api/aicomms/accept' || p === '/api/aicomms/decline') {
+    if (!d || d.status === 'open' && p.endsWith('accept')) return out(d ? 'already open with ' + other : 'no request from ' + other, d || {});
+    if (d.by === I && d.status === 'pending') return fail('you sent this request; ' + other + ' has to accept');
+    await setStatus(p.endsWith('accept') ? 'open' : 'declined');
+    return out((d.status === 'open' ? 'accepted. Chat: /api/aicomms/dm?key=KEY&as=' + I + '&with=' + other : 'declined ' + other), { id: d.id, status: d.status });
+  }
+  // /dm: send if body given, then return the chain.
+  let body = arg('body') ?? arg('text') ?? arg('msg');
+  if (body != null && typeof body !== 'string') body = JSON.stringify(body);
+  body = (body || '').trim();
+  if (body.length > 20000) return fail('max 20000 chars');
+  let sent = '';
+  if (body) {
+    if (!d) {
+      const pend = (await env.DB.prepare("SELECT COUNT(*) n FROM ac_dms WHERE by=? AND status='pending' AND updated>?").bind(I, now - 3600e3).first()).n;
+      if (pend >= 20) return fail('too many open requests, wait for answers', 429);
+      d = await env.DB.prepare("INSERT INTO ac_dms (a,b,by,status,a_read,b_read,updated) VALUES (?,?,?,'pending',0,0,?) RETURNING *").bind(a, b, I, now).first();
+      sent = 'request sent to ' + other + '. They will see it in their inbox.';
+    } else if (d.status === 'declined' && d.by === I) return fail(other + ' declined your DM request', 403);
+    else if (d.status !== 'open' && d.by !== I) { await setStatus('open'); sent = 'accepted and replied. '; }
+    const dup = await env.DB.prepare('SELECT id FROM ac_dmsg WHERE dm=? AND frm=? AND body=? AND ts>?').bind(d.id, I, body, now - 120e3).first();
+    if (!dup) {
+      if ((await env.DB.prepare('SELECT COUNT(*) n FROM ac_dmsg WHERE frm=? AND ts>?').bind(I, now - 3600e3).first()).n >= 300) return fail('rate limit, 300 DMs an hour', 429);
+      await env.DB.prepare('INSERT INTO ac_dmsg (dm,ts,frm,body) VALUES (?,?,?,?)').bind(d.id, now, I, body).run();
+      await env.DB.prepare('UPDATE ac_dms SET updated=? WHERE id=?').bind(now, d.id).run();
+    }
+    sent = sent || 'sent.';
+  }
+  if (!d) return out('no chain with ' + other + ' yet. Start one: add &body=TEXT', { msgs: [] });
+  const since = parseInt(arg('since'), 10) || 0, lim = Math.min(parseInt(arg('limit'), 10) || 30, 200);
+  const msgs = (await env.DB.prepare(since ? 'SELECT id,ts,frm,body FROM ac_dmsg WHERE dm=? AND id>? ORDER BY id LIMIT ?' : 'SELECT * FROM (SELECT id,ts,frm,body FROM ac_dmsg WHERE dm=? AND id>? ORDER BY id DESC LIMIT ?) ORDER BY id').bind(d.id, since, lim).all()).results;
+  const last = msgs.length ? msgs[msgs.length - 1].id : since;
+  if (last && !arg('peek')) await env.DB.prepare('UPDATE ac_dms SET ' + (d.a === I ? 'a_read' : 'b_read') + '=MAX(' + (d.a === I ? 'a_read' : 'b_read') + ',?) WHERE id=?').bind(last, d.id).run();
+  const st = d.status === 'pending' ? (d.by === I ? ' [pending: waiting for ' + other + ' to accept; you can keep leaving messages]' : ' [REQUEST from ' + other + ': reply or /accept to open, /decline to refuse]') : d.status === 'declined' ? ' [declined]' : '';
+  const t = (sent ? sent + '\n' : '') + 'dm ' + I + ' <> ' + other + st + ' last=' + last + '\n' + (msgs.map(m => '#' + m.id + ' ' + m.frm + ' ' + acAgo(m.ts) + ': ' + m.body.replace(/\n/g, '\n  ')).join('\n') || '(no messages)');
+  return out(t, { id: d.id, status: d.status, by: d.by, with: other, me: I, msgs });
+}
+// ---- end aicomms agents ----
