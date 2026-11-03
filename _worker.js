@@ -8,12 +8,12 @@ const PAGE = 30;
 const SALT = "wezzet-forum-v1";
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url);
     if (url.pathname.startsWith("/api/aicomms")) return aicomms(request, env, url);
     if (/^\/api\/(paste|read|calc|json|csv|hash|base64|uuid)(\/|$)/.test(url.pathname) || url.pathname === "/api" || url.pathname === "/api/") return tools(request, env, url);
     if (url.pathname === "/mcp" || url.pathname === "/mcp/") return mcp(request, env);
-    if (url.pathname.startsWith("/api/chat/")) return chat(request, env, url);
+    if (url.pathname.startsWith("/api/chat/")) return chat(request, env, url, ctx);
     if (url.pathname.startsWith("/api/forum/")) {
       if (!env.DB) return json({ error: "The forum database isn't connected yet." }, 503);
       try {
@@ -920,6 +920,12 @@ const CH_SCHEMA = [
   // Default channels removed 2026-11-03 (Ezra): chat is friends + DMs for now. Channel code stays for later.
   "DELETE FROM ch_channels WHERE id IN (1, 2, 3)",
   "DELETE FROM ch_msgs WHERE room LIKE 'c:%'",
+  // Notifications: one row per event for a user. Feeds in-page alerts (poll cursor) and Web Push (SW fetches /notes).
+  "CREATE TABLE IF NOT EXISTS ch_notes (id INTEGER PRIMARY KEY, uid INTEGER, room TEXT, kind TEXT, title TEXT, body TEXT, ts INTEGER, delivered INTEGER DEFAULT 0)",
+  "CREATE INDEX IF NOT EXISTS ch_notes_uid ON ch_notes (uid, id)",
+  "CREATE TABLE IF NOT EXISTS ch_reads (uid INTEGER, room TEXT, last INTEGER, PRIMARY KEY (uid, room))",
+  "CREATE TABLE IF NOT EXISTS ch_push (endpoint TEXT PRIMARY KEY, uid INTEGER, ts INTEGER)",
+  "CREATE TABLE IF NOT EXISTS ch_config (k TEXT PRIMARY KEY, v TEXT)",
 ];
 // Public username shown to others ("display"); ch_users.name is the private login name.
 const CH_ALTER = ["ALTER TABLE ch_users ADD COLUMN display TEXT", "CREATE UNIQUE INDEX IF NOT EXISTS ch_users_display ON ch_users (display COLLATE NOCASE)"];
@@ -935,7 +941,39 @@ async function chPass(pw, salt) {
   return chB64(new Uint8Array(bits));
 }
 
-async function chat(request, env, url) {
+// ---- Web Push (VAPID, empty payload: the service worker fetches /api/chat/notes to see what to show) ----
+const b64u = (u8) => chB64(u8).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+let chVapid = null;
+async function vapidKeys(DB) {
+  if (chVapid) return chVapid;
+  let row = await DB.prepare("SELECT v FROM ch_config WHERE k = 'vapid'").first();
+  if (!row) {
+    // Generated once by the worker and kept in D1, so no secret setup is needed.
+    const kp = await crypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, ["sign", "verify"]);
+    const v = JSON.stringify({ priv: await crypto.subtle.exportKey("jwk", kp.privateKey), pub: b64u(new Uint8Array(await crypto.subtle.exportKey("raw", kp.publicKey))) });
+    await DB.prepare("INSERT OR IGNORE INTO ch_config (k, v) VALUES ('vapid', ?)").bind(v).run();
+    row = await DB.prepare("SELECT v FROM ch_config WHERE k = 'vapid'").first();
+  }
+  const v = JSON.parse(row.v);
+  chVapid = { pub: v.pub, key: await crypto.subtle.importKey("jwk", v.priv, { name: "ECDSA", namedCurve: "P-256" }, false, ["sign"]) };
+  return chVapid;
+}
+async function pushTo(DB, uid) {
+  const subs = (await DB.prepare("SELECT endpoint FROM ch_push WHERE uid = ? LIMIT 10").bind(uid).all()).results;
+  if (!subs.length) return;
+  const { pub, key } = await vapidKeys(DB);
+  const enc = (o) => b64u(new TextEncoder().encode(JSON.stringify(o)));
+  for (const { endpoint } of subs) {
+    try {
+      const head = enc({ typ: "JWT", alg: "ES256" }) + "." + enc({ aud: new URL(endpoint).origin, exp: Math.floor(Date.now() / 1000) + 43200, sub: "https://wezzet.com/chat" });
+      const sig = new Uint8Array(await crypto.subtle.sign({ name: "ECDSA", hash: "SHA-256" }, key, new TextEncoder().encode(head)));
+      const r = await fetch(endpoint, { method: "POST", headers: { TTL: "600", Urgency: "high", Authorization: `vapid t=${head}.${b64u(sig)}, k=${pub}` } });
+      if (r.status === 404 || r.status === 410) await DB.prepare("DELETE FROM ch_push WHERE endpoint = ?").bind(endpoint).run();
+    } catch {}
+  }
+}
+
+async function chat(request, env, url, ctx) {
   if (!env.DB) return chOut({ error: "Chat database isn't connected yet." }, 503);
   try {
     if (!chReady) {
@@ -943,13 +981,13 @@ async function chat(request, env, url) {
       for (const s of CH_ALTER) { try { await env.DB.prepare(s).run(); } catch {} }
       chReady = true;
     }
-    return await chRoute(request, env, url);
+    return await chRoute(request, env, url, ctx);
   } catch (e) {
     return chOut({ error: "Something went wrong on our side. Try again in a moment." }, 500);
   }
 }
 
-async function chRoute(request, env, url) {
+async function chRoute(request, env, url, ctx) {
   const p = url.pathname.replace(/\/+$/, "").slice("/api/chat".length) || "/";
   const post = request.method === "POST";
   if (post) {
@@ -962,6 +1000,11 @@ async function chRoute(request, env, url) {
   const now = Date.now();
   const ip = await sha(SALT + "|ip|" + (request.headers.get("cf-connecting-ip") || "local"));
   const DB = env.DB;
+  const note = async (uid, room, kind, title, text) => {
+    await DB.prepare("INSERT INTO ch_notes (uid, room, kind, title, body, ts) VALUES (?, ?, ?, ?, ?, ?)").bind(uid, room, kind, title, text.slice(0, 140), now).run();
+    const job = pushTo(DB, uid);
+    if (ctx && ctx.waitUntil) ctx.waitUntil(job); else await job;
+  };
 
   if (post && (p === "/signup" || p === "/login")) {
     const name = clean(d.name, 24), pw = String(d.password || "");
@@ -1027,10 +1070,11 @@ async function chRoute(request, env, url) {
   if (p === "/rooms") {
     const ch = (await DB.prepare("SELECT id, name FROM ch_channels ORDER BY id").all()).results;
     // Friends (status ok) each get a DM room; pending requests show as incoming/outgoing.
-    const fr = (await DB.prepare(`SELECT f.status, f.by, ${CH_NAME} AS name, u.seen, d.id AS dm FROM ch_friends f
+    const fr = (await DB.prepare(`SELECT f.status, f.by, ${CH_NAME} AS name, u.seen, d.id AS dm,
+      (SELECT COUNT(*) FROM ch_msgs m WHERE m.room = 'd:' || d.id AND m.uid <> ? AND m.hidden = 0 AND m.id > COALESCE((SELECT last FROM ch_reads WHERE uid = ? AND room = 'd:' || d.id), 0)) AS unread FROM ch_friends f
       JOIN ch_users u ON u.id = CASE WHEN f.a = ? THEN f.b ELSE f.a END LEFT JOIN ch_dms d ON d.a = f.a AND d.b = f.b
-      WHERE (f.a = ? OR f.b = ?) AND u.banned = 0 ORDER BY d.updated DESC, f.ts DESC LIMIT 300`).bind(me, me, me).all()).results;
-    const dms = fr.filter((x) => x.status === "ok" && x.dm).map((x) => ({ id: x.dm, name: x.name, online: now - (x.seen || 0) < 120e3 }));
+      WHERE (f.a = ? OR f.b = ?) AND u.banned = 0 ORDER BY d.updated DESC, f.ts DESC LIMIT 300`).bind(me, me, me, me, me).all()).results;
+    const dms = fr.filter((x) => x.status === "ok" && x.dm).map((x) => ({ id: x.dm, name: x.name, unread: x.unread, online: now - (x.seen || 0) < 120e3 }));
     const requests = fr.filter((x) => x.status === "pending").map((x) => ({ name: x.name, incoming: x.by !== me }));
     const blocks = (await DB.prepare(`SELECT ${CH_NAME} AS name FROM ch_blocks b JOIN ch_users u ON u.id = b.blocked WHERE b.uid = ?`).bind(me).all()).results.map((x) => x.name);
     return chOut({ channels: ch, dms, requests, blocks });
@@ -1050,8 +1094,34 @@ async function chRoute(request, env, url) {
     const signals = (await DB.prepare(`SELECT s.id, s.dm, s.kind, s.data, s.ts, ${CH_NAME} AS name FROM ch_signals s JOIN ch_users u ON u.id = s.frm WHERE s.too = ? AND s.id > ? AND s.ts > ? ORDER BY s.id LIMIT 20`)
       .bind(me, sigAfter, now - 60e3).all()).results;
     const maxSig = sigAfter ? null : (await DB.prepare("SELECT MAX(id) m FROM ch_signals").first()).m || 0;
-    await DB.prepare("UPDATE ch_users SET seen = ? WHERE id = ?").bind(now, me).run();
-    return chOut({ msgs, signals, sigBase: maxSig, blocked: r ? r.blocked : false });
+    // note=-1 (first poll) returns the current position; after that, notes newer than the cursor.
+    const noteAfter = parseInt(q.get("note") ?? "-1", 10);
+    const fresh = noteAfter >= 0;
+    const notes = fresh ? (await DB.prepare("SELECT id, room, kind, title, body FROM ch_notes WHERE uid = ? AND id > ? ORDER BY id LIMIT 20").bind(me, noteAfter).all()).results : [];
+    const noteBase = fresh ? null : (await DB.prepare("SELECT MAX(id) m FROM ch_notes").first()).m || 0;
+    const stmts = [DB.prepare("UPDATE ch_users SET seen = ? WHERE id = ?").bind(now, me)];
+    // Mark the open room read while the page is visible.
+    if (r && q.get("seen") === "1") stmts.push(DB.prepare("INSERT INTO ch_reads (uid, room, last) VALUES (?, ?, (SELECT COALESCE(MAX(id), 0) FROM ch_msgs WHERE room = ?)) ON CONFLICT (uid, room) DO UPDATE SET last = excluded.last").bind(me, r.key, r.key));
+    await DB.batch(stmts);
+    return chOut({ msgs, signals, sigBase: maxSig, notes, noteBase, blocked: r ? r.blocked : false });
+  }
+
+  // For the service worker after a push: undelivered notes from the last 10 minutes.
+  if (p === "/notes") {
+    const notes = (await DB.prepare("SELECT id, room, kind, title, body FROM ch_notes WHERE uid = ? AND delivered = 0 AND ts > ? ORDER BY id DESC LIMIT 5").bind(me, now - 600e3).all()).results;
+    await DB.prepare("UPDATE ch_notes SET delivered = 1 WHERE uid = ? AND delivered = 0").bind(me).run();
+    return chOut({ notes });
+  }
+  if (p === "/vapid") return chOut({ key: (await vapidKeys(DB)).pub });
+  if (post && (p === "/push" || p === "/unpush")) {
+    const ep = String(d.endpoint || "");
+    if (!/^https:\/\/[^\s]{10,900}$/.test(ep)) return chOut({ error: "Bad subscription." }, 400);
+    if (p === "/unpush") await DB.prepare("DELETE FROM ch_push WHERE endpoint = ? AND uid = ?").bind(ep, me).run();
+    else await DB.batch([
+      DB.prepare("INSERT OR REPLACE INTO ch_push (endpoint, uid, ts) VALUES (?, ?, ?)").bind(ep, me, now),
+      DB.prepare("DELETE FROM ch_push WHERE uid = ? AND endpoint NOT IN (SELECT endpoint FROM ch_push WHERE uid = ? ORDER BY ts DESC LIMIT 10)").bind(me, me),
+    ]);
+    return chOut({ ok: true });
   }
 
   if (post && p === "/send") {
@@ -1066,7 +1136,10 @@ async function chRoute(request, env, url) {
     if (rate.m >= 15 || rate.n >= 300) return chOut({ error: "Slow down a little." }, 429);
     if (rate.h >= 3) return chOut({ error: "Several of your messages were reported. Try again later." }, 403);
     const m = await DB.prepare("INSERT INTO ch_msgs (room, uid, body, ts) VALUES (?, ?, ?, ?) RETURNING id").bind(r.key, me, text, now).first();
-    if (r.dm) await DB.prepare("UPDATE ch_dms SET updated = ? WHERE id = ?").bind(now, r.dm).run();
+    if (r.dm) {
+      await DB.prepare("UPDATE ch_dms SET updated = ? WHERE id = ?").bind(now, r.dm).run();
+      await note(r.other, r.key, "msg", sess.name, text);
+    }
     return chOut({ id: m.id });
   }
 
@@ -1088,12 +1161,15 @@ async function chRoute(request, env, url) {
       const n = (await DB.prepare("SELECT COUNT(*) n FROM ch_friends WHERE by = ? AND ts > ?").bind(me, now - 3600e3).first()).n;
       if (n >= 30) return chOut({ error: "Too many friend requests. Try later." }, 429);
       await DB.prepare("INSERT INTO ch_friends (a, b, by, status, ts) VALUES (?, ?, ?, 'pending', ?)").bind(a, b, me, now).run();
+      await note(u.id, "", "friend", "Friend request", sess.name + " wants to be friends");
       return chOut({ status: "pending", name: u.name });
     }
-    if (f.status === "pending" && f.by !== me) await DB.prepare("UPDATE ch_friends SET status = 'ok', ts = ? WHERE a = ? AND b = ?").bind(now, a, b).run();
+    const accepting = f.status === "pending" && f.by !== me;
+    if (accepting) await DB.prepare("UPDATE ch_friends SET status = 'ok', ts = ? WHERE a = ? AND b = ?").bind(now, a, b).run();
     else if (f.status !== "ok") return chOut({ status: "pending", name: u.name });
     await DB.prepare("INSERT OR IGNORE INTO ch_dms (a, b, updated) VALUES (?, ?, ?)").bind(a, b, now).run();
     const dm = await DB.prepare("SELECT id FROM ch_dms WHERE a = ? AND b = ?").bind(a, b).first();
+    if (accepting) await note(u.id, "d:" + dm.id, "friend", "Friend request accepted", sess.name + " accepted. Say hi!");
     return chOut({ status: "ok", room: "d:" + dm.id, name: u.name });
   }
 
@@ -1134,7 +1210,9 @@ async function chRoute(request, env, url) {
     await DB.batch([
       DB.prepare("INSERT INTO ch_signals (dm, frm, too, kind, data, ts) VALUES (?, ?, ?, ?, ?, ?)").bind(r.dm, me, r.other, kind, data, now),
       DB.prepare("DELETE FROM ch_signals WHERE ts < ?").bind(now - 600e3),
+      DB.prepare("DELETE FROM ch_notes WHERE ts < ?").bind(now - 7 * 86400e3),
     ]);
+    if (kind === "offer") await note(r.other, r.key, "call", "Incoming call", sess.name + " is calling");
     return chOut({ ok: true });
   }
 
