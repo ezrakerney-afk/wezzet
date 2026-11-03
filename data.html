@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>CSV to JSON, JSON to CSV, YAML Converter | Wezzet</title>
-<meta name="description" content="Convert between CSV, TSV, JSON and YAML as you type. Paste or open a file. Free, in your browser, nothing uploaded.">
+<title>CSV, JSON, Excel and YAML Converter | Wezzet</title>
+<meta name="description" content="Convert between CSV, TSV, JSON, YAML and Excel (XLSX) as you type. Paste or open a file. Free, in your browser, nothing uploaded.">
 <link rel="canonical" href="https://wezzet.com/data">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Wezzet">
-<meta property="og:title" content="CSV to JSON, JSON to CSV, YAML Converter | Wezzet">
+<meta property="og:title" content="CSV, JSON, Excel and YAML Converter | Wezzet">
 <meta property="og:url" content="https://wezzet.com/data">
 <meta property="og:image" content="https://wezzet.com/assets/og/data.png">
 <meta property="og:image:width" content="1200">
@@ -35,7 +35,7 @@
 <main>
   <div class="wrap">
     <div class="tool-head">
-      <h1>CSV, JSON and YAML converter</h1>
+      <h1>CSV, JSON, Excel and YAML converter</h1>
     </div>
 
     <div class="options">
@@ -47,19 +47,20 @@
         <label for="to">To</label>
         <select id="to"><option value="json">JSON</option><option value="csv">CSV</option><option value="tsv">TSV</option><option value="yaml">YAML</option></select>
       </div>
-      <div class="field"><button class="btn btn-quiet" type="button" id="open">Open a file</button><input type="file" id="file" accept=".csv,.tsv,.json,.yaml,.yml,.txt,text/*" hidden></div>
+      <div class="field"><button class="btn btn-quiet" type="button" id="open">Open a file</button><input type="file" id="file" accept=".csv,.tsv,.json,.yaml,.yml,.txt,.xlsx,.xlsm,.xls,.ods,text/*" hidden></div>
     </div>
     <div class="field-row two">
       <div class="field"><label for="src">Input <span class="hint" id="detected"></span></label><textarea class="big mono" id="src" spellcheck="false" placeholder="name,age&#10;Ada,36"></textarea></div>
       <div class="field"><label for="dst">Output</label><textarea class="big mono" id="dst" spellcheck="false" readonly></textarea></div>
     </div>
-    <div class="row-actions"><button class="btn" type="button" id="copy">Copy</button><button class="btn btn-quiet" type="button" id="save">Download</button></div>
+    <div class="row-actions"><button class="btn" type="button" id="copy">Copy</button><button class="btn btn-quiet" type="button" id="save">Download</button><button class="btn btn-quiet" type="button" id="xlsx">Download Excel</button></div>
     <p class="note error" id="msg" role="alert" hidden></p>
 
     <section class="section faq" aria-labelledby="faq">
       <h2 id="faq">Questions</h2>
       <details><summary>How are CSV columns turned into JSON?</summary><p>The first row becomes the keys. Each row after it becomes an object. Numbers and true/false come out as real numbers and booleans.</p></details>
       <details><summary>What about nested JSON going to CSV?</summary><p>Nested objects and lists are written into the cell as JSON text, so nothing is lost.</p></details>
+      <details><summary>Can I convert Excel files?</summary><p>Yes. Open an .xlsx, .xls or .ods file to turn its first sheet into CSV, JSON or YAML. Use Download Excel to save any data as .xlsx.</p></details>
       <details><summary>Is my data sent anywhere?</summary><p>No. Conversion happens in your browser as you type.</p></details>
     </section>
   </div>
@@ -71,7 +72,7 @@
   </div>
 </footer>
 <script src="/vendor/js-yaml-4.1.0.min.js" defer></script>
-<script src="/assets/data.js?v=1" defer></script>
+<script src="/assets/data.js?v=2" defer></script>
 <script src="/assets/theme.js?v=3" defer></script>
 </body>
 </html>

@@ -1,8 +1,13 @@
-/* Wezzet data converter: CSV, TSV, JSON and YAML into each other. YAML uses js-yaml. */
+/* Wezzet data converter: CSV, TSV, JSON, YAML and Excel into each other. YAML uses js-yaml, Excel uses SheetJS (loaded only when needed). */
 (() => {
   const $ = (id) => document.getElementById(id);
   const src = $("src"), dst = $("dst"), fromEl = $("from"), toEl = $("to"), msg = $("msg");
   const EXT = { csv: "csv", tsv: "tsv", json: "json", yaml: "yaml" };
+  let lastData = null, xlsxReady = null;
+  const loadXlsx = () => xlsxReady || (xlsxReady = new Promise((res, rej) => {
+    const s = document.createElement("script"); s.src = "/vendor/xlsx-0.18.5.core.min.js";
+    s.onload = res; s.onerror = () => { xlsxReady = null; rej(new Error("Excel support couldn't load.")); }; document.head.append(s);
+  }));
   const MIME = { csv: "text/csv", tsv: "text/tab-separated-values", json: "application/json", yaml: "application/yaml" };
 
   function guess(text) {
@@ -51,11 +56,13 @@
   function convert() {
     msg.hidden = true;
     const text = src.value;
+    lastData = null;
     if (!text.trim()) { dst.value = ""; return; }
     const from = fromEl.value === "auto" ? guess(text) : fromEl.value, to = toEl.value;
     $("detected").textContent = fromEl.value === "auto" ? `Reading as ${from.toUpperCase()}` : "";
     try {
       const data = from === "json" ? JSON.parse(text) : from === "yaml" ? jsyaml.load(text) : readDelimited(text, from === "tsv" ? "\t" : ",");
+      lastData = data;
       dst.value = to === "json" ? JSON.stringify(data, null, 2) : to === "yaml" ? jsyaml.dump(data, { lineWidth: -1 }) : writeDelimited(data, to === "tsv" ? "\t" : ",");
     } catch (e) {
       dst.value = "";
@@ -69,11 +76,38 @@
   $("file").addEventListener("change", async () => {
     const f = $("file").files[0];
     if (!f) return;
+    $("file").value = "";
+    if (/\.(xlsx|xlsm|xls|ods|numbers)$/i.test(f.name)) {
+      try {
+        await loadXlsx();
+        const wb = XLSX.read(await f.arrayBuffer(), { type: "array" });
+        const name = wb.SheetNames[0];
+        src.value = XLSX.utils.sheet_to_csv(wb.Sheets[name], { blankrows: false });
+        fromEl.value = "csv";
+        convert();
+        $("detected").textContent = wb.SheetNames.length > 1 ? `Sheet "${name}" (1 of ${wb.SheetNames.length})` : "";
+      } catch (e) {
+        msg.textContent = `${f.name} couldn't be read as a spreadsheet.`; msg.hidden = false;
+      }
+      return;
+    }
     src.value = await f.text();
     const ext = (f.name.match(/\.(\w+)$/) || [])[1];
     if (ext) fromEl.value = { yml: "yaml", yaml: "yaml", json: "json", csv: "csv", tsv: "tsv" }[ext.toLowerCase()] || "auto";
-    $("file").value = "";
     convert();
+  });
+  $("xlsx").addEventListener("click", async () => {
+    if (lastData == null) return;
+    try {
+      await loadXlsx();
+      const rows = (Array.isArray(lastData) ? lastData : [lastData]).map((r) => {
+        const o = r && typeof r === "object" ? r : { value: r };
+        return Object.fromEntries(Object.entries(o).map(([k, v]) => [k, v && typeof v === "object" ? JSON.stringify(v) : v]));
+      });
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), "Sheet1");
+      XLSX.writeFile(wb, "converted.xlsx");
+    } catch (e) { msg.textContent = e.message; msg.hidden = false; }
   });
   $("copy").addEventListener("click", async () => {
     try { await navigator.clipboard.writeText(dst.value); $("copy").textContent = "Copied"; setTimeout(() => ($("copy").textContent = "Copy"), 1500); } catch (e) {}

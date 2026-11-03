@@ -53,3 +53,15 @@ Full license text: https://www.apache.org/licenses/LICENSE-2.0
 Source: https://github.com/nodeca/js-yaml
 Copyright (C) 2011-2015 by Vitaly Puzrin
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions: The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software. THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND.
+
+=== lamejs 1.2.7 (@breezystack/lamejs, LGPL 3.0) ===
+/vendor/lamejs-1.2.7.min.js is an unmodified copy, loaded as a separate file.
+It is a JavaScript port of LAME, https://lame.sourceforge.net
+Source: https://github.com/breezystack/lamejs
+License: GNU Lesser General Public License v3.0, https://www.gnu.org/licenses/lgpl-3.0.html
+
+=== SheetJS Community Edition 0.18.5 (Apache License 2.0) ===
+/vendor/xlsx-0.18.5.core.min.js is an unmodified copy.
+Copyright (C) 2012-present SheetJS LLC
+Source: https://github.com/SheetJS/sheetjs
+License: Apache License 2.0, https://www.apache.org/licenses/LICENSE-2.0
