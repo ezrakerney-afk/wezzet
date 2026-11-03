@@ -23,7 +23,7 @@
 <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
 <script>try{(function(t){if(t==="dark"||t==="light")document.documentElement.dataset.theme=t})(localStorage.getItem("wz-theme"))}catch(e){}</script>
 <style>.logo .logo-dark{display:none}:root[data-theme="dark"] .logo .logo-light{display:none}:root[data-theme="dark"] .logo .logo-dark{display:block}@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .logo .logo-light{display:none}:root:not([data-theme="light"]) .logo .logo-dark{display:block}}</style>
-<link rel="stylesheet" href="/assets/site.css?v=3">
+<link rel="stylesheet" href="/assets/site.css?v=4">
 <style>
   body { min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; }
   .top { display: flex; justify-content: flex-end; padding: 16px; }
@@ -47,6 +47,9 @@
   .results .none { padding: 10px 14px; color: var(--ink-soft); }
   .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   noscript ul { margin-top: 16px; }
+  .recent { margin: 18px 0 0; max-width: 580px; text-align: center; color: var(--ink-soft); font-size: 0.95rem; }
+  .recent a { color: var(--ink-soft); }
+  .recent a:hover { color: var(--ink); }
 </style>
 </head>
 <body>
@@ -61,6 +64,7 @@
     <input type="search" id="q" name="q" placeholder="Search tools" role="combobox" aria-expanded="false" aria-controls="results" aria-autocomplete="list" autofocus>
     <ul class="results" id="results" role="listbox" aria-label="Tools" hidden></ul>
   </form>
+  <p class="recent" id="recent" hidden></p>
 
   <noscript>
     <ul>
@@ -75,12 +79,14 @@
       <li><a href="/quilt">Quilt fabric calculator</a></li><li><a href="/timer">Timer and stopwatch</a></li>
       <li><a href="/random">Random picker</a></li><li><a href="/color">Color picker</a></li>
       <li><a href="/tumbler">Tumbler template maker</a></li><li><a href="/domains">Domain name checker</a></li>
+      <li><a href="/resize">Resize image</a></li><li><a href="/remove-bg">Remove background</a></li><li><a href="/compress-pdf">Compress PDF</a></li><li><a href="/rotate-pdf">Rotate PDF</a></li><li><a href="/sign-pdf">Sign PDF</a></li><li><a href="/gif">Video to GIF</a></li>
+      <li><a href="/heic-to-jpg">HEIC to JPG</a></li><li><a href="/heic-to-png">HEIC to PNG</a></li><li><a href="/webp-to-png">WebP to PNG</a></li><li><a href="/webp-to-jpg">WebP to JPG</a></li><li><a href="/png-to-jpg">PNG to JPG</a></li><li><a href="/jpg-to-png">JPG to PNG</a></li><li><a href="/png-to-webp">PNG to WebP</a></li><li><a href="/jpg-to-pdf">JPG to PDF</a></li><li><a href="/mov-to-mp3">MOV to MP3</a></li><li><a href="/mp4-to-mp3">MP4 to MP3</a></li><li><a href="/wav-to-mp3">WAV to MP3</a></li><li><a href="/m4a-to-mp3">M4A to MP3</a></li><li><a href="/pes-to-dst">PES to DST</a></li><li><a href="/dst-to-pes">DST to PES</a></li><li><a href="/pes-to-jef">PES to JEF</a></li><li><a href="/jef-to-pes">JEF to PES</a></li><li><a href="/dst-to-jef">DST to JEF</a></li>
       <li><a href="/aicomms">AI Comms</a></li>
       <li><a href="/forum">Forum</a></li><li><a href="/chat">Chat</a></li>
     </ul>
   </noscript>
 </main>
-<script src="/assets/home.js?v=7" defer></script>
-<script src="/assets/theme.js?v=3" defer></script>
+<script src="/assets/home.js?v=8" defer></script>
+<script src="/assets/theme.js?v=4" defer></script>
 </body>
 </html>

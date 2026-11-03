@@ -28,7 +28,10 @@ export default {
     out.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
     out.headers.set("X-Frame-Options", "SAMEORIGIN");
     if (url.pathname.startsWith("/vendor/") && res.ok) out.headers.set("Cache-Control", "public, max-age=31536000, immutable");
+    // Pages link CSS/JS with ?v=N and bump N on every change, so those URLs can be cached for good.
+    else if (url.pathname.startsWith("/assets/") && /\.(css|js)$/.test(url.pathname) && /^\?v=\d+$/.test(url.search) && res.ok) out.headers.set("Cache-Control", "public, max-age=31536000, immutable");
     else if (url.pathname.startsWith("/assets/") && /\.(css|js)$/.test(url.pathname) && res.ok) out.headers.set("Cache-Control", "public, max-age=300, must-revalidate");
+    else if ((url.pathname.startsWith("/assets/") || url.pathname === "/favicon.ico") && /\.(png|ico|svg|webp)$/.test(url.pathname) && res.ok) out.headers.set("Cache-Control", "public, max-age=604800");
     return out;
   },
 };

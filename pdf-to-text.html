@@ -22,7 +22,7 @@
 <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
 <script>try{(function(t){if(t==="dark"||t==="light")document.documentElement.dataset.theme=t})(localStorage.getItem("wz-theme"))}catch(e){}</script>
 <style>.logo .logo-dark{display:none}:root[data-theme="dark"] .logo .logo-light{display:none}:root[data-theme="dark"] .logo .logo-dark{display:block}@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .logo .logo-light{display:none}:root:not([data-theme="light"]) .logo .logo-dark{display:block}}</style>
-<link rel="stylesheet" href="/assets/site.css?v=3">
+<link rel="stylesheet" href="/assets/site.css?v=4">
 </head>
 <body>
 <header class="site-header">
@@ -57,15 +57,19 @@
       <details><summary>Does it keep the layout?</summary><p>It keeps lines and pages in order. Columns, tables and fonts are not kept.</p></details>
       <details><summary>Is my PDF uploaded?</summary><p>No. The text is read in your browser with the open-source pdf.js library.</p></details>
     </section>
+    <section class="section related" aria-labelledby="related">
+      <h2 id="related">Related tools</h2>
+      <ul><li><a href="/pdf">Merge PDF</a></li><li><a href="/split-pdf">Split PDF</a></li><li><a href="/compress-pdf">Compress PDF</a></li><li><a href="/rotate-pdf">Rotate PDF</a></li><li><a href="/sign-pdf">Sign PDF</a></li><li><a href="/pdf-to-jpg">PDF to JPG</a></li></ul>
+    </section>
   </div>
 </main>
 
 <footer class="site-footer">
   <div class="wrap">
-    <p><a href="/">Wezzet</a>: free tools that run in your browser.</p>
+    <p><a href="/">Wezzet</a>: free tools that run in your browser. Follow <a href="https://x.com/WezzetX" rel="noopener">@WezzetX</a> on X.</p>
   </div>
 </footer>
 <script type="module" src="/assets/pdf-to-text.js?v=1"></script>
-<script src="/assets/theme.js?v=3" defer></script>
+<script src="/assets/theme.js?v=4" defer></script>
 </body>
 </html>

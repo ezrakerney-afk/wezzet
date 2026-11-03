@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DST to PES Embroidery Converter, Free | Wezzet</title>
+<meta name="description" content="Convert DST embroidery files to PES in your browser. See the design, stitches and colors first. Free, nothing uploaded.">
+<link rel="canonical" href="https://wezzet.com/dst-to-pes">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Wezzet">
+<meta property="og:title" content="DST to PES Embroidery Converter, Free | Wezzet">
+<meta property="og:description" content="Convert DST embroidery files to PES in your browser. See the design, stitches and colors first. Free, nothing uploaded.">
+<meta property="og:url" content="https://wezzet.com/dst-to-pes">
+<meta property="og:image" content="https://wezzet.com/assets/og/embroidery.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://wezzet.com/assets/og/embroidery.png">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#121212" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="icon" href="/assets/icon-32.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+<script>try{(function(t){if(t==="dark"||t==="light")document.documentElement.dataset.theme=t})(localStorage.getItem("wz-theme"))}catch(e){}</script>
+<style>.logo .logo-dark{display:none}:root[data-theme="dark"] .logo .logo-light{display:none}:root[data-theme="dark"] .logo .logo-dark{display:block}@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .logo .logo-light{display:none}:root:not([data-theme="light"]) .logo .logo-dark{display:block}}</style>
+<link rel="stylesheet" href="/assets/site.css?v=4">
+<link rel="stylesheet" href="/assets/converter.css?v=3">
+</head>
+<body>
+<header class="site-header">
+  <div class="wrap">
+    <a class="logo" href="/"><img class="logo-light" src="/assets/logo.png" alt="Wezzet" width="113" height="52"><img class="logo-dark" src="/assets/logo-dark.png" alt="Wezzet" width="113" height="52"></a>
+    <nav class="site-nav" aria-label="Main"><a href="/">All tools</a><button class="theme-toggle" type="button" aria-label="Switch between light and dark mode"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm0 2v16a8 8 0 0 1 0-16Z"/></svg></button></nav>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <section class="tool-hero" aria-labelledby="page-title">
+      <div class="intro">
+        <h1 id="page-title">DST to PES converter</h1>
+      <p class="lede">Turn DST designs into PES for Brother and Baby Lock machines.</p>
+      </div>
+
+      <div class="hoop-col">
+        <div class="hoop" id="hoop">
+          <canvas id="preview" aria-hidden="true" hidden></canvas>
+          <div class="hoop-empty" id="hoop-empty">
+            <p>Drop a design file here</p>
+            <button class="btn" type="button" id="choose">Choose a file</button>
+            <p class="small">.pes .dst .jef .exp .vp3 .xxx .hus and more</p>
+          </div>
+          <div class="hoop-status" id="hoop-status" role="status" aria-live="polite" hidden></div>
+        </div>
+        <input type="file" id="file" hidden>
+      </div>
+
+      <div class="result" id="result" hidden>
+        <h2 id="r-name"></h2>
+        <dl class="facts">
+          <div><dt>Size</dt><dd id="r-size"></dd></div>
+          <div><dt>Stitches</dt><dd id="r-stitches"></dd></div>
+          <div><dt>Thread colors</dt><dd id="r-colors"></dd></div>
+          <div><dt>Smallest hoop</dt><dd id="r-hoop"></dd></div>
+        </dl>
+        <ul class="swatches" id="r-swatches" aria-label="Thread colors in this design"></ul>
+
+        <div class="convert-row">
+          <div>
+            <label for="format">Convert to</label>
+            <select id="format" data-fixed="1">
+              <option value="pes" selected>PES: Brother, Baby Lock</option>
+              <option value="dst">DST: Tajima and most commercial machines</option>
+              <option value="jef">JEF: Janome, Elna</option>
+              <option value="exp">EXP: Bernina, Melco</option>
+              <option value="vp3">VP3: Pfaff, Husqvarna Viking</option>
+              <option value="xxx">XXX: Singer</option>
+              <option value="pec">PEC: older Brother machines</option>
+              <option value="u01">U01: Barudan</option>
+            </select>
+          </div>
+          <button class="btn" type="button" id="download">Download PES file</button>
+        </div>
+        <p class="note" id="color-note" hidden>This format doesn't store thread colors. Note the colors above.</p>
+        <p class="note" id="r-note" hidden></p>
+        <button class="btn btn-quiet again" type="button" id="again">Convert another file</button>
+      </div>
+
+      <p class="note error" id="error" role="alert" hidden></p>
+    </section>
+
+    <section class="section faq" aria-labelledby="faq">
+      <h2 id="faq">Questions</h2>
+      <details><summary>How do I convert DST to PES?</summary><p>Drop your DST file in the hoop. PES is already picked, so press Download.</p></details>
+      <details><summary>Are thread colors kept?</summary><p>Yes. PES stores thread colors, so the colors in your design carry over.</p></details>
+      <details><summary>Is my design uploaded?</summary><p>No. The file is converted in your browser.</p></details>
+    </section>
+    <section class="section related" aria-labelledby="related">
+      <h2 id="related">Related tools</h2>
+      <ul><li><a href="/embroidery">Embroidery converter</a></li><li><a href="/pes-to-dst">PES to DST</a></li><li><a href="/pes-to-jef">PES to JEF</a></li><li><a href="/jef-to-pes">JEF to PES</a></li><li><a href="/dst-to-jef">DST to JEF</a></li><li><a href="/quilt">Quilt calculator</a></li></ul>
+    </section>
+  </div>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <p><a href="/">Wezzet</a>: free tools that run in your browser. Follow <a href="https://x.com/WezzetX" rel="noopener">@WezzetX</a> on X.</p>
+    <p>Conversion is powered by the open-source <a href="https://github.com/EmbroidePy/pyembroidery" rel="noopener">pyembroidery</a> and <a href="https://pyodide.org" rel="noopener">Pyodide</a> projects. <a href="/licenses.txt">Licenses</a></p>
+  </div>
+</footer>
+
+<script src="/assets/converter.js?v=4" defer></script>
+<script src="/assets/theme.js?v=4" defer></script>
+</body>
+</html>

@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Resize Image: Change Width, Height or Percent | Wezzet</title>
+<meta name="description" content="Resize JPG, PNG, WebP and iPhone HEIC photos to exact pixels or a percentage. Free, nothing uploaded.">
+<link rel="canonical" href="https://wezzet.com/resize">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Wezzet">
+<meta property="og:title" content="Resize Image: Change Width, Height or Percent | Wezzet">
+<meta property="og:description" content="Resize JPG, PNG, WebP and iPhone HEIC photos to exact pixels or a percentage. Free, nothing uploaded.">
+<meta property="og:url" content="https://wezzet.com/resize">
+<meta property="og:image" content="https://wezzet.com/assets/og/compress.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://wezzet.com/assets/og/compress.png">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#121212" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="icon" href="/assets/icon-32.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+<script>try{(function(t){if(t==="dark"||t==="light")document.documentElement.dataset.theme=t})(localStorage.getItem("wz-theme"))}catch(e){}</script>
+<style>.logo .logo-dark{display:none}:root[data-theme="dark"] .logo .logo-light{display:none}:root[data-theme="dark"] .logo .logo-dark{display:block}@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .logo .logo-light{display:none}:root:not([data-theme="light"]) .logo .logo-dark{display:block}}</style>
+<link rel="stylesheet" href="/assets/site.css?v=4">
+</head>
+<body>
+<header class="site-header">
+  <div class="wrap">
+    <a class="logo" href="/"><img class="logo-light" src="/assets/logo.png" alt="Wezzet" width="113" height="52"><img class="logo-dark" src="/assets/logo-dark.png" alt="Wezzet" width="113" height="52"></a>
+    <nav class="site-nav" aria-label="Main"><a href="/">All tools</a><button class="theme-toggle" type="button" aria-label="Switch between light and dark mode"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm0 2v16a8 8 0 0 1 0-16Z"/></svg></button></nav>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <div class="tool-head">
+      <h1>Resize image</h1>
+    </div>
+
+    <div class="options">
+      <div class="field">
+        <span class="label">Resize by</span>
+        <div class="segmented" role="radiogroup" aria-label="Resize by">
+          <label><input type="radio" name="by" value="px" checked><span>Pixels</span></label>
+          <label><input type="radio" name="by" value="pct"><span>Percent</span></label>
+        </div>
+      </div>
+      <div class="field" id="px-fields">
+        <span class="label">Width × height (px)</span>
+        <div class="row-actions" style="margin:0;align-items:center">
+          <input type="number" id="w" min="1" placeholder="Width" aria-label="Width in pixels" style="max-width:110px">
+          <span>×</span>
+          <input type="number" id="h" min="1" placeholder="Height" aria-label="Height in pixels" style="max-width:110px">
+          <label style="font-weight:400"><input type="checkbox" id="keep" checked> Keep shape</label>
+        </div>
+      </div>
+      <div class="field" id="pct-field" hidden>
+        <label for="pct">Percent of original</label>
+        <div class="row-actions" style="margin:0"><input type="number" id="pct" min="1" max="400" value="50" style="max-width:90px"><button class="btn btn-quiet" type="button" data-pct="25">25%</button><button class="btn btn-quiet" type="button" data-pct="50">50%</button><button class="btn btn-quiet" type="button" data-pct="75">75%</button></div>
+      </div>
+      <div class="field">
+        <span class="label">Save as</span>
+        <div class="segmented" role="radiogroup" aria-label="Output format">
+          <label><input type="radio" name="to" value="same" checked><span>Same</span></label>
+          <label><input type="radio" name="to" value="jpg"><span>JPG</span></label>
+          <label><input type="radio" name="to" value="png"><span>PNG</span></label>
+          <label><input type="radio" name="to" value="webp"><span>WebP</span></label>
+        </div>
+      </div>
+    </div>
+
+    <div class="dropzone" id="drop">
+      <button class="btn" type="button" id="choose">Choose images</button>
+      <p>or drop them here</p>
+      <input type="file" id="files" accept="image/*,.heic,.heif,.avif" multiple hidden>
+    </div>
+
+    <ul class="files" id="list" aria-live="polite"></ul>
+    <div class="row-actions"><button class="btn btn-quiet" type="button" id="zip" hidden>Download all (.zip)</button></div>
+
+    <section class="section faq" aria-labelledby="faq">
+      <h2 id="faq">Questions</h2>
+      <details><summary>What does Keep shape do?</summary><p>It stops the photo from stretching. Fill in just the width or just the height and the other side is worked out for you. Fill in both and the image fits inside that box.</p></details>
+      <details><summary>Are my photos uploaded?</summary><p>No. Resizing happens in your browser.</p></details>
+      <details><summary>Can I make an image bigger?</summary><p>Yes, but it won't gain detail. Big jumps can look soft.</p></details>
+    </section>
+    <section class="section related" aria-labelledby="related">
+      <h2 id="related">Related tools</h2>
+      <ul><li><a href="/image">Image converter</a></li><li><a href="/compress">Compress image</a></li><li><a href="/remove-bg">Remove background</a></li><li><a href="/heic-to-jpg">HEIC to JPG</a></li><li><a href="/webp-to-png">WebP to PNG</a></li><li><a href="/png-to-jpg">PNG to JPG</a></li></ul>
+    </section>
+  </div>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <p><a href="/">Wezzet</a>: free tools that run in your browser. Follow <a href="https://x.com/WezzetX" rel="noopener">@WezzetX</a> on X.</p>
+  </div>
+</footer>
+<script src="/vendor/fflate-0.8.3.min.js" defer></script>
+<script src="/assets/resize.js?v=1" defer></script>
+<script src="/assets/theme.js?v=4" defer></script>
+</body>
+</html>

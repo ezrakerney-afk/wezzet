@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Video to GIF Maker: MP4 to GIF, Free | Wezzet</title>
+<meta name="description" content="Turn a clip from an MP4, MOV or WebM video into an animated GIF. Free, runs in your browser, nothing uploaded.">
+<link rel="canonical" href="https://wezzet.com/gif">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Wezzet">
+<meta property="og:title" content="Video to GIF Maker: MP4 to GIF, Free | Wezzet">
+<meta property="og:description" content="Turn a clip from an MP4, MOV or WebM video into an animated GIF. Free, runs in your browser, nothing uploaded.">
+<meta property="og:url" content="https://wezzet.com/gif">
+<meta property="og:image" content="https://wezzet.com/assets/og/mp3.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://wezzet.com/assets/og/mp3.png">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#121212" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="icon" href="/assets/icon-32.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+<script>try{(function(t){if(t==="dark"||t==="light")document.documentElement.dataset.theme=t})(localStorage.getItem("wz-theme"))}catch(e){}</script>
+<style>.logo .logo-dark{display:none}:root[data-theme="dark"] .logo .logo-light{display:none}:root[data-theme="dark"] .logo .logo-dark{display:block}@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .logo .logo-light{display:none}:root:not([data-theme="light"]) .logo .logo-dark{display:block}}</style>
+<link rel="stylesheet" href="/assets/site.css?v=4">
+</head>
+<body>
+<header class="site-header">
+  <div class="wrap">
+    <a class="logo" href="/"><img class="logo-light" src="/assets/logo.png" alt="Wezzet" width="113" height="52"><img class="logo-dark" src="/assets/logo-dark.png" alt="Wezzet" width="113" height="52"></a>
+    <nav class="site-nav" aria-label="Main"><a href="/">All tools</a><button class="theme-toggle" type="button" aria-label="Switch between light and dark mode"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm0 2v16a8 8 0 0 1 0-16Z"/></svg></button></nav>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <div class="tool-head">
+      <h1>Video to GIF</h1>
+    </div>
+
+    <div class="dropzone" id="drop">
+      <button class="btn" type="button" id="choose">Choose a video</button>
+      <p>or drop it here</p>
+      <input type="file" id="files" accept="video/*,.mp4,.mov,.webm,.m4v" hidden>
+    </div>
+    <p class="note error" id="msg" role="alert" hidden></p>
+
+    <div id="panel" hidden>
+      <video class="vid" id="video" controls muted playsinline></video>
+      <div class="options">
+        <div class="field">
+          <label for="start">Start (seconds)</label>
+          <div class="row-actions" style="margin:0"><input type="number" id="start" min="0" step="0.1" value="0" style="max-width:110px"><button class="btn btn-quiet" type="button" id="use-now">Use current spot</button></div>
+        </div>
+        <div class="field">
+          <label for="len">Length (seconds, up to 20)</label>
+          <input type="number" id="len" min="0.2" max="20" step="0.1" value="5" style="max-width:110px">
+        </div>
+        <div class="field">
+          <label for="width">Width (px)</label>
+          <input type="number" id="width" min="40" value="480" style="max-width:110px">
+        </div>
+        <div class="field">
+          <span class="label">Frames per second</span>
+          <div class="segmented" role="radiogroup" aria-label="Frames per second">
+            <label><input type="radio" name="fps" value="8"><span>8</span></label>
+            <label><input type="radio" name="fps" value="12" checked><span>12</span></label>
+            <label><input type="radio" name="fps" value="20"><span>20</span></label>
+          </div>
+        </div>
+      </div>
+      <div class="row-actions"><button class="btn" type="button" id="make">Make GIF</button></div>
+      <p class="note" id="status" aria-live="polite"></p>
+      <div id="out"></div>
+    </div>
+
+    <section class="section faq" aria-labelledby="faq">
+      <h2 id="faq">Questions</h2>
+      <details><summary>Is my video uploaded?</summary><p>No. Frames are taken from the video in your browser.</p></details>
+      <details><summary>How do I make the GIF smaller?</summary><p>Use a shorter clip, a smaller width or fewer frames per second. GIFs get big quickly.</p></details>
+      <details><summary>Which videos work?</summary><p>Any video your browser can play. MP4 and WebM work everywhere. iPhone MOV files work in Safari and most other browsers.</p></details>
+    </section>
+    <section class="section related" aria-labelledby="related">
+      <h2 id="related">Related tools</h2>
+      <ul><li><a href="/mp3">Video to MP3</a></li><li><a href="/mov-to-mp3">MOV to MP3</a></li><li><a href="/mp4-to-mp3">MP4 to MP3</a></li><li><a href="/wav-to-mp3">WAV to MP3</a></li><li><a href="/m4a-to-mp3">M4A to MP3</a></li></ul>
+    </section>
+  </div>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <p><a href="/">Wezzet</a>: free tools that run in your browser. Follow <a href="https://x.com/WezzetX" rel="noopener">@WezzetX</a> on X.</p>
+  </div>
+</footer>
+<script type="module" src="/assets/gif.js?v=1"></script>
+<script src="/assets/theme.js?v=4" defer></script>
+</body>
+</html>
