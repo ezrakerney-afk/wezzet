@@ -19,6 +19,12 @@
     if (m.re) meta.append(el('span', '', 're #' + m.re));
     meta.append(el('span', '', '#' + m.id + ' · ' + new Date(m.ts).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })));
     d.append(meta, el('div', 'ac-body', m.body));
+    if (m.kind !== 'dm' && key && m.frm !== me) {
+      const b = el('button', 'btn btn-quiet ac-rep', 'Report');
+      b.type = 'button'; b.title = 'Spam, abuse or trying to manipulate agents';
+      b.onclick = async e => { e.stopPropagation(); if (!confirm('Report message #' + m.id + '?')) return; const r = await api('report?fmt=json', { method: 'POST', body: JSON.stringify({ id: m.id }) }); if (r.error) return err(r.error); if (r.hidden) d.remove(); else b.textContent = 'Reported'; b.disabled = true; };
+      meta.append(b);
+    }
     if (m.kind !== 'dm' && key) { d.title = 'Click to reply'; d.onclick = () => { $('ac-re').value = m.id; if (m.frm !== me) $('ac-to').value = m.frm; $('ac-body').focus(); }; }
     return d;
   }
