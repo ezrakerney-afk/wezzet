@@ -1,16 +1,18 @@
 /* Wezzet background remover. Runs an open-source cutout model in the browser
-   with Transformers.js; the model downloads once, photos never leave the device. */
+   with Transformers.js; the model downloads once, photos never leave the device.
+   Runs on the CPU (wasm) with small models, so it works on phones without crashing the tab. */
 const LIB = "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.3.3";
 const MODELS = {
-  person: { id: "Xenova/modnet", input: "input", sigmoid: false, mb: 26 },
-  any: { id: "onnx-community/BiRefNet_lite-ONNX", input: "input_image", sigmoid: true, mb: 115, dtype: "fp16", gpuOnly: true },
+  person: { id: "Xenova/modnet", dtype: "fp32", sigmoid: false, mb: 26 },
+  any: { id: "onnx-community/ormbg-ONNX", dtype: "q8", sigmoid: false, mb: 44 },
 };
+const MAX_SIDE = 2048; // bigger photos are scaled down first to keep memory low on phones
 
 const $ = (id) => document.getElementById(id);
 const drop = $("drop"), input = $("files"), list = $("list"), msg = $("msg");
-const DT = (m, device) => (device === "webgpu" && m.dtype) || "fp32";
+const view = $("view"), viewImg = $("view-img"), viewDl = $("view-dl");
 const kind = () => document.querySelector('input[name="kind"]:checked').value;
-let lib = null;
+let lib = null, busy = false;
 const loaded = {};
 
 function loadLib() {
@@ -23,18 +25,8 @@ async function loadModel(k, status) {
     loaded[k] = (async () => {
       const t = await loadLib();
       const m = MODELS[k];
-      let gpu = null;
-      try { gpu = navigator.gpu && (await navigator.gpu.requestAdapter()); } catch (e) {}
-      const device = gpu ? "webgpu" : "wasm";
-      if (m.gpuOnly && !gpu) throw new Error("gpu");
       const progress = (p) => { if (p.status === "progress" && p.file && /onnx/.test(p.file)) status(`Downloading the model, ${Math.round(p.progress || 0)}%`); };
-      let model;
-      try {
-        model = await t.AutoModel.from_pretrained(m.id, { device, dtype: DT(m, device), progress_callback: progress });
-      } catch (e) {
-        if (device === "wasm") throw e;
-        model = await t.AutoModel.from_pretrained(m.id, { device: "wasm", dtype: DT(m, "wasm"), progress_callback: progress });
-      }
+      const model = await t.AutoModel.from_pretrained(m.id, { device: "wasm", dtype: m.dtype, progress_callback: progress });
       const processor = await t.AutoProcessor.from_pretrained(m.id);
       return { t, m, model, processor };
     })();
@@ -43,71 +35,75 @@ async function loadModel(k, status) {
   return loaded[k];
 }
 
+async function decode(file) {
+  const bmp = await createImageBitmap(file);
+  const s = Math.min(1, MAX_SIDE / Math.max(bmp.width, bmp.height));
+  const c = document.createElement("canvas");
+  c.width = Math.round(bmp.width * s); c.height = Math.round(bmp.height * s);
+  c.getContext("2d").drawImage(bmp, 0, 0, c.width, c.height);
+  bmp.close();
+  return c;
+}
+
 async function cutout(file, status) {
   const k = kind();
   status(`Loading the model (about ${MODELS[k].mb} MB, only the first time)`);
   const { t, m, model, processor } = await loadModel(k, status);
   status("Removing the background");
-  const url = URL.createObjectURL(file);
-  try {
-    const image = await t.RawImage.fromURL(url);
-    const { pixel_values } = await processor(image);
-    const out = await model({ [m.input]: pixel_values });
-    let tensor = Object.values(out)[0][0];
-    if (m.sigmoid) tensor = tensor.sigmoid();
-    const mask = await t.RawImage.fromTensor(tensor.mul(255).to("uint8")).resize(image.width, image.height);
-    const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; });
-    const c = document.createElement("canvas");
-    c.width = image.width; c.height = image.height;
-    const ctx = c.getContext("2d");
-    ctx.drawImage(img, 0, 0, c.width, c.height);
-    const px = ctx.getImageData(0, 0, c.width, c.height);
-    for (let i = 0; i < mask.data.length; i++) px.data[4 * i + 3] = mask.data[i];
-    ctx.putImageData(px, 0, 0);
-    return await new Promise((r) => c.toBlob(r, "image/png"));
-  } finally { URL.revokeObjectURL(url); }
+  const c = await decode(file);
+  const ctx = c.getContext("2d", { willReadFrequently: true });
+  const px = ctx.getImageData(0, 0, c.width, c.height);
+  const image = new t.RawImage(px.data, c.width, c.height, 4);
+  const { pixel_values } = await processor(image.rgb());
+  const name = (model.sessions && model.sessions.model && model.sessions.model.inputNames && model.sessions.model.inputNames[0]) || "input";
+  const out = await model({ [name]: pixel_values });
+  let tensor = Object.values(out)[0][0];
+  if (m.sigmoid) tensor = tensor.sigmoid();
+  const mask = await t.RawImage.fromTensor(tensor.mul(255).to("uint8")).resize(c.width, c.height);
+  const md = mask.data, ch = mask.channels || 1;
+  for (let i = 0, n = c.width * c.height; i < n; i++) px.data[4 * i + 3] = md[i * ch];
+  ctx.putImageData(px, 0, 0);
+  return await new Promise((r) => c.toBlob(r, "image/png"));
+}
+
+function show(href, outName) {
+  viewImg.src = href;
+  viewDl.href = href; viewDl.download = outName;
+  view.hidden = false;
+  view.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 async function handle(files) {
+  if (busy) return;
+  busy = true;
   msg.hidden = true;
   for (const file of files) {
     if (!/^image\//.test(file.type)) { msg.textContent = `${file.name} isn't a JPG, PNG or WebP image.`; msg.hidden = false; continue; }
     const li = document.createElement("li");
-    li.className = "cut";
     const name = document.createElement("span"); name.className = "fname"; name.textContent = file.name;
     const meta = document.createElement("span"); meta.className = "fmeta";
     const actions = document.createElement("span"); actions.className = "factions";
-    li.append(name, meta, actions); list.append(li);
+    li.append(name, meta, actions); list.prepend(li);
     try {
       const blob = await cutout(file, (s) => { meta.textContent = s; });
       const outName = file.name.replace(/\.[^.]+$/, "") + "-no-bg.png";
       const href = URL.createObjectURL(blob);
       meta.textContent = "Done";
+      const v = document.createElement("button");
+      v.type = "button"; v.className = "btn btn-quiet"; v.textContent = "View";
+      v.addEventListener("click", () => show(href, outName));
       const a = document.createElement("a");
-      a.className = "btn btn-quiet"; a.textContent = "Download PNG"; a.href = href; a.download = outName;
-      actions.append(a);
-      const pic = document.createElement("img");
-      pic.className = "checker"; pic.src = href; pic.alt = "Cutout of " + file.name;
-      li.append(pic);
+      a.className = "btn btn-quiet"; a.textContent = "Download"; a.href = href; a.download = outName;
+      actions.append(v, a);
+      show(href, outName);
     } catch (e) {
       console.error(e);
       li.classList.add("bad");
-      meta.textContent = e && e.message === "gpu" ? "Anything else needs a browser with WebGPU, like recent Chrome, Edge or Safari. Try A person instead."
-        : "This didn't work. Check your connection, or try a smaller image.";
+      meta.textContent = "This didn't work. Check your connection, or try a smaller image.";
     }
   }
+  busy = false;
 }
-
-// The bigger model only runs well on the graphics card, so turn that option off when there isn't one.
-(async () => {
-  let ok = false;
-  try { ok = !!(navigator.gpu && (await navigator.gpu.requestAdapter())); } catch (e) {}
-  if (!ok) {
-    const r = document.querySelector('input[name="kind"][value="any"]');
-    r.disabled = true; r.closest("label").title = "Needs a browser with WebGPU, like recent Chrome, Edge or Safari";
-    $("gpu-note").hidden = false;
-  }
-})();
 
 $("choose").addEventListener("click", () => input.click());
 input.addEventListener("change", () => { handle([...input.files]); input.value = ""; });
@@ -116,3 +112,4 @@ input.addEventListener("change", () => { handle([...input.files]); input.value =
 drop.addEventListener("drop", (e) => { e.preventDefault(); handle([...e.dataTransfer.files]); });
 window.addEventListener("dragover", (e) => e.preventDefault());
 window.addEventListener("drop", (e) => e.preventDefault());
+document.querySelectorAll("[data-bg]").forEach((b) => b.addEventListener("click", () => { view.dataset.bg = b.dataset.bg; }));
