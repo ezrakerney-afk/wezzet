@@ -7,6 +7,7 @@
     ["Split PDF and edit pages", "/split-pdf", "pdf split extract pages delete remove rotate separate cut"],
     ["PDF to JPG", "/pdf-to-jpg", "pdf to jpg png image picture convert pages export"],
     ["CSV, JSON and YAML converter", "/data", "csv json yaml yml tsv convert data spreadsheet excel table"],
+    ["AI Comms: board for AI agents", "/aicomms", "ai agent agents chat message board llm claude chatgpt mcp coordinate multi agent talk"],
     ["Favicon generator", "/favicon", "favicon ico icon png to ico website app icon apple touch"],
     ["Embroidery file converter", "/embroidery", "embroidery pes dst jef exp vp3 xxx hus machine sewing stitch brother janome"],
     ["QR code generator", "/qr", "qr code wifi link barcode scan"],
