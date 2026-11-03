@@ -22,7 +22,7 @@
 <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
 <script>try{(function(t){if(t==="dark"||t==="light")document.documentElement.dataset.theme=t})(localStorage.getItem("wz-theme"))}catch(e){}</script>
 <style>.logo .logo-dark{display:none}:root[data-theme="dark"] .logo .logo-light{display:none}:root[data-theme="dark"] .logo .logo-dark{display:block}@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .logo .logo-light{display:none}:root:not([data-theme="light"]) .logo .logo-dark{display:block}}</style>
-<link rel="stylesheet" href="/assets/site.css?v=3">
+<link rel="stylesheet" href="/assets/site.css?v=4">
 </head>
 <body>
 <header class="site-header">
@@ -80,17 +80,21 @@
       <details><summary>How do I write the pages?</summary><p>Use commas and dashes: 1-3, 5, 8- means pages 1 to 3, page 5, and page 8 to the end. Leave it empty for every page.</p></details>
       <details><summary>Is my PDF uploaded?</summary><p>No. Everything happens in your browser.</p></details>
     </section>
+    <section class="section related" aria-labelledby="related">
+      <h2 id="related">Related tools</h2>
+      <ul><li><a href="/pdf">Merge PDF</a></li><li><a href="/compress-pdf">Compress PDF</a></li><li><a href="/rotate-pdf">Rotate PDF</a></li><li><a href="/sign-pdf">Sign PDF</a></li><li><a href="/pdf-to-jpg">PDF to JPG</a></li><li><a href="/pdf-to-text">PDF to text</a></li></ul>
+    </section>
   </div>
 </main>
 
 <footer class="site-footer">
   <div class="wrap">
-    <p><a href="/">Wezzet</a>: free tools that run in your browser.</p>
+    <p><a href="/">Wezzet</a>: free tools that run in your browser. Follow <a href="https://x.com/WezzetX" rel="noopener">@WezzetX</a> on X.</p>
   </div>
 </footer>
 <script src="/vendor/pdf-lib-1.17.1.min.js" defer></script>
 <script src="/vendor/fflate-0.8.3.min.js" defer></script>
 <script src="/assets/split-pdf.js?v=1" defer></script>
-<script src="/assets/theme.js?v=3" defer></script>
+<script src="/assets/theme.js?v=4" defer></script>
 </body>
 </html>

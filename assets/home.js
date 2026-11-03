@@ -27,6 +27,29 @@
     ["Color picker", "/color", "color colour hex rgb hsl picker contrast"],
     ["Tumbler template maker", "/tumbler", "tumbler sublimation cup wrap template tapered skinny"],
     ["Domain name checker", "/domains", "domain name available website whois com"],
+    ["Resize image", "/resize", "resize image photo picture width height pixels percent scale smaller bigger dimensions"],
+    ["Remove background", "/remove-bg", "remove background bg transparent png cutout cut out erase background photo person product"],
+    ["Compress PDF", "/compress-pdf", "compress pdf reduce shrink smaller pdf size mb kb email"],
+    ["Rotate PDF", "/rotate-pdf", "rotate pdf turn pages sideways upside down landscape portrait"],
+    ["Sign PDF", "/sign-pdf", "sign pdf signature esign e-sign fill sign document draw type name"],
+    ["Video to GIF", "/gif", "gif video to gif mp4 to gif mov webm animated gif maker clip"],
+    ["HEIC to JPG", "/heic-to-jpg", "heic to jpg jpeg iphone photo convert heif"],
+    ["HEIC to PNG", "/heic-to-png", "heic to png iphone photo convert heif"],
+    ["WebP to PNG", "/webp-to-png", "webp to png convert image"],
+    ["WebP to JPG", "/webp-to-jpg", "webp to jpg jpeg convert image"],
+    ["PNG to JPG", "/png-to-jpg", "png to jpg jpeg convert image"],
+    ["JPG to PNG", "/jpg-to-png", "jpg jpeg to png convert image"],
+    ["PNG to WebP", "/png-to-webp", "png to webp convert image website"],
+    ["JPG to PDF", "/jpg-to-pdf", "jpg to pdf jpeg png photo image to pdf combine"],
+    ["MOV to MP3", "/mov-to-mp3", "mov to mp3 iphone video audio extract quicktime"],
+    ["MP4 to MP3", "/mp4-to-mp3", "mp4 to mp3 video audio extract"],
+    ["WAV to MP3", "/wav-to-mp3", "wav to mp3 audio convert"],
+    ["M4A to MP3", "/m4a-to-mp3", "m4a to mp3 voice memo audio convert itunes"],
+    ["PES to DST", "/pes-to-dst", "pes to dst embroidery brother tajima convert"],
+    ["DST to PES", "/dst-to-pes", "dst to pes embroidery brother tajima convert"],
+    ["PES to JEF", "/pes-to-jef", "pes to jef embroidery janome brother convert"],
+    ["JEF to PES", "/jef-to-pes", "jef to pes embroidery janome brother convert"],
+    ["DST to JEF", "/dst-to-jef", "dst to jef embroidery janome tajima convert"],
     ["Forum", "/forum", "forum community discuss questions talk"],
     ["Chat", "/chat", "chat channels dm direct message voice call talk friends"],
   ].map(([name, url, kw]) => ({ name, url, name_l: name.toLowerCase(), hay: (name + " " + kw).toLowerCase() }));
@@ -96,6 +119,21 @@
     if (t && (q.value.trim() || active >= 0)) location.href = t.url;
   });
   document.addEventListener("click", (e) => { if (!form.contains(e.target)) open(false); });
+
+  // Recently used tools (saved by theme.js on each tool page)
+  try {
+    const rec = JSON.parse(localStorage.getItem("wz-recent") || "[]").filter((r) => r && /^\/[a-z0-9-]+$/.test(r.u)).slice(0, 4);
+    const box = document.getElementById("recent");
+    if (rec.length && box) {
+      box.append("Recent: ");
+      rec.forEach((r, i) => {
+        const a = document.createElement("a"); a.href = r.u; a.textContent = r.n;
+        if (i) box.append(" · ");
+        box.append(a);
+      });
+      box.hidden = false;
+    }
+  } catch (e) {}
 
   // Support links like wezzet.com/?q=pdf
   const pre = new URLSearchParams(location.search).get("q");

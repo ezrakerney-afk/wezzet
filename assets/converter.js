@@ -118,7 +118,7 @@
     rNote.hidden = notes.length === 0;
 
     let preferred = null;
-    try { preferred = localStorage.getItem("wezzet.format"); } catch (e) {}
+    if (!formatSel.dataset.fixed) try { preferred = localStorage.getItem("wezzet.format"); } catch (e) {}
     if (preferred && [...formatSel.options].some(o => o.value === preferred)) formatSel.value = preferred;
     updateFormatUi();
 
