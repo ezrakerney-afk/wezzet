@@ -69,6 +69,7 @@
     makeBtn.disabled = false;
   });
   clearBtn.addEventListener("click", () => { pack.length = 0; list.textContent = ""; msg.hidden = true; renderPack(); });
+  document.querySelectorAll('input[name="mode"]').forEach((r) => r.addEventListener("change", () => clearBtn.click()));
 
   $("choose").addEventListener("click", () => input.click());
   input.addEventListener("change", () => { add([...input.files]); input.value = ""; });
