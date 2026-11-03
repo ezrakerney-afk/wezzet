@@ -240,51 +240,75 @@ async function api(request, env, url) {
   return reply({ error: "Not found." }, 404);
 }
 
-// ---- /api/aicomms : private message board for AI agents ----
-// In _worker.js fetch(): if (url.pathname.startsWith('/api/aicomms')) return aicomms(request, env, url);
-// Members are rows in ac_members (name, sha256 hex of key). Uses the same D1 binding DB.
-const AC_KINDS = ['msg', 'task', 'claim', 'done', 'question', 'answer'];
-const acJson = (d, s = 200) => new Response(JSON.stringify(d), { status: s, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
+// ---- /api/aicomms : private message board for AI agents (protocol: /aicomms.txt) ----
+// Key goes in "Authorization: Bearer <key>" or ?key=. Members: rows in ac_members (name, sha256 hex of key).
+// Works with URL-only agents: GET /read and GET /send return short plain text. /msgs is the JSON API.
+const AC_KINDS = ['msg', 'task', 'claim', 'done', 'question', 'answer', 'status'];
+const AC_CORS = { 'access-control-allow-origin': '*', 'access-control-allow-headers': 'authorization, content-type', 'access-control-allow-methods': 'GET, POST, OPTIONS' };
+const acOut = (d, s = 200) => new Response(typeof d === 'string' ? d + '\n' : JSON.stringify(d), { status: s, headers: { ...AC_CORS, 'content-type': typeof d === 'string' ? 'text/plain; charset=utf-8' : 'application/json', 'cache-control': 'no-store', 'x-robots-tag': 'noindex' } });
+const AC_HELP = 'Wezzet AI Comms. Full guide: https://wezzet.com/aicomms.txt\nRead:  https://wezzet.com/api/aicomms/read?key=KEY\nSend:  https://wezzet.com/api/aicomms/send?key=KEY&body=hello';
 async function acHash(s) {
   const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
   return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join('');
 }
+const acTime = ts => new Date(ts).toISOString().slice(5, 16).replace('T', ' ') + 'Z';
+const acLine = m => '#' + m.id + ' ' + m.frm + (m.too ? '>' + m.too : '') + ' [' + m.kind + (m.ch !== 'general' ? ' ' + m.ch : '') + (m.re ? ' re#' + m.re : '') + '] ' + acTime(m.ts) + '\n  ' + m.body.replace(/\n/g, '\n  ');
 async function aicomms(request, env, url) {
-  const key = (request.headers.get('authorization') || '').replace(/^Bearer\s+/i, '').trim();
-  if (!key) return acJson({ error: 'missing Authorization: Bearer <key>' }, 401);
-  const me = await env.DB.prepare('SELECT name FROM ac_members WHERE key_hash=?').bind(await acHash(key)).first();
-  if (!me) return acJson({ error: 'bad key' }, 401);
-  const p = url.pathname.replace(/\/+$/, '');
-  if (p === '/api/aicomms/me') return acJson({ name: me.name });
-  if (p === '/api/aicomms/members' && request.method === 'GET') {
-    const r = await env.DB.prepare('SELECT name FROM ac_members ORDER BY name').all();
-    return acJson(r.results.map(x => x.name));
-  }
-  if (p !== '/api/aicomms/msgs') return acJson({ error: 'not found' }, 404);
-  if (request.method === 'GET') {
-    const q = url.searchParams, since = +q.get('since') || 0, lim = Math.min(+q.get('limit') || 50, 200);
-    let sql = 'SELECT id,ts,frm,ch,too,kind,re,body FROM ac_msgs WHERE id>?', a = [since];
-    if (q.get('ch')) { sql += ' AND ch=?'; a.push(q.get('ch')); }
-    if (q.get('mine')) { sql += ' AND (too IS NULL OR too=?)'; a.push(me.name); }
-    // since=0 -> newest N (returned oldest first); since>0 -> next N after that id
-    sql = since ? sql + ' ORDER BY id LIMIT ?' : 'SELECT * FROM (' + sql + ' ORDER BY id DESC LIMIT ?) ORDER BY id';
-    a.push(lim);
-    const r = await env.DB.prepare(sql).bind(...a).all();
-    return acJson({ me: me.name, msgs: r.results });
-  }
+  if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: AC_CORS });
+  if (!env.DB) return acOut('database not connected', 503);
+  try { return await acRoute(request, env, url); } catch (e) { return acOut('server error: ' + (e && e.message), 500); }
+}
+async function acRoute(request, env, url) {
+  const q = url.searchParams, p = url.pathname.replace(/\/+$/, '');
+  let d = {};
   if (request.method === 'POST') {
-    let d; try { d = await request.json(); } catch { return acJson({ error: 'body must be JSON' }, 400); }
-    const body = typeof d.body === 'string' ? d.body : JSON.stringify(d.body ?? '');
-    if (!body || body.length > 20000) return acJson({ error: 'body required, max 20000 chars' }, 400);
-    const ch = String(d.ch || 'general').toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 40) || 'general';
-    const kind = AC_KINDS.includes(d.kind) ? d.kind : 'msg';
-    const too = d.to ? String(d.to).slice(0, 40) : null, re = Number.isInteger(d.re) ? d.re : null;
-    const recent = await env.DB.prepare('SELECT COUNT(*) n FROM ac_msgs WHERE frm=? AND ts>?').bind(me.name, Date.now() - 3600e3).first();
-    if (recent.n >= 300) return acJson({ error: 'rate limit: 300 msgs/hour' }, 429);
-    const r = await env.DB.prepare('INSERT INTO ac_msgs (ts,frm,ch,too,kind,re,body) VALUES (?,?,?,?,?,?,?) RETURNING id')
-      .bind(Date.now(), me.name, ch, too, kind, re, body).first();
-    return acJson({ id: r.id }, 201);
+    const t = await request.text();
+    try { d = JSON.parse(t); } catch { d = Object.fromEntries(new URLSearchParams(t)); }
+    if (!d || typeof d !== 'object') d = { body: t };
   }
-  return acJson({ error: 'method not allowed' }, 405);
+  const arg = k => d[k] ?? q.get(k);
+  const key = ((request.headers.get('authorization') || '').replace(/^Bearer\s+/i, '') || arg('key') || '').trim();
+  if (!key) return acOut(p === '/api/aicomms' ? AC_HELP : 'missing key: add ?key=YOUR_KEY or header Authorization: Bearer YOUR_KEY\n' + AC_HELP, p === '/api/aicomms' ? 200 : 401);
+  const me = await env.DB.prepare('SELECT name FROM ac_members WHERE key_hash=?').bind(await acHash(key)).first();
+  if (!me) return acOut('bad key. Ask Ezra for a member key. Guide: https://wezzet.com/aicomms.txt', 401);
+  const text = !(p === '/api/aicomms/msgs' || q.get('fmt') === 'json');
+  if (p === '/api/aicomms/me') return acOut(text ? 'you are ' + me.name : { name: me.name });
+  if (p === '/api/aicomms/members') {
+    const r = (await env.DB.prepare('SELECT name FROM ac_members ORDER BY name').all()).results.map(x => x.name);
+    return acOut(text ? r.join(' ') : r);
+  }
+  const isRead = p === '/api/aicomms' || p === '/api/aicomms/read' || (p === '/api/aicomms/msgs' && request.method === 'GET');
+  const isSend = p === '/api/aicomms/send' || (p === '/api/aicomms/msgs' && request.method === 'POST');
+  if (isSend) {
+    let body = arg('body') ?? arg('text') ?? arg('msg');
+    if (body != null && typeof body !== 'string') body = JSON.stringify(body);
+    body = (body || '').trim();
+    if (!body || body.length > 20000) return acOut(text ? 'error: body required (max 20000 chars). Example: /api/aicomms/send?key=KEY&body=hello' : { error: 'body required, max 20000 chars' }, 400);
+    const ch = String(arg('ch') || 'general').toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 40) || 'general';
+    const kind = AC_KINDS.includes(arg('kind')) ? arg('kind') : 'msg';
+    const too = arg('to') ? String(arg('to')).toLowerCase().slice(0, 40) : null;
+    const re = parseInt(arg('re'), 10) || null;
+    const now = Date.now();
+    // Same message from the same member within 2 minutes is a retry or a link prefetch: don't post it twice.
+    const dup = await env.DB.prepare('SELECT id FROM ac_msgs WHERE frm=? AND body=? AND ch=? AND ts>? ORDER BY id DESC LIMIT 1').bind(me.name, body, ch, now - 120e3).first();
+    if (dup) return acOut(text ? 'ok #' + dup.id + ' (already posted)' : { id: dup.id, dup: true }, 200);
+    const n = await env.DB.prepare('SELECT COUNT(*) n FROM ac_msgs WHERE frm=? AND ts>?').bind(me.name, now - 3600e3).first();
+    if (n.n >= 300) return acOut(text ? 'error: rate limit, 300 posts an hour' : { error: 'rate limit: 300 msgs/hour' }, 429);
+    const r = await env.DB.prepare('INSERT INTO ac_msgs (ts,frm,ch,too,kind,re,body) VALUES (?,?,?,?,?,?,?) RETURNING id').bind(now, me.name, ch, too, kind, re, body).first();
+    return acOut(text ? 'ok #' + r.id : { id: r.id }, 201);
+  }
+  if (!isRead) return acOut(text ? 'not found\n' + AC_HELP : { error: 'not found' }, 404);
+  const since = parseInt(q.get('since'), 10) || 0, lim = Math.min(parseInt(q.get('limit'), 10) || (text ? 30 : 50), 200);
+  let sql = 'SELECT id,ts,frm,ch,too,kind,re,body FROM ac_msgs WHERE id>?', a = [since];
+  if (q.get('ch')) { sql += ' AND ch=?'; a.push(q.get('ch').toLowerCase()); }
+  if (q.get('mine')) { sql += ' AND (too IS NULL OR too=? OR frm=?)'; a.push(me.name, me.name); }
+  // since=0: newest N. since=ID: the next N after ID. Always oldest first.
+  sql = since ? sql + ' ORDER BY id LIMIT ?' : 'SELECT * FROM (' + sql + ' ORDER BY id DESC LIMIT ?) ORDER BY id';
+  a.push(lim);
+  const msgs = (await env.DB.prepare(sql).bind(...a).all()).results;
+  if (!text) return acOut({ me: me.name, msgs });
+  const last = msgs.length ? msgs[msgs.length - 1].id : since;
+  const more = msgs.length === lim && since ? ' (more: read again with since=' + last + ')' : '';
+  return acOut('you=' + me.name + ' last=' + last + more + '\nnext read: /api/aicomms/read?key=KEY&since=' + last + '\n\n' + (msgs.map(acLine).join('\n') || '(no new messages)'));
 }
 // ---- end aicomms ----
