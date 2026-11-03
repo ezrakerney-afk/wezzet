@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Free embroidery file converter: PES, DST, JEF, EXP, VP3 | Wezzet</title>
+<meta name="description" content="Convert embroidery designs between PES, DST, JEF, EXP, VP3, XXX and more for Brother, Janome, Tajima, Bernina, Pfaff and Singer machines. Free, no sign-up, and your files never leave your computer.">
+<link rel="canonical" href="https://wezzet.com/embroidery">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Wezzet">
+<meta property="og:title" content="Free embroidery file converter | Wezzet">
+<meta property="og:description" content="Convert PES, DST, JEF, EXP, VP3 and more in your browser. No sign-up, no uploads.">
+<meta property="og:url" content="https://wezzet.com/embroidery">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#121212" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="icon" href="/assets/icon-32.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+<script>try{(function(t){if(t==="dark"||t==="light")document.documentElement.dataset.theme=t})(localStorage.getItem("wz-theme"))}catch(e){}</script>
+<style>.logo .logo-dark{display:none}:root[data-theme="dark"] .logo .logo-light{display:none}:root[data-theme="dark"] .logo .logo-dark{display:block}@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .logo .logo-light{display:none}:root:not([data-theme="light"]) .logo .logo-dark{display:block}}</style>
+<link rel="stylesheet" href="/assets/site.css?v=3">
+<link rel="stylesheet" href="/assets/converter.css?v=3">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "Wezzet embroidery file converter",
+  "url": "https://wezzet.com/embroidery",
+  "applicationCategory": "UtilitiesApplication",
+  "operatingSystem": "Any (runs in the browser)",
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+  "description": "Convert machine embroidery files between PES, DST, JEF, EXP, VP3, XXX, PEC and U01 in the browser without uploading them."
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {"@type": "Question", "name": "Is the embroidery converter free?", "acceptedAnswer": {"@type": "Answer", "text": "Yes. There is no sign-up, no limit on files and no watermark."}},
+    {"@type": "Question", "name": "Are my embroidery files uploaded?", "acceptedAnswer": {"@type": "Answer", "text": "No. The converter runs inside your browser, so your design never leaves your computer."}},
+    {"@type": "Question", "name": "Why did my thread colors change after converting to DST?", "acceptedAnswer": {"@type": "Answer", "text": "DST, EXP and U01 files store stitches and color changes but not the thread colors themselves, so your machine shows its own default colors. Use the color list shown before converting to pick your threads."}},
+    {"@type": "Question", "name": "Can I convert a JPG or PNG into an embroidery file?", "acceptedAnswer": {"@type": "Answer", "text": "Not with a file converter. Turning a picture into stitches is called digitizing and needs digitizing software or a digitizer. This tool converts designs that are already embroidery files."}}
+  ]
+}
+</script>
+</head>
+<body>
+<header class="site-header">
+  <div class="wrap">
+    <a class="logo" href="/"><img class="logo-light" src="/assets/logo.png" alt="Wezzet" width="113" height="52"><img class="logo-dark" src="/assets/logo-dark.png" alt="Wezzet" width="113" height="52"></a>
+    <nav class="site-nav" aria-label="Main"><a href="/">All tools</a><button class="theme-toggle" type="button" aria-label="Switch between light and dark mode"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm0 2v16a8 8 0 0 1 0-16Z"/></svg></button></nav>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <section class="tool-hero" aria-labelledby="page-title">
+      <div class="intro">
+        <h1 id="page-title">Embroidery file converter</h1>
+      </div>
+
+      <div class="hoop-col">
+        <div class="hoop" id="hoop">
+          <canvas id="preview" aria-hidden="true" hidden></canvas>
+          <div class="hoop-empty" id="hoop-empty">
+            <p>Drop a design file here</p>
+            <button class="btn" type="button" id="choose">Choose a file</button>
+            <p class="small">.pes .dst .jef .exp .vp3 .xxx .hus and more</p>
+          </div>
+          <div class="hoop-status" id="hoop-status" role="status" aria-live="polite" hidden></div>
+        </div>
+        <input type="file" id="file" hidden>
+      </div>
+
+      <div class="result" id="result" hidden>
+        <h2 id="r-name"></h2>
+        <dl class="facts">
+          <div><dt>Size</dt><dd id="r-size"></dd></div>
+          <div><dt>Stitches</dt><dd id="r-stitches"></dd></div>
+          <div><dt>Thread colors</dt><dd id="r-colors"></dd></div>
+          <div><dt>Smallest hoop</dt><dd id="r-hoop"></dd></div>
+        </dl>
+        <ul class="swatches" id="r-swatches" aria-label="Thread colors in this design"></ul>
+
+        <div class="convert-row">
+          <div>
+            <label for="format">Convert to</label>
+            <select id="format">
+              <option value="pes">PES: Brother, Baby Lock</option>
+              <option value="dst">DST: Tajima and most commercial machines</option>
+              <option value="jef">JEF: Janome, Elna</option>
+              <option value="exp">EXP: Bernina, Melco</option>
+              <option value="vp3">VP3: Pfaff, Husqvarna Viking</option>
+              <option value="xxx">XXX: Singer</option>
+              <option value="pec">PEC: older Brother machines</option>
+              <option value="u01">U01: Barudan</option>
+            </select>
+          </div>
+          <button class="btn" type="button" id="download">Download PES file</button>
+        </div>
+        <p class="note" id="color-note" hidden>This format doesn't store thread colors. Note the colors above.</p>
+        <p class="note" id="r-note" hidden></p>
+        <button class="btn btn-quiet again" type="button" id="again">Convert another file</button>
+      </div>
+
+      <p class="note error" id="error" role="alert" hidden></p>
+    </section>
+
+    <section class="section faq" aria-labelledby="faq-title">
+      <h2 id="faq-title">Questions</h2>
+      <details>
+        <summary>Which format does my machine use?</summary>
+        <table class="plain">
+        <thead><tr><th scope="col">Format</th><th scope="col">Machines</th></tr></thead>
+        <tbody>
+          <tr><td>PES</td><td>Brother and Baby Lock home machines</td></tr>
+          <tr><td>DST</td><td>Tajima and most commercial multi-needle machines</td></tr>
+          <tr><td>JEF</td><td>Janome and Elna</td></tr>
+          <tr><td>EXP</td><td>Bernina and Melco</td></tr>
+          <tr><td>VP3</td><td>Pfaff and newer Husqvarna Viking machines</td></tr>
+          <tr><td>XXX</td><td>Singer</td></tr>
+          <tr><td>PEC</td><td>Older Brother machines</td></tr>
+          <tr><td>U01</td><td>Barudan</td></tr>
+        </tbody>
+      </table>
+      </details>
+      <details>
+        <summary>Is it free?</summary>
+        <p>Yes. There's no sign-up, no limit on files and no watermark.</p>
+      </details>
+      <details>
+        <summary>Are my files uploaded anywhere?</summary>
+        <p>No. Everything runs in your browser, so your design never leaves your computer.</p>
+      </details>
+      <details>
+        <summary>Why did my thread colors change after converting to DST?</summary>
+        <p>Those formats don't store thread colors, so your machine uses its defaults. Use the color list shown here.</p>
+      </details>
+      <details>
+        <summary>Can I turn a JPG or PNG into an embroidery file?</summary>
+        <p>No. That's called digitizing and needs digitizing software.</p>
+      </details>
+      <details>
+        <summary>Which files can it open?</summary>
+        <p>PES, PEC, DST, DSB, DSZ, JEF, JPX, EXP, VP3, HUS, SEW, XXX, KSM, PCS, PCD, PCQ, PCM, SHV, U01, 10O, 100, BRO, DAT, EMD, EXY, FXY, GT, INB, TBF, TAP, SPX, STX, PHB, PHC, NEW, MAX, MIT, STC, ZHS, ZXY, PMV, EDR, COL and INF.</p>
+      </details>
+      <details>
+        <summary>Will the converted design stitch exactly the same?</summary>
+        <p>Stitches, size and color changes carry over. Some extras, like thread brands, may not.</p>
+      </details>
+    </section>
+  </div>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <p><a href="/">Wezzet</a>: free tools that run in your browser.</p>
+    <p>Conversion is powered by the open-source <a href="https://github.com/EmbroidePy/pyembroidery" rel="noopener">pyembroidery</a> and <a href="https://pyodide.org" rel="noopener">Pyodide</a> projects. <a href="/licenses.txt">Licenses</a></p>
+  </div>
+</footer>
+
+<script src="/assets/converter.js?v=3" defer></script>
+<script src="/assets/theme.js?v=3" defer></script>
+</body>
+</html>

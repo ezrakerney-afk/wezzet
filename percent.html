@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Percentage Calculator | Wezzet</title>
+<meta name="description" content="Work out X% of a number, what percent one number is of another, and percentage increase or decrease.">
+<link rel="canonical" href="https://wezzet.com/percent">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Wezzet">
+<meta property="og:title" content="Percentage Calculator | Wezzet">
+<meta property="og:url" content="https://wezzet.com/percent">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#121212" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="icon" href="/assets/icon-32.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+<script>try{(function(t){if(t==="dark"||t==="light")document.documentElement.dataset.theme=t})(localStorage.getItem("wz-theme"))}catch(e){}</script>
+<style>.logo .logo-dark{display:none}:root[data-theme="dark"] .logo .logo-light{display:none}:root[data-theme="dark"] .logo .logo-dark{display:block}@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .logo .logo-light{display:none}:root:not([data-theme="light"]) .logo .logo-dark{display:block}}</style>
+<link rel="stylesheet" href="/assets/site.css?v=3">
+</head>
+<body>
+<header class="site-header">
+  <div class="wrap">
+    <a class="logo" href="/"><img class="logo-light" src="/assets/logo.png" alt="Wezzet" width="113" height="52"><img class="logo-dark" src="/assets/logo-dark.png" alt="Wezzet" width="113" height="52"></a>
+    <nav class="site-nav" aria-label="Main"><a href="/">All tools</a><button class="theme-toggle" type="button" aria-label="Switch between light and dark mode"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm0 2v16a8 8 0 0 1 0-16Z"/></svg></button></nav>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <div class="tool-head">
+      <h1>Percentage calculator</h1>
+    </div>
+
+    <div class="calc">
+      <div class="inline">What is <input type="number" id="a1" value="15" aria-label="Percent"> % of <input type="number" id="b1" value="200" aria-label="Number"> ?</div>
+      <p class="out" id="r1" aria-live="polite"></p>
+    </div>
+    <div class="calc">
+      <div class="inline"><input type="number" id="a2" value="30" aria-label="Part"> is what % of <input type="number" id="b2" value="120" aria-label="Whole"> ?</div>
+      <p class="out" id="r2" aria-live="polite"></p>
+    </div>
+    <div class="calc">
+      <div class="inline">From <input type="number" id="a3" value="80" aria-label="Old value"> to <input type="number" id="b3" value="100" aria-label="New value"> is what % change?</div>
+      <p class="out" id="r3" aria-live="polite"></p>
+    </div>
+    <section class="section faq" aria-labelledby="faq">
+      <h2 id="faq">Questions</h2>
+      <details><summary>How do I work out percentage change?</summary><p>Subtract the old value from the new one, divide by the old value, then multiply by 100.</p></details>
+    </section>
+  </div>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <p><a href="/">Wezzet</a>: free tools that run in your browser.</p>
+  </div>
+</footer>
+<script src="/assets/percent.js?v=3" defer></script>
+<script src="/assets/theme.js?v=3" defer></script>
+</body>
+</html>

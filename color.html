@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Color Picker: HEX, RGB and HSL | Wezzet</title>
+<meta name="description" content="Pick a color and get its HEX, RGB and HSL codes, or convert between them. Shows contrast with white and black text.">
+<link rel="canonical" href="https://wezzet.com/color">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Wezzet">
+<meta property="og:title" content="Color Picker: HEX, RGB and HSL | Wezzet">
+<meta property="og:url" content="https://wezzet.com/color">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#121212" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="icon" href="/assets/icon-32.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+<script>try{(function(t){if(t==="dark"||t==="light")document.documentElement.dataset.theme=t})(localStorage.getItem("wz-theme"))}catch(e){}</script>
+<style>.logo .logo-dark{display:none}:root[data-theme="dark"] .logo .logo-light{display:none}:root[data-theme="dark"] .logo .logo-dark{display:block}@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .logo .logo-light{display:none}:root:not([data-theme="light"]) .logo .logo-dark{display:block}}</style>
+<link rel="stylesheet" href="/assets/site.css?v=3">
+</head>
+<body>
+<header class="site-header">
+  <div class="wrap">
+    <a class="logo" href="/"><img class="logo-light" src="/assets/logo.png" alt="Wezzet" width="113" height="52"><img class="logo-dark" src="/assets/logo-dark.png" alt="Wezzet" width="113" height="52"></a>
+    <nav class="site-nav" aria-label="Main"><a href="/">All tools</a><button class="theme-toggle" type="button" aria-label="Switch between light and dark mode"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm0 2v16a8 8 0 0 1 0-16Z"/></svg></button></nav>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <div class="tool-head">
+      <h1>Color picker</h1>
+    </div>
+
+    <div style="display:flex;gap:20px;flex-wrap:wrap;align-items:start">
+      <input type="color" id="pick" value="#3b82f6" aria-label="Pick a color" style="width:160px;height:160px;border:1px solid var(--line-strong);border-radius:12px;padding:4px;background:var(--bg);cursor:pointer">
+      <div style="display:grid;gap:10px;min-width:260px;flex:1;max-width:420px">
+        <div class="field"><label for="hex">HEX</label><div style="display:flex;gap:8px"><input type="text" id="hex" class="mono" spellcheck="false"><button class="btn btn-quiet" type="button" data-copy="hex">Copy</button></div></div>
+        <div class="field"><label for="rgb">RGB</label><div style="display:flex;gap:8px"><input type="text" id="rgb" class="mono" spellcheck="false"><button class="btn btn-quiet" type="button" data-copy="rgb">Copy</button></div></div>
+        <div class="field"><label for="hsl">HSL</label><div style="display:flex;gap:8px"><input type="text" id="hsl" class="mono" spellcheck="false"><button class="btn btn-quiet" type="button" data-copy="hsl">Copy</button></div></div>
+      </div>
+    </div>
+    <div class="stats" style="max-width:520px">
+      <div class="stat" id="sw-w" style="color:#fff"><b>Aa</b><span style="color:inherit" id="c-w"></span></div>
+      <div class="stat" id="sw-b" style="color:#000"><b>Aa</b><span style="color:inherit" id="c-b"></span></div>
+    </div>
+    <section class="section faq" aria-labelledby="faq">
+      <h2 id="faq">Questions</h2>
+      <details><summary>What contrast do I need for readable text?</summary><p>At least 4.5 to 1 for normal text and 3 to 1 for large text, under the WCAG accessibility guidelines.</p></details>
+    </section>
+  </div>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <p><a href="/">Wezzet</a>: free tools that run in your browser.</p>
+  </div>
+</footer>
+<script src="/assets/color.js?v=3" defer></script>
+<script src="/assets/theme.js?v=3" defer></script>
+</body>
+</html>

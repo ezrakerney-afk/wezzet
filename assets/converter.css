@@ -1,0 +1,117 @@
+/* Embroidery converter: the hoop is the drop zone and the preview */
+
+.tool-hero {
+  display: grid;
+  gap: 32px;
+  padding: 28px 0 40px;
+  align-items: start;
+}
+@media (min-width: 900px) {
+  .tool-hero { grid-template-columns: 1fr minmax(360px, 440px); gap: 56px; padding-top: 48px; }
+  .tool-hero .hoop-col { grid-column: 2; grid-row: 1 / span 2; }
+}
+
+.privacy-note {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  color: var(--ink-soft);
+  font-size: 0.98rem;
+  max-width: 46ch;
+}
+.privacy-note svg { flex: none; margin-top: 3px; }
+
+/* The hoop */
+.hoop-col { width: 100%; max-width: 440px; margin: 0 auto; }
+.hoop {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+  margin-top: 18px;
+  border-radius: 50%;
+  border: 12px solid var(--hoop);
+  box-shadow: inset 0 0 0 1px var(--line-strong), 0 0 0 1px var(--line-strong);
+  background-color: var(--bg);
+  background-image:
+    repeating-linear-gradient(0deg, var(--grid) 0 1px, transparent 1px 7px),
+    repeating-linear-gradient(90deg, var(--grid) 0 1px, transparent 1px 7px);
+  display: grid;
+  place-items: center;
+}
+/* the tightening screw at the top of a hoop */
+.hoop::before {
+  content: "";
+  position: absolute;
+  top: -27px;
+  left: 50%;
+  width: 28px;
+  height: 16px;
+  transform: translateX(-50%);
+  background: var(--hoop);
+  border: 1px solid var(--line-strong);
+  border-radius: 5px 5px 2px 2px;
+}
+.hoop.dragging { box-shadow: inset 0 0 0 3px var(--ink), 0 0 0 1px var(--line-strong); }
+
+.hoop-empty { text-align: center; padding: 0 18%; }
+.hoop-empty p { margin: 0 auto 14px; font-size: 1.1rem; }
+.hoop-empty .small { font-size: 0.92rem; color: var(--ink-soft); margin: 14px auto 0; }
+
+.hoop canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+}
+.hoop-status {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  padding: 0 20%;
+  border-radius: 50%;
+  background: var(--overlay);
+  font-weight: 600;
+}
+.stitching {
+  display: block;
+  width: 120px;
+  height: 3px;
+  margin: 12px auto 0;
+  background-image: repeating-linear-gradient(90deg, var(--ink) 0 8px, transparent 8px 13px);
+  background-size: 26px 3px;
+  animation: stitch 0.9s linear infinite;
+}
+@keyframes stitch { to { background-position: 26px 0; } }
+
+/* Result panel */
+.result { max-width: 560px; }
+.result h2 { font-size: 1.35rem; margin-bottom: 4px; overflow-wrap: anywhere; }
+.facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px 20px;
+  margin: 14px 0 18px;
+  padding: 0;
+}
+.facts div { margin: 0; }
+.facts dt { font-size: 0.9rem; color: var(--ink-soft); }
+.facts dd { margin: 0; font-weight: 600; font-size: 1.05rem; }
+
+.swatches { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 18px; padding: 0; list-style: none; }
+.swatches li { width: 24px; height: 24px; border-radius: 50%; box-shadow: 0 0 0 1px var(--line-strong); }
+
+.convert-row { display: grid; gap: 12px; margin-top: 8px; }
+@media (min-width: 560px) { .convert-row { grid-template-columns: 1fr auto; align-items: end; } }
+.convert-row label { display: block; font-weight: 600; margin-bottom: 6px; }
+
+.again { margin-top: 18px; }
+
+/* The hoop is fabric: keep it light in dark mode so dark threads stay visible */
+.hoop {
+  --bg: #fafafa; --ink: #1a1a1a; --ink-soft: #5c5c5c; --grid: rgba(0, 0, 0, 0.045);
+  --accent: #1a1a1a; --accent-ink: #fff; --accent-hover: #3a3a3a; --overlay: rgba(250, 250, 250, 0.9);
+  color: var(--ink);
+}

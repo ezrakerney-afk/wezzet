@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quilt backing, binding and batting calculator | Wezzet</title>
+<meta name="description" content="Work out how much fabric to buy for quilt backing (pieced or wide back), binding strips and batting. Enter your quilt size and get yardage instantly, rounded up to the nearest 1/8 yard.">
+<link rel="canonical" href="https://wezzet.com/quilt">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Wezzet">
+<meta property="og:title" content="Quilt backing, binding and batting calculator | Wezzet">
+<meta property="og:description" content="How much fabric to buy for backing, binding and batting.">
+<meta property="og:url" content="https://wezzet.com/quilt">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#121212" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="icon" href="/assets/icon-32.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+<script>try{(function(t){if(t==="dark"||t==="light")document.documentElement.dataset.theme=t})(localStorage.getItem("wz-theme"))}catch(e){}</script>
+<style>.logo .logo-dark{display:none}:root[data-theme="dark"] .logo .logo-light{display:none}:root[data-theme="dark"] .logo .logo-dark{display:block}@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .logo .logo-light{display:none}:root:not([data-theme="light"]) .logo .logo-dark{display:block}}</style>
+<link rel="stylesheet" href="/assets/site.css?v=3">
+<style>
+  .layout { display: grid; gap: 28px; margin-top: 24px; align-items: start; }
+  @media (min-width: 960px) { .layout { grid-template-columns: 380px 1fr; } }
+  .panel form { display: grid; gap: 18px; }
+  .panel fieldset { border: 0; padding: 0; margin: 0; display: grid; gap: 14px; }
+  .panel legend { font-weight: 700; font-size: 1.05rem; margin-bottom: 4px; padding: 0; }
+  .answers { display: grid; gap: 14px; }
+  .answer { border: 1px solid var(--line); border-radius: 12px; padding: 18px 20px; }
+  .answer h2 { font-size: 1.05rem; margin: 0 0 4px; color: var(--ink-soft); font-weight: 600; }
+  .answer .big { font-size: 2rem; font-weight: 700; letter-spacing: -0.02em; line-height: 1.2; margin: 0 0 6px; }
+  .answer .metric { font-size: 1.05rem; font-weight: 400; color: var(--ink-soft); letter-spacing: 0; }
+  .answer p { margin: 0; color: var(--ink-soft); }
+  .back-grid { display: grid; gap: 16px; }
+  @media (min-width: 560px) { .back-grid { grid-template-columns: 1fr auto; align-items: center; } }
+  #r-back-diagram svg { display: block; max-width: 170px; height: auto; }
+</style>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {"@type": "Question", "name": "How much bigger should quilt backing be than the quilt top?", "acceptedAnswer": {"@type": "Answer", "text": "Most quilters add 4 inches on every side, so the backing is 8 inches wider and longer than the top. Many longarm quilters ask for 4 to 6 inches per side, so check with yours."}},
+    {"@type": "Question", "name": "How many binding strips do I need?", "acceptedAnswer": {"@type": "Answer", "text": "Add up all four sides of the quilt, add about 12 inches for corners and joining, then divide by the usable length of each strip. Strips cut across 42 to 44 inch fabric give roughly 40 inches each, a little less after diagonal joins."}},
+    {"@type": "Question", "name": "Should I use wide back fabric?", "acceptedAnswer": {"@type": "Answer", "text": "Wide back fabric, usually 108 inches wide, lets most quilts up to queen size have a backing with no seams, which is faster to prepare and lies flatter."}}
+  ]
+}
+</script>
+</head>
+<body>
+<header class="site-header">
+  <div class="wrap">
+    <a class="logo" href="/"><img class="logo-light" src="/assets/logo.png" alt="Wezzet" width="113" height="52"><img class="logo-dark" src="/assets/logo-dark.png" alt="Wezzet" width="113" height="52"></a>
+    <nav class="site-nav" aria-label="Main"><a href="/">All tools</a><button class="theme-toggle" type="button" aria-label="Switch between light and dark mode"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm0 2v16a8 8 0 0 1 0-16Z"/></svg></button></nav>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <section class="tool-head" aria-labelledby="page-title">
+      <h1 id="page-title">Quilt fabric calculator</h1>
+
+      <div class="layout">
+        <div class="panel">
+          <form onsubmit="return false" novalidate>
+            <fieldset>
+              <legend>Finished quilt top</legend>
+              <div class="field-row two">
+                <div class="field"><label for="q-width">Width (in)</label><input type="number" id="q-width" inputmode="decimal" min="0" step="0.5" value="60"></div>
+                <div class="field"><label for="q-length">Length (in)</label><input type="number" id="q-length" inputmode="decimal" min="0" step="0.5" value="72"></div>
+              </div>
+            </fieldset>
+            <fieldset>
+              <legend>Backing</legend>
+              <div class="field">
+                <label for="q-back-fabric">Backing fabric</label>
+                <select id="q-back-fabric">
+                  <option value="40">Standard quilting cotton, 42 to 44 in (40 in usable)</option>
+                  <option value="104">Wide back, 108 in (104 in usable)</option>
+                  <option value="custom">Other width</option>
+                </select>
+              </div>
+              <div class="field" id="q-custom-wrap" hidden>
+                <label for="q-back-custom">Usable width (in)</label>
+                <input type="number" id="q-back-custom" inputmode="decimal" min="0" step="0.5" value="54">
+                <p class="hint">Measure between the selvages.</p>
+              </div>
+              <div class="field">
+                <label for="q-extra">Extra on each side (in)</label>
+                <input type="number" id="q-extra" inputmode="decimal" min="0" step="0.5" value="4">
+                <p class="hint">Usually 4 in.</p>
+              </div>
+            </fieldset>
+            <fieldset>
+              <legend>Binding</legend>
+              <div class="field-row two">
+                <div class="field">
+                  <label for="q-strip">Strip width (in)</label>
+                  <select id="q-strip">
+                    <option value="2.25">2 1/4</option>
+                    <option value="2.5" selected>2 1/2</option>
+                    <option value="2.75">2 3/4</option>
+                    <option value="3">3</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="q-bind-fabric">Fabric width</label>
+                  <select id="q-bind-fabric">
+                    <option value="40" selected>42 to 44 in</option>
+                    <option value="54">56 to 58 in</option>
+                  </select>
+                </div>
+              </div>
+            </fieldset>
+          </form>
+        </div>
+
+        <div>
+          <p class="note error" id="q-msg" role="alert" hidden></p>
+          <div class="answers" id="q-results" aria-live="polite">
+            <div class="answer">
+              <h2>Backing</h2>
+              <div class="back-grid">
+                <div>
+                  <p class="big" id="r-back"></p>
+                  <p id="r-back-how"></p>
+                </div>
+                <div id="r-back-diagram"></div>
+              </div>
+            </div>
+            <div class="answer">
+              <h2>Binding</h2>
+              <p class="big" id="r-bind"></p>
+              <p id="r-bind-how"></p>
+            </div>
+            <div class="answer">
+              <h2>Batting</h2>
+              <p class="big" id="r-batt"></p>
+              <p id="r-batt-how"></p>
+            </div>
+          </div>
+          <p class="note">Rounded up to the nearest 1/8 yard.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section faq" aria-labelledby="faq-title">
+      <h2 id="faq-title">Questions</h2>
+      <details>
+        <summary>Why is the backing bigger than my quilt?</summary>
+        <p>Layers shift while quilting and longarm frames need room to clamp. 4 in per side is typical.</p>
+      </details>
+      <details>
+        <summary>Which way should backing seams run?</summary>
+        <p>Whichever uses less fabric. Either works.</p>
+      </details>
+      <details>
+        <summary>How is binding calculated?</summary>
+        <p>It adds up all four sides, adds 12 in for the corners and joining the ends, then divides by the usable length of each strip after the diagonal joins.</p>
+      </details>
+      <details>
+        <summary>Should I use wide back fabric?</summary>
+        <p>Wide backs (108 in) cover most quilts up to queen with no seams.</p>
+      </details>
+    </section>
+  </div>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <p><a href="/">Wezzet</a>: free tools that run in your browser.</p>
+  </div>
+</footer>
+<script src="/assets/quilt.js?v=3" defer></script>
+<script src="/assets/theme.js?v=3" defer></script>
+</body>
+</html>

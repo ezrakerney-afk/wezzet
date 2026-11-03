@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Forum | Wezzet</title>
+<meta name="description" content="The Wezzet forum: start a topic, ask a question, share what you're making, and vote on the best answers.">
+<link rel="canonical" href="https://wezzet.com/forum">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Wezzet">
+<meta property="og:title" content="Forum | Wezzet">
+<meta property="og:url" content="https://wezzet.com/forum">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#121212" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="icon" href="/assets/icon-32.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+<script>try{(function(t){if(t==="dark"||t==="light")document.documentElement.dataset.theme=t})(localStorage.getItem("wz-theme"))}catch(e){}</script>
+<style>.logo .logo-dark{display:none}:root[data-theme="dark"] .logo .logo-light{display:none}:root[data-theme="dark"] .logo .logo-dark{display:block}@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .logo .logo-light{display:none}:root:not([data-theme="light"]) .logo .logo-dark{display:block}}</style>
+<link rel="stylesheet" href="/assets/site.css?v=3">
+<style>
+  .forum { max-width: 820px; }
+  .bar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; margin: 20px 0 8px; }
+  textarea {
+    width: 100%; min-height: 120px; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--line-strong);
+    font: inherit; color: var(--ink); background: var(--bg); resize: vertical;
+  }
+  textarea:focus { border-color: var(--ink); }
+  .compose { display: grid; gap: 14px; margin: 12px 0 20px; }
+  .compose .actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .count { font-size: 0.85rem; color: var(--ink-soft); margin-left: auto; }
+
+  .topics { list-style: none; padding: 0; margin: 0; }
+  .topic-row { display: grid; grid-template-columns: 44px 1fr; gap: 12px; padding: 14px 0; border-bottom: 1px solid var(--line); }
+  .topic-row a.title { font-weight: 600; font-size: 1.08rem; color: var(--ink); text-decoration: none; overflow-wrap: anywhere; }
+  .topic-row a.title:hover { text-decoration: underline; }
+  .preview { color: var(--ink-soft); font-size: 0.95rem; margin: 2px 0 0; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .meta { font-size: 0.88rem; color: var(--ink-soft); margin-top: 4px; }
+  .meta a { color: var(--ink-soft); }
+
+  .vote { display: flex; flex-direction: column; align-items: center; gap: 0; }
+  .vote.inline { flex-direction: row; gap: 4px; }
+  .vote button {
+    width: 32px; height: 28px; border: 0; background: transparent; cursor: pointer; border-radius: 6px;
+    color: var(--ink-soft); display: grid; place-items: center; padding: 0;
+  }
+  .vote button:hover { background: var(--surface); color: var(--ink); }
+  .vote button[aria-pressed="true"] { color: var(--ink); background: var(--surface); }
+  .vote button svg { width: 16px; height: 16px; }
+  .vote .score { font-weight: 700; font-size: 0.98rem; min-width: 2ch; text-align: center; }
+
+  .topic-full { display: grid; grid-template-columns: 44px 1fr; gap: 12px; padding: 8px 0 20px; border-bottom: 1px solid var(--line); }
+  .topic-full h1 { font-size: clamp(1.6rem, 3.4vw, 2.1rem); margin: 0 0 6px; overflow-wrap: anywhere; }
+  .text { white-space: pre-wrap; overflow-wrap: anywhere; margin: 12px 0 0; max-width: 70ch; }
+  .linkish { background: none; border: 0; padding: 0; font: inherit; color: var(--ink-soft); cursor: pointer; text-decoration: underline; text-underline-offset: 3px; font-size: 0.88rem; }
+  .linkish:hover { color: var(--ink); }
+
+  .comments { list-style: none; padding: 0; margin: 0; }
+  .comments .comments { margin-left: 18px; padding-left: 14px; border-left: 2px solid var(--line); }
+  .comment { padding: 12px 0 4px; }
+  .comment .head { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 0.9rem; color: var(--ink-soft); }
+  .comment .head strong { color: var(--ink); }
+  .comment .text { margin-top: 4px; }
+  .comment .tools { display: flex; gap: 14px; align-items: center; margin-top: 4px; }
+  .comment .removed { color: var(--ink-soft); font-style: italic; margin: 4px 0 0; }
+  .reply-form { margin: 8px 0 4px; display: grid; gap: 8px; max-width: 640px; }
+  .reply-form textarea { min-height: 80px; }
+  .empty { color: var(--ink-soft); padding: 28px 0; }
+  .more { margin: 20px 0; }
+  .back { display: inline-block; margin: 24px 0 10px; color: var(--ink-soft); }
+  .toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 8px; font-size: 0.95rem; max-width: calc(100% - 32px); }
+  .rules { font-size: 0.9rem; color: var(--ink-soft); margin: 0; }
+</style>
+</head>
+<body>
+<header class="site-header">
+  <div class="wrap">
+    <a class="logo" href="/"><img class="logo-light" src="/assets/logo.png" alt="Wezzet" width="113" height="52"><img class="logo-dark" src="/assets/logo-dark.png" alt="Wezzet" width="113" height="52"></a>
+    <nav class="site-nav" aria-label="Main"><a href="/">All tools</a><button class="theme-toggle" type="button" aria-label="Switch between light and dark mode"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm0 2v16a8 8 0 0 1 0-16Z"/></svg></button></nav>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <div class="forum">
+      <section id="list-view" aria-labelledby="forum-title">
+        <div class="tool-head" style="padding-bottom:0">
+          <h1 id="forum-title">Forum</h1>
+          <p class="lede">Ask a question, share what you're making, or help someone else out.</p>
+        </div>
+        <div class="bar">
+          <div class="segmented" role="radiogroup" aria-label="Sort topics">
+            <label><input type="radio" name="sort" value="hot" checked><span>Hot</span></label>
+            <label><input type="radio" name="sort" value="new"><span>New</span></label>
+            <label><input type="radio" name="sort" value="top"><span>Top</span></label>
+          </div>
+          <button class="btn" type="button" id="new-topic-btn">New topic</button>
+        </div>
+
+        <form class="compose panel" id="topic-form" hidden novalidate>
+          <div class="field">
+            <label for="t-title">Title</label>
+            <input type="text" id="t-title" maxlength="120" required>
+          </div>
+          <div class="field">
+            <label for="t-body">Details (optional)</label>
+            <textarea id="t-body" maxlength="5000"></textarea>
+          </div>
+          <div class="field">
+            <label for="t-author">Your name (optional)</label>
+            <input type="text" id="t-author" maxlength="30" placeholder="Anonymous" autocomplete="nickname">
+          </div>
+          <p class="rules">Be kind and stay on topic. Posts reported by several people are hidden automatically.</p>
+          <div class="actions">
+            <button class="btn" type="submit">Post topic</button>
+            <button class="btn btn-quiet" type="button" id="topic-cancel">Cancel</button>
+          </div>
+          <p class="note error" id="topic-error" role="alert" hidden></p>
+        </form>
+
+        <ul class="topics" id="topics" aria-live="polite"></ul>
+        <p class="empty" id="topics-empty" hidden>No topics yet. Start the first one.</p>
+        <button class="btn btn-quiet more" type="button" id="more" hidden>Show more topics</button>
+      </section>
+
+      <section id="topic-view" hidden>
+        <a class="back" href="/forum" id="back-link">All topics</a>
+        <article class="topic-full" id="topic-full"></article>
+
+        <form class="compose" id="comment-form" novalidate>
+          <div class="field">
+            <label for="c-body">Add a comment</label>
+            <textarea id="c-body" maxlength="3000"></textarea>
+          </div>
+          <div class="actions">
+            <input type="text" id="c-author" maxlength="30" placeholder="Your name (optional)" aria-label="Your name (optional)" style="max-width:240px" autocomplete="nickname">
+            <button class="btn" type="submit">Post comment</button>
+          </div>
+          <p class="note error" id="comment-error" role="alert" hidden></p>
+        </form>
+
+        <h2 id="comments-title" style="font-size:1.15rem;margin-top:8px">Comments</h2>
+        <ul class="comments" id="comments"></ul>
+      </section>
+
+      <p class="note error" id="load-error" role="alert" hidden></p>
+    </div>
+  </div>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <p><a href="/">Wezzet</a>: free tools that run in your browser.</p>
+  </div>
+</footer>
+<script src="/assets/forum.js?v=3" defer></script>
+<script src="/assets/theme.js?v=3" defer></script>
+</body>
+</html>
