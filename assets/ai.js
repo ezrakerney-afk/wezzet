@@ -18,7 +18,7 @@
       links.forEach(([label, href, fn], i) => { const a = document.createElement(fn ? "button" : "a"); a.className = "btn" + (i ? " btn-quiet" : ""); a.textContent = label; if (fn) { a.type = "button"; a.onclick = fn; } else a.href = href; box.append(a); });
       d.append(box);
     }
-    log.append(d); d.scrollIntoView({ block: "end", behavior: "smooth" });
+    log.append(d); log.scrollTop = log.scrollHeight;
   }
 
   const STOP = new Set("i a an the to my me can you how do convert into from and or for of in on with want need make please this that it is".split(" "));
