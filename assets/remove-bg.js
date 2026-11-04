@@ -36,6 +36,8 @@ async function loadModel(k, status) {
 }
 
 async function decode(file) {
+  const extra = window.wzDecodeExtra && await wzDecodeExtra(file).catch(() => null);
+  if (extra) file = extra;
   const bmp = await createImageBitmap(file);
   const s = Math.min(1, MAX_SIDE / Math.max(bmp.width, bmp.height));
   const c = document.createElement("canvas");

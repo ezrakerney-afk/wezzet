@@ -47,7 +47,7 @@
     <div class="dropzone" id="drop">
       <button class="btn" type="button" id="choose">Choose files</button>
       <p>or drop them here</p>
-      <input type="file" id="files" accept="video/*,audio/*,.mkv,.mov,.flac,.opus" multiple hidden>
+      <input type="file" id="files" multiple hidden>
     </div>
     <p class="note error" id="msg" role="alert" hidden></p>
     <p id="status" aria-live="polite"></p><progress id="bar" max="1" value="0" hidden style="width:100%"></progress>
@@ -57,6 +57,7 @@
       <details><summary>Is my video uploaded?</summary><p>No. The converter runs on your device. The first time, your browser downloads the converter itself (about 32 MB); your files never leave.</p></details>
       <details><summary>Why is it slow on big videos?</summary><p>It runs on your computer's processor inside the browser, which is slower than a desktop app. Short clips and audio are quick.</p></details>
     </section>
+    <section class="section" aria-labelledby="wzai"><h2 id="wzai">WezzetAI</h2><p>Need a different conversion? Ask <a href="/ai">WezzetAI</a> in plain words and it finds the right tool.</p><p><a class="btn" href="/ai">Open WezzetAI</a></p></section>
   </div>
 </main>
 

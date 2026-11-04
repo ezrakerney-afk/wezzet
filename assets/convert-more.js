@@ -126,6 +126,48 @@ window.wzMore = async (f, e, add, save, note) => {
   add("To gzip (.gz)", async () => save(await new Response(f.stream().pipeThrough(new CompressionStream("gzip"))).blob(), f.name + ".gz", "application/gzip"));
   if (e === "gz") add("Unzip .gz", async () => save(await new Response(f.stream().pipeThrough(new DecompressionStream("gzip"))).blob(), f.name.replace(/\.gz$/i, ""), "application/octet-stream"));
 
+  // Exotic images (TIFF, RAW, PSD, TGA, PPM ...) decoded by /assets/decode-extra.js
+  if (!/^(svg|png|jpe?g|webp|gif|bmp|heic|heif|pdf|zip|gz|txt|md|html?|css|js|json|csv|tsv|xml|ya?ml|mp4|mov|m4v|mkv|webm|avi|wmv|flv|mpe?g|ts|mp3|wav|m4a|aac|ogg|opus|flac|docx|xlsx|pptx|odt|ods|odp|epub)$/.test(e)) {
+    if (!window.wzDecodeExtra) await new Promise((r) => { const s = document.createElement("script"); s.src = "/assets/decode-extra.js?v=1"; s.onload = s.onerror = r; document.head.append(s); });
+    const png = window.wzDecodeExtra && f.size < 3e8 ? await wzDecodeExtra(f).catch(() => null) : null;
+    if (png) {
+      const bmp = await createImageBitmap(png);
+      note(`This file holds a ${bmp.width} × ${bmp.height} picture.`);
+      const as = (type, x) => { const c = document.createElement("canvas"); c.width = bmp.width; c.height = bmp.height; const g = c.getContext("2d"); if (type === "image/jpeg") { g.fillStyle = "#fff"; g.fillRect(0, 0, c.width, c.height); } g.drawImage(bmp, 0, 0); c.toBlob((b) => save(b, base + "." + x), type, 0.92); };
+      add("Convert to PNG", () => save(png, base + ".png"));
+      add("Convert to JPG", () => as("image/jpeg", "jpg"));
+      add("Convert to WebP", () => as("image/webp", "webp"));
+    }
+  }
+
+  // Office documents and e-books are zips of XML: pull the text out
+  if (/^(docx|docm|dotx|odt|odp|ods|pptx|pptm|ppsx|epub)$/.test(e)) {
+    if (!self.fflate) await new Promise((r, j) => { const s = document.createElement("script"); s.src = "/vendor/fflate-0.8.3.min.js"; s.onload = r; s.onerror = j; document.head.append(s); });
+    const files = self.fflate.unzipSync(new Uint8Array(await f.arrayBuffer()));
+    const dec = (n) => new TextDecoder().decode(files[n]);
+    const num = (n) => +(n.match(/(\d+)\.xml$/) || [0, 0])[1];
+    let parts;
+    if (/^doc|^dot/.test(e)) parts = ["word/document.xml"];
+    else if (/^p/.test(e)) parts = Object.keys(files).filter((n) => /^ppt\/slides\/slide\d+\.xml$/.test(n)).sort((a, b) => num(a) - num(b));
+    else if (e === "epub") { const opfName = Object.keys(files).find((n) => n.endsWith(".opf")), opf = xml(dec(opfName)), dir = opfName.replace(/[^/]*$/, ""), items = Object.fromEntries([...opf.querySelectorAll("manifest item")].map((i) => [i.getAttribute("id"), i.getAttribute("href")])); parts = [...opf.querySelectorAll("spine itemref")].map((r) => decodeURIComponent(dir + items[r.getAttribute("idref")])).filter((n) => files[n]); }
+    else parts = ["content.xml"];
+    const paras = [];
+    for (const n of parts) {
+      const d = new DOMParser().parseFromString(dec(n), e === "epub" ? "application/xhtml+xml" : "application/xml");
+      const blocks = d.getElementsByTagName("*");
+      for (const b of blocks) { const t = b.localName; if (t === "p" || /^h[1-6]$/.test(t) || t === "li" || (t === "h" && b.namespaceURI?.includes("opendocument"))) { const x = b.textContent.replace(/\s+/g, " ").trim(); if (x) paras.push(x); } }
+      if (/^p/.test(e) && n !== parts.at(-1)) paras.push("");
+    }
+    const txt = paras.join("\n\n");
+    note(`Found ${paras.filter(Boolean).length} paragraphs of text.`);
+    add("Document to plain text", () => T(txt, "txt"));
+    add("Document to Markdown", () => T(txt, "md", "text/markdown"));
+    add("Document to HTML", () => T(`<!doctype html><meta charset="utf-8"><title>${esc(base)}</title><body style="font:16px/1.5 system-ui;max-width:760px;margin:40px auto;padding:0 16px">${paras.map((p) => p ? `<p>${esc(p)}</p>` : "<hr>").join("\n")}</body>`, "html", "text/html"));
+    add("Document to PDF", () => { const w = window.open(""); if (!w) return; w.document.write(`<!doctype html><meta charset="utf-8"><title>${esc(base)}</title><body style="font:16px/1.5 system-ui;max-width:760px;margin:40px auto">${paras.map((p) => `<p>${esc(p)}</p>`).join("")}<script>onload=()=>print()<\/script>`); w.document.close(); });
+    const media = Object.keys(files).filter((n) => /\.(png|jpe?g|gif|webp|svg|emf|wmf|tiff?)$/i.test(n));
+    if (media.length) add(`Save the ${media.length} picture${media.length > 1 ? "s" : ""} inside`, () => save(new Blob([self.fflate.zipSync(Object.fromEntries(media.map((n) => [n.split("/").pop(), files[n]])))]), base + "-images.zip", "application/zip"));
+  }
+
   // Minimal binary plist reader (Apple's bplist00 format)
   function bplist(u) {
     try {
