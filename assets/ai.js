@@ -10,15 +10,43 @@
     TOOLS = [...t.matchAll(/^\s*\["([^"]+)", "(\/[^"]*)", "([^"]*)"\]/gm)].map((m) => ({ name: m[1], path: m[2], words: (m[1] + " " + m[3]).toLowerCase() }));
   });
 
-  function say(who, text, links = []) {
+  const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+  // Small, safe Markdown: the text is escaped first, then **bold**, *italic*, `code`, [links](url), bare URLs, # headings and lists.
+  function md(text) {
+    const lines = esc(text.trim()).split("\n"), out = [];
+    let list = null;
+    const inline = (s) => s.replace(/`([^`]+)`/g, "<code>$1</code>").replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>").replace(/(^|\W)\*([^*\n]+)\*(?=\W|$)/g, "$1<i>$2</i>")
+      .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+|\/[\w\-/?=&.%]*)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>')
+      .replace(/(^|[\s(])(https?:\/\/[^\s<)]+)/g, '$1<a href="$2" target="_blank" rel="noopener">$2</a>')
+      .replace(/(^|\s)(\/[a-z0-9][a-z0-9-]*)(?=[\s.,!?)]|$)/g, '$1<a href="$2">$2</a>');
+    for (const l of lines) {
+      const li = l.match(/^\s*(?:[-*•]|\d+[.)])\s+(.*)/);
+      if (li) { if (!list) { list = []; } list.push(`<li>${inline(li[1])}</li>`); continue; }
+      if (list) { out.push(`<ul>${list.join("")}</ul>`); list = null; }
+      const h = l.match(/^#{1,6}\s+(.*)/);
+      if (h) out.push(`<p><b>${inline(h[1])}</b></p>`); else if (l.trim()) out.push(`<p>${inline(l)}</p>`);
+    }
+    if (list) out.push(`<ul>${list.join("")}</ul>`);
+    return out.join("");
+  }
+
+  function say(who, text, links = [], sources = []) {
     const d = document.createElement("div"); d.className = "ai-msg ai-" + who;
-    const p = document.createElement("p"); p.textContent = text; d.append(p);
+    const body = document.createElement("div"); body.className = "ai-body";
+    if (who === "bot") body.innerHTML = md(text); else body.textContent = text;
+    d.append(body);
+    if (sources.length) {
+      const s = document.createElement("div"); s.className = "ai-src";
+      sources.forEach(([label, href], i) => { const a = document.createElement("a"); a.href = href; a.target = "_blank"; a.rel = "noopener"; a.textContent = `${i + 1}. ${label}`; s.append(a); });
+      d.append(s);
+    }
     if (links.length) {
       const box = document.createElement("div"); box.className = "row-actions";
       links.forEach(([label, href, fn], i) => { const a = document.createElement(fn ? "button" : "a"); a.className = "btn" + (i ? " btn-quiet" : ""); a.textContent = label; if (fn) { a.type = "button"; a.onclick = fn; } else a.href = href; box.append(a); });
       d.append(box);
     }
     log.append(d); log.scrollTop = log.scrollHeight;
+    return d;
   }
 
   const STOP = new Set("i a an the to my me can you how do convert into from and or for of in on with want need make please this that it is".split(" "));
@@ -31,7 +59,7 @@
       if (pair && t.path === `/${pair[1]}-to-${pair[2]}`) s += 20;
       if (pair && t.words.includes(pair[1]) && t.words.includes(pair[2])) s += 4;
       return { t, s };
-    }).filter((x) => x.s > 0).sort((a, b) => b.s - a.s).slice(0, 4).map((x) => x.t);
+    }).filter((x) => x.s >= 2).sort((a, b) => b.s - a.s).slice(0, 4).map((x) => x.t);
   }
 
   function calc(text) {
@@ -43,11 +71,12 @@
   // The model runs on the visitor's own GPU through WebLLM, so it costs nothing to run and has no usage cap.
   // To swap in our own weights, point MODEL at an MLC-compiled model (see webllm "custom model" docs) and add it to appConfig.
   const WEBLLM = "https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm@0.2.86/+esm";
-  const MODELS = ["Qwen3-8B-q4f16_1-MLC", "Qwen3-4B-q4f16_1-MLC", "Qwen2.5-3B-Instruct-q4f16_1-MLC"];
+  const MODELS = ["Qwen3-4B-q4f16_1-MLC", "Qwen3-1.7B-q4f16_1-MLC", "Qwen2.5-3B-Instruct-q4f16_1-MLC"];
+  let allowDevice = (() => { try { return localStorage.getItem("wz-ai-device") === "1"; } catch (e) { return false; } })();
   let engine = null, loading = null;
   async function getEngine(status) {
     if (engine) return engine;
-    if (!navigator.gpu) return null;
+    if (!navigator.gpu || !allowDevice) return null;
     loading = loading || (async () => {
       const webllm = await import(WEBLLM);
       const ids = webllm.prebuiltAppConfig.model_list.map((m) => m.model_id);
@@ -69,7 +98,7 @@
     const hits = match(text);
     const toolish = hits.length && text.length < 50 && !/\?|^(who|what|when|why|how|is|are|did|does|should|tell|explain|write)\b/i.test(text);
     if (toolish) return say("bot", hits.length > 1 ? "These should do it:" : "This should do it:", hits.map((t) => [t.name, t.path]));
-    say("bot", "Searching…"); const bubble = log.lastChild, status = (s) => { bubble.firstChild.textContent = s; };
+    say("bot", "Searching…"); const bubble = log.lastChild, status = (s) => { bubble.firstChild.innerHTML = md(s); log.scrollTop = log.scrollHeight; };
     let found = { web: [], news: [] };
     try { const r = await fetch("/api/search?q=" + encodeURIComponent(text)); if (r.ok) found = await r.json(); } catch (e) {}
     const srcs = [...found.news.slice(0, 4), ...found.web.slice(0, 4)];
@@ -80,13 +109,16 @@
     const msgs = [{ role: "system", content: SYSTEM }, ...history.slice(-8, -1), { role: "user", content: ctx + "\n\nQuestion: " + text + " /no_think" }];
     try {
       const r = await fetch("/api/ai", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ messages: msgs.map((m) => ({ ...m, content: m.content.replace(" /no_think", "") })) }) });
-      if (r.ok) { const j = await r.json(); if (j.reply) { history.push({ role: "assistant", content: j.reply }); bubble.remove(); return say("bot", j.reply, [...links, ...hits.slice(0, 2).map((t) => [t.name, t.path])]); } }
+      if (r.ok) { const j = await r.json(); if (j.reply) { history.push({ role: "assistant", content: j.reply }); bubble.remove(); return say("bot", j.reply, hits.slice(0, 2).map((t) => [t.name, t.path]), links); } }
     } catch (e) {}
     const eng = await getEngine(status);
     if (!eng) {
       bubble.remove();
-      if (srcs.length) say("bot", "Your browser can't run WezzetAI's on-device model (it needs WebGPU, in recent Chrome or Edge). Here's what the web has on it:\n" + srcs.slice(0, 5).map((x) => "• " + x.title).join("\n"), [...links, ...hits.slice(0, 2).map((t) => [t.name, t.path])]);
-      else say("bot", "I couldn't find anything on that. Try different words.", hits.map((t) => [t.name, t.path]));
+      const list = srcs.slice(0, 5).map((x) => `- [${x.title.replace(/[[\]]/g, "")}](${x.url})${x.source ? " (" + x.source + ")" : ""}`).join("\n");
+      const tools = hits.slice(0, 3).map((t) => [t.name, t.path]);
+      const enable = navigator.gpu && !allowDevice ? [["Turn on full answers (one-time 2–3 GB download)", null, () => { allowDevice = true; try { localStorage.setItem("wz-ai-device", "1"); } catch (e) {} answer(text); }]] : [];
+      if (srcs.length) say("bot", "Here's what I found:\n" + list, [...enable, ...tools]);
+      else say("bot", tools.length ? "These tools should help:" : "I couldn't find anything on that. Try different words.", [...enable, ...tools]);
       return;
     }
     let out = "", raw = "";
@@ -95,7 +127,7 @@
       for await (const ch of stream) { raw += ch.choices[0]?.delta?.content || ""; out = raw.replace(/<think>[\s\S]*?(<\/think>|$)/, "").trimStart(); status(out || "Thinking…"); }
     } catch (e) { out = out || "Something went wrong running the model. Reload and try again."; status(out); }
     history.push({ role: "assistant", content: out });
-    bubble.remove(); say("bot", out, [...links, ...hits.slice(0, 2).map((t) => [t.name, t.path])]);
+    bubble.remove(); say("bot", out, hits.slice(0, 2).map((t) => [t.name, t.path]), links);
   }
 
   async function files(list) {
