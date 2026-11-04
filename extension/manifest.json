@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Wezzet: convert any file",
+  "name": "Wezzet",
   "version": "1.0.0",
   "description": "Right-click any image, video, audio or link to convert it with Wezzet. 200+ free tools, files never leave your device.",
   "icons": { "16": "icon-16.png", "48": "icon-48.png", "128": "icon-128.png" },
