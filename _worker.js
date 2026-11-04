@@ -13,6 +13,7 @@ export default {
     if (url.pathname.startsWith("/api/aicomms")) return aicomms(request, env, url);
     if (/^\/api\/(paste|read|calc|json|csv|hash|base64|uuid)(\/|$)/.test(url.pathname) || url.pathname === "/api" || url.pathname === "/api/") return tools(request, env, url);
     if (url.pathname === "/api/search") return wzSearch(request, env, url);
+    if (url.pathname === "/api/ai") return wzAI(request, env);
     if (url.pathname === "/mcp" || url.pathname === "/mcp/") return mcp(request, env);
     if (url.pathname.startsWith("/api/chat/")) return chat(request, env, url, ctx);
     if (url.pathname.startsWith("/api/forum/")) {
@@ -1279,4 +1280,35 @@ async function wzSearch(request, env, url) {
     web: items(web).slice(0, 6).map((x) => ({ title: tag(x, "title"), url: tag(x, "link"), snippet: tag(x, "description").slice(0, 300) })),
     news: items(news).slice(0, 6).map((x) => ({ title: tag(x, "title"), url: tag(x, "link"), date: tag(x, "pubDate"), source: tag(x, "source") })),
   }, 200, { "cache-control": "public, max-age=300" });
+}
+
+// ---- /api/ai : WezzetAI on Cloudflare Workers AI (open-weight model, runs in Cloudflare's cloud) ----
+// Needs the Workers AI binding named AI. Free within Cloudflare's daily allowance; when that runs out the page
+// falls back to running the model in the visitor's browser. To use our own fine-tuned weights, upload a LoRA
+// adapter to Workers AI and set AI_LORA to its name.
+const AI_MODEL = "@cf/meta/llama-3.1-8b-instruct-fast";
+const AI_LORA = "";
+async function wzAI(request, env) {
+  if (request.method !== "POST") return json({ error: "POST {messages}" }, 405);
+  if (!env.AI) return json({ error: "Workers AI isn't connected" }, 503);
+  let d; try { d = await request.json(); } catch (e) { return json({ error: "bad json" }, 400); }
+  const msgs = (Array.isArray(d.messages) ? d.messages : []).slice(-10)
+    .filter((m) => ["system", "user", "assistant"].includes(m.role) && typeof m.content === "string")
+    .map((m) => ({ role: m.role, content: m.content.slice(0, 6000) }));
+  if (!msgs.length) return json({ error: "no messages" }, 400);
+  if (env.DB) {
+    await tlInit(env);
+    const who = await tlWho(request);
+    const r = await env.DB.prepare("SELECT COUNT(*) AS n FROM actions WHERE who = ? AND action = 'ai' AND created_at > ?").bind(who, Date.now() - 3600e3).first();
+    if ((r ? r.n : 0) >= 60) return json({ error: "limit" }, 429);
+    await tlLog(env, who, "ai");
+  }
+  try {
+    const opts = { messages: msgs, max_tokens: 700, temperature: 0.5 };
+    if (AI_LORA) opts.lora = AI_LORA;
+    const r = await env.AI.run(AI_MODEL, opts);
+    return json({ reply: (r && r.response || "").trim() });
+  } catch (e) {
+    return json({ error: "quota" }, 503); // daily free allowance used up or model unavailable: the page runs it on-device instead
+  }
 }

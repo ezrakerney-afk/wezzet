@@ -74,6 +74,14 @@
     try { const r = await fetch("/api/search?q=" + encodeURIComponent(text)); if (r.ok) found = await r.json(); } catch (e) {}
     const srcs = [...found.news.slice(0, 4), ...found.web.slice(0, 4)];
     const links = srcs.slice(0, 4).map((x) => { let h = x.source || ""; try { h = h || new URL(x.url).hostname.replace(/^www\./, ""); } catch (e) {} return [h || "source", x.url]; });
+    status("Thinking…");
+    const ctx = `Now: ${now()} Eastern.\nWezzet tools that may fit: ${hits.map((t) => `${t.name} (${t.path})`).join(", ") || "none"}.\nSearch results:\n` +
+      (srcs.map((x, i) => `[${i + 1}] ${x.title}${x.source ? " — " + x.source : ""}${x.date ? " (" + x.date + ")" : ""}\n${x.snippet || ""}`).join("\n") || "none");
+    const msgs = [{ role: "system", content: SYSTEM }, ...history.slice(-8, -1), { role: "user", content: ctx + "\n\nQuestion: " + text + " /no_think" }];
+    try {
+      const r = await fetch("/api/ai", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ messages: msgs.map((m) => ({ ...m, content: m.content.replace(" /no_think", "") })) }) });
+      if (r.ok) { const j = await r.json(); if (j.reply) { history.push({ role: "assistant", content: j.reply }); bubble.remove(); return say("bot", j.reply, [...links, ...hits.slice(0, 2).map((t) => [t.name, t.path])]); } }
+    } catch (e) {}
     const eng = await getEngine(status);
     if (!eng) {
       bubble.remove();
@@ -81,10 +89,6 @@
       else say("bot", "I couldn't find anything on that. Try different words.", hits.map((t) => [t.name, t.path]));
       return;
     }
-    status("Thinking…");
-    const ctx = `Now: ${now()} Eastern.\nWezzet tools that may fit: ${hits.map((t) => `${t.name} (${t.path})`).join(", ") || "none"}.\nSearch results:\n` +
-      (srcs.map((x, i) => `[${i + 1}] ${x.title}${x.source ? " — " + x.source : ""}${x.date ? " (" + x.date + ")" : ""}\n${x.snippet || ""}`).join("\n") || "none");
-    const msgs = [{ role: "system", content: SYSTEM }, ...history.slice(-8, -1), { role: "user", content: ctx + "\n\nQuestion: " + text + " /no_think" }];
     let out = "", raw = "";
     try {
       const stream = await eng.chat.completions.create({ messages: msgs, stream: true, temperature: 0.5, max_tokens: 700 });
