@@ -101,6 +101,7 @@
       add("Convert to Word (.doc)", () => save(page(base, body), base + ".doc", "application/msword"));
       add("Convert to .json", () => save(JSON.stringify({ name: f.name, text: t }, null, 2), base + ".json", "application/json"));
     }
+    if (window.wzMore) await wzMore(f, e, add, save, note);
     add("Convert to Base64", () => { const r = new FileReader(); r.onload = () => save(r.result.split(",")[1], f.name + ".base64.txt", "text/plain"); r.readAsDataURL(f); });
     add("Hex dump", async () => { const u = new Uint8Array(await f.slice(0, 2e6).arrayBuffer()); let s = ""; for (let i = 0; i < u.length; i += 16) { const r = [...u.subarray(i, i + 16)]; s += i.toString(16).padStart(8, "0") + "  " + r.map((x) => x.toString(16).padStart(2, "0")).join(" ").padEnd(48) + "  " + r.map((x) => (x > 31 && x < 127 ? String.fromCharCode(x) : ".")).join("") + "\n"; } save(s, f.name + ".hex.txt", "text/plain"); });
     const h = document.createElement("h2"); h.textContent = "Convert right here"; out.append(h);
