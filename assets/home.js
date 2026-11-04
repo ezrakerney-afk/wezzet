@@ -147,6 +147,7 @@
     ["webm to mp4", "/webm-to-mp4", "video audio convert webm to mp4"],
     ["webp to jpg", "/webp-to-jpg", "webp to jpg jpeg convert image"],
     ["webp to png", "/webp-to-png", "webp to png convert image"],
+    ["wezzetai: ask for any tool", "/ai", "wezzetai ai assistant help agent ask chatbot find tool what can"],
     ["word counter", "/words", "word count character count letters essay reading time"],
     ["xml to json", "/xml-to-json", "xml to json xml to json convert"],
     ["zip and unzip", "/zip", "zip unzip extract archive compress folder open zip file"],
@@ -178,7 +179,7 @@
     active = words.length && shown.length ? 0 : -1;
     list.textContent = "";
     if (!shown.length) {
-      const li = document.createElement("li"); li.className = "none"; li.textContent = "no tool matches that yet.";
+      const li = document.createElement("li"); li.className = "none"; li.innerHTML = 'no tool matches that yet. <a href="/ai?q=' + encodeURIComponent(q.value) + '">ask wezzetai</a>';
       list.append(li);
     }
     shown.forEach((t, i) => {
