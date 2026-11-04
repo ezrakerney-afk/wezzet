@@ -1270,7 +1270,7 @@ async function wzSearch(request, env, url) {
     await tlLog(env, who, "search");
   }
   const get = async (u) => { try { const r = await fetch(u, { headers: { "user-agent": "Mozilla/5.0 (compatible; WezzetAI)" }, cf: { cacheTtl: 300 } }); return r.ok ? await r.text() : ""; } catch (e) { return ""; } };
-  const tag = (x, t) => { const m = x.match(new RegExp(`<${t}[^>]*>([\s\S]*?)</${t}>`)); return m ? m[1].replace(/<!\[CDATA\[|\]\]>/g, "").replace(/<[^>]+>/g, "").replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">").trim() : ""; };
+  const tag = (x, t) => { const m = x.match(new RegExp(`<${t}[^>]*>([\\s\\S]*?)</${t}>`)); return m ? m[1].replace(/<!\[CDATA\[|\]\]>/g, "").replace(/<[^>]+>/g, "").replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">").trim() : ""; };
   const items = (x) => x.split("<item>").slice(1);
   const [web, news] = await Promise.all([
     get("https://www.bing.com/search?format=rss&q=" + encodeURIComponent(q)),
