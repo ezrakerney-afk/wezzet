@@ -51,7 +51,7 @@
       });
     } else {
       const p = document.createElement("p");
-      p.textContent = `Wezzet can't convert .${ext(first) || "this kind of"} files yet. You can still zip them, or ask for a converter in the forum.`;
+      p.textContent = `No dedicated tool for .${ext(first) || "this kind of"} files yet, but you can convert it below.`;
       out.append(p);
     }
     const z = document.createElement("button");
@@ -60,7 +60,57 @@
     const ask = document.createElement("a"); ask.className = "btn btn-quiet"; ask.href = "/forum"; ask.textContent = "Request a converter";
     box.append(z); if (!tools) box.append(ask);
     out.append(box);
+    extra(first);
   }
+
+  // Built-in conversions for any file, so nothing is a dead end. Everything stays in memory; nothing is stored.
+  const TXT = new Set("txt text md markdown html htm xhtml xml css js mjs ts json csv tsv yaml yml log ini cfg conf toml rtf srt vtt sql py rb java c cpp h cs go rs php sh bat ps1 url webloc desktop env tex".split(" "));
+  const esc = (t) => t.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+  const save = (data, name, type) => { const a = document.createElement("a"), u = URL.createObjectURL(data instanceof Blob ? data : new Blob([data], { type })); a.href = u; a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(u), 5000); };
+  const md2html = (t) => esc(t).replace(/^### (.*)$/gm, "<h3>$1</h3>").replace(/^## (.*)$/gm, "<h2>$1</h2>").replace(/^# (.*)$/gm, "<h1>$1</h1>").replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").replace(/\*(.+?)\*/g, "<i>$1</i>").replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2">$1</a>').replace(/^[-*] (.*)$/gm, "<li>$1</li>").replace(/\n{2,}/g, "<br><br>");
+  const page = (title, body) => `<!doctype html><meta charset="utf-8"><title>${esc(title)}</title><body style="font:16px/1.5 system-ui;max-width:760px;margin:40px auto;padding:0 16px">${body}</body>`;
+  const parse = (h) => { const d = new DOMParser().parseFromString(h, "text/html"); d.querySelectorAll("script,style").forEach((n) => n.remove()); return d; };
+  function html2text(h) { const d = parse(h); d.querySelectorAll("br,p,div,li,h1,h2,h3,h4,tr").forEach((n) => n.append("\n")); return (d.body.textContent || "").replace(/\n{3,}/g, "\n\n").trim(); }
+  function html2md(h) { const w = (n) => [...n.childNodes].map(md).join(""); const md = (n) => { if (n.nodeType === 3) return n.textContent; const t = n.tagName; if (!t) return ""; const i = w(n); return ({ H1: `\n# ${i}\n`, H2: `\n## ${i}\n`, H3: `\n### ${i}\n`, P: `\n${i}\n`, BR: "\n", LI: `\n- ${i}`, B: `**${i}**`, STRONG: `**${i}**`, I: `*${i}*`, EM: `*${i}*`, A: `[${i}](${n.getAttribute("href") || ""})`, IMG: `![${n.alt || ""}](${n.getAttribute("src") || ""})` })[t] ?? i; }; return w(parse(h).body).replace(/\n{3,}/g, "\n\n").trim(); }
+  function lnkTarget(b) { const u = new Uint8Array(b); let best = "", cur = ""; for (const c of u) { if (c >= 32 && c < 127) cur += String.fromCharCode(c); else { if (/^[a-z]:\|^\\|^https?:/i.test(cur) && cur.length > best.length) best = cur; cur = ""; } } return best; }
+  function printPdf(title, body) { const w = window.open(""); if (!w) return; w.document.write(page(title, body) + "<script>onload=()=>print()<\/script>"); w.document.close(); }
+
+  async function extra(f) {
+    const e = ext(f), base = f.name.replace(/\.[^.]+$/, "") || "file", acts = [];
+    const add = (label, fn) => acts.push([label, fn]);
+    const note = (t) => { const p = document.createElement("p"); p.textContent = t; out.append(p); };
+    if (e === "lnk") {
+      const t = lnkTarget(await f.arrayBuffer());
+      note(t ? `This Windows shortcut points to: ${t}` : "This Windows shortcut has no readable target.");
+      if (t) { add("Save target as .txt", () => save(t, base + ".txt", "text/plain")); if (/^https?:/i.test(t)) add("Convert to .url", () => save(`[InternetShortcut]\r\nURL=${t}\r\n`, base + ".url", "text/plain")); }
+    } else if (TXT.has(e) || f.type.startsWith("text/") || (!guess(f) && f.size < 5e6 && !/[\x00-\x08]/.test(await f.slice(0, 4096).text()))) {
+      const t = await f.text(), isH = /^(html?|xhtml)$/.test(e), isM = /^(md|markdown)$/.test(e);
+      const link = (t.match(/^URL=(.+)$/m) || t.match(/<string>(https?:[^<]+)<\/string>/) || [])[1];
+      if (/^(url|webloc|desktop)$/.test(e) && link) {
+        note(`This shortcut opens: ${link}`);
+        add("Convert to .url (Windows)", () => save(`[InternetShortcut]\r\nURL=${link}\r\n`, base + ".url", "text/plain"));
+        add("Convert to .webloc (Mac)", () => save(`<?xml version="1.0" encoding="UTF-8"?>\n<plist version="1.0"><dict><key>URL</key><string>${esc(link)}</string></dict></plist>\n`, base + ".webloc", "application/xml"));
+        add("Convert to .desktop (Linux)", () => save(`[Desktop Entry]\nType=Link\nName=${base}\nURL=${link}\n`, base + ".desktop", "text/plain"));
+        add("Convert to .html link", () => save(page(base, `<meta http-equiv="refresh" content="0;url=${esc(link)}"><a href="${esc(link)}">${esc(link)}</a>`), base + ".html", "text/html"));
+      }
+      const body = isH ? parse(t).body.innerHTML : isM ? md2html(t) : `<pre style="white-space:pre-wrap">${esc(t)}</pre>`;
+      add("Convert to PDF", () => printPdf(base, body));
+      add("Convert to .txt", () => save(isH ? html2text(t) : t, base + ".txt", "text/plain"));
+      if (!isH) add("Convert to .html", () => save(page(base, body), base + ".html", "text/html"));
+      add("Convert to .md", () => save(isH ? html2md(t) : t, base + ".md", "text/markdown"));
+      add("Convert to Word (.doc)", () => save(page(base, body), base + ".doc", "application/msword"));
+      add("Convert to .json", () => save(JSON.stringify({ name: f.name, text: t }, null, 2), base + ".json", "application/json"));
+    }
+    add("Convert to Base64", () => { const r = new FileReader(); r.onload = () => save(r.result.split(",")[1], f.name + ".base64.txt", "text/plain"); r.readAsDataURL(f); });
+    add("Hex dump", async () => { const u = new Uint8Array(await f.slice(0, 2e6).arrayBuffer()); let s = ""; for (let i = 0; i < u.length; i += 16) { const r = [...u.subarray(i, i + 16)]; s += i.toString(16).padStart(8, "0") + "  " + r.map((x) => x.toString(16).padStart(2, "0")).join(" ").padEnd(48) + "  " + r.map((x) => (x > 31 && x < 127 ? String.fromCharCode(x) : ".")).join("") + "\n"; } save(s, f.name + ".hex.txt", "text/plain"); });
+    const h = document.createElement("h2"); h.textContent = "Convert right here"; out.append(h);
+    const box = document.createElement("div"); box.className = "row-actions";
+    acts.forEach(([l, fn]) => { const b = document.createElement("button"); b.type = "button"; b.className = "btn btn-quiet"; b.textContent = l; b.addEventListener("click", fn); box.append(b); });
+    out.append(box);
+  }
+
+  // Never keep files around: clear anything a previous visit left in the handoff store.
+  try { indexedDB.deleteDatabase("wz-handoff"); } catch (e) {}
 
   $("choose").addEventListener("click", () => input.click());
   input.addEventListener("change", () => { if (input.files.length) show([...input.files]); input.value = ""; });
