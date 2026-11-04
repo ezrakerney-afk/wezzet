@@ -1285,7 +1285,7 @@ async function wzSearch(request, env, url) {
 // ---- /api/ai : WezzetAI ----
 // Main model: our own open-weight model served with Ollama (or llama.cpp) on an always-on PC, reached through a
 // Cloudflare Tunnel at WEZZETAI_URL and locked with a Cloudflare Access service token (CF_ACCESS_CLIENT_ID/SECRET).
-// WEZZETAI_MODEL picks the model name (default qwen3:8b); load our fine-tuned weights into Ollama to tune it.
+// WEZZETAI_MODEL picks the model name (default qwen3.6:35b-a3b); load our fine-tuned weights into Ollama to tune it.
 // Backup: Cloudflare Workers AI if the AI binding exists. If both fail the page runs a model in the visitor's browser.
 const AI_MODEL = "@cf/meta/llama-3.1-8b-instruct-fast";
 async function wzAI(request, env) {
@@ -1309,7 +1309,7 @@ async function wzAI(request, env) {
       const r = await fetch(env.WEZZETAI_URL.replace(/\/$/, "") + "/v1/chat/completions", {
         method: "POST",
         headers: { "content-type": "application/json", ...(env.WEZZETAI_KEY ? { authorization: "Bearer " + env.WEZZETAI_KEY } : {}), ...(env.CF_ACCESS_CLIENT_ID ? { "CF-Access-Client-Id": env.CF_ACCESS_CLIENT_ID, "CF-Access-Client-Secret": env.CF_ACCESS_CLIENT_SECRET } : {}) },
-        body: JSON.stringify({ model: env.WEZZETAI_MODEL || "qwen3:8b", messages: [...msgs.slice(0, -1), { ...last, content: last.content + " /no_think" }], max_tokens: 700, temperature: 0.6 }),
+        body: JSON.stringify({ model: env.WEZZETAI_MODEL || "qwen3.6:35b-a3b", messages: [...msgs.slice(0, -1), { ...last, content: last.content + " /no_think" }], max_tokens: 700, temperature: 0.6 }),
         signal: AbortSignal.timeout(90000),
       });
       if (r.ok) { const j = await r.json(); const t = clean(j.choices?.[0]?.message?.content); if (t) return json({ reply: t }); }
