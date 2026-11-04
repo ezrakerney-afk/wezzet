@@ -1046,6 +1046,21 @@ async function chRoute(request, env, url, ctx) {
   if (!sess || sess.banned) return chOut({ me: null, error: sess ? "This account is suspended." : "Sign in to chat." }, p === "/me" ? 200 : 401);
   const me = sess.id;
 
+  // Change my public username (5 changes a day).
+  if (post && p === "/username") {
+    const display = clean(d.username, 24);
+    if (!/^[A-Za-z0-9_.-]{3,24}$/.test(display)) return chOut({ error: "Usernames are 3 to 24 letters, numbers, . - or _." }, 400);
+    if (display === sess.name) return chOut({ name: display });
+    const who = "chat-u" + me;
+    if ((await DB.prepare("SELECT COUNT(*) n FROM actions WHERE who = ? AND action = 'chat-rename' AND created_at > ?").bind(who, now - 86400e3).first()).n >= 5) return chOut({ error: "You can change your username 5 times a day. Try tomorrow." }, 429);
+    if (await DB.prepare("SELECT 1 FROM ch_users WHERE id <> ? AND (display = ? COLLATE NOCASE OR (display IS NULL AND name = ?))").bind(me, display, display).first()) return chOut({ error: "That username is taken." }, 409);
+    await DB.batch([
+      DB.prepare("UPDATE ch_users SET display = ? WHERE id = ?").bind(display, me),
+      DB.prepare("INSERT INTO actions (who, action, created_at) VALUES (?, 'chat-rename', ?)").bind(who, now),
+    ]);
+    return chOut({ name: display });
+  }
+
   if (post && p === "/logout") {
     await DB.prepare("DELETE FROM ch_sessions WHERE token = ?").bind(sess.token).run();
     return chOut({ ok: true }, 200, { "set-cookie": chCookie("x", 0) });
@@ -1089,6 +1104,18 @@ async function chRoute(request, env, url, ctx) {
   if (p === "/poll") {
     const r = await room(q.get("room"));
     const after = Math.max(0, parseInt(q.get("after") || "0", 10) || 0);
+    // Long poll: with wait=1 (and cursors set), hold the request up to ~20s and return as soon as
+    // there's a new message, note or call signal. Cuts delay to under a second with few requests.
+    if (q.get("wait") === "1" && parseInt(q.get("note") ?? "-1", 10) >= 0) {
+      const n0 = parseInt(q.get("note"), 10), s0 = Math.max(0, parseInt(q.get("sig") || "0", 10) || 0);
+      const check = DB.prepare(`SELECT (SELECT COALESCE(MAX(id), 0) FROM ch_msgs WHERE room = ?) m, (SELECT COALESCE(MAX(id), 0) FROM ch_notes WHERE uid = ?) n,
+        (SELECT COALESCE(MAX(id), 0) FROM ch_signals WHERE too = ?) s`).bind(r ? r.key : "", me, me);
+      for (let i = 0; i < 22; i++) { // D1 allows 50 queries per request on the free plan; stay well under.
+        const c = await check.first();
+        if ((r && c.m > after) || c.n > n0 || c.s > s0 || (request.signal && request.signal.aborted)) break;
+        await new Promise((ok) => setTimeout(ok, i < 6 ? 400 : 1000));
+      }
+    }
     let msgs = [];
     if (r) {
       msgs = (await DB.prepare(`SELECT m.id, m.uid, ${CH_NAME} AS name, m.body, m.ts FROM ch_msgs m JOIN ch_users u ON u.id = m.uid

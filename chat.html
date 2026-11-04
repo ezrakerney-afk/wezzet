@@ -24,40 +24,94 @@
   [hidden] { display: none !important; }
   .brand { display: flex; align-items: center; gap: 14px; }
   .brand h1 { font-size: 1.6rem; margin: 0; padding-left: 14px; border-left: 1px solid var(--line-strong); line-height: 1.2; }
-  .chat-app { display: grid; gap: 16px; margin-top: 20px; }
-  @media (min-width: 760px) { .chat-app { grid-template-columns: 220px 1fr; } }
-  .side { display: grid; gap: 14px; align-content: start; }
-  .side h2 { font-size: .8rem; text-transform: uppercase; letter-spacing: .05em; color: var(--ink-soft); margin: 0 0 4px; }
-  .side ul { list-style: none; margin: 0; padding: 0; }
-  .side button.room { width: 100%; text-align: left; border: 0; background: none; color: var(--ink); font: inherit; padding: 6px 8px; border-radius: 6px; cursor: pointer; }
-  .side button.room:hover, .side button.room[aria-current="true"] { background: var(--surface); }
-  .side .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--line-strong); margin-right: 6px; }
-  .side .dot.on { background: var(--good); }
-  .side .req { display: flex; gap: 6px; align-items: center; padding: 4px 8px; flex-wrap: wrap; }
-  .side .req span { margin-right: auto; overflow-wrap: anywhere; }
-  .side .req button { border: 1px solid var(--line-strong); background: var(--bg); color: var(--ink); border-radius: 6px; font: inherit; font-size: .85rem; padding: 2px 8px; cursor: pointer; }
-  .side .badge { margin-left: 6px; background: var(--ink); color: var(--bg); border-radius: 999px; font-size: .75rem; font-weight: 700; padding: 1px 7px; }
-  .empty { color: var(--ink-soft); padding: 24px 12px; }
-  .side form { display: flex; gap: 6px; }
-  .side input { min-height: 38px; }
-  .pane { border: 1px solid var(--line); border-radius: 10px; display: grid; grid-template-rows: auto 1fr auto; height: min(70vh, 640px); min-width: 0; }
-  .pane-head { display: flex; gap: 8px; align-items: center; padding: 10px 12px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
-  .pane-head h2 { font-size: 1.05rem; margin: 0; margin-right: auto; }
-  .pane-head .btn { min-height: 36px; padding: 0 12px; font-size: .9rem; }
-  .log { overflow-y: auto; padding: 8px 12px; }
-  .msg { padding: 6px 0; }
-  .msg b { margin-right: 6px; }
-  .msg time { font-size: .8rem; color: var(--ink-soft); }
-  .msg .t { white-space: pre-wrap; overflow-wrap: anywhere; }
-  .msg .rep { border: 0; background: none; color: var(--ink-soft); font-size: .8rem; cursor: pointer; visibility: hidden; }
+  main { padding-bottom: 24px; }
+  .chat-app { display: grid; margin-top: 20px; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; height: max(460px, calc(100dvh - 190px)); background: var(--bg); }
+  @media (min-width: 760px) { .chat-app { grid-template-columns: 260px 1fr; } }
+  .av { flex: none; width: 32px; height: 32px; border-radius: 50%; display: inline-grid; place-items: center; color: #fff; font-weight: 700; font-size: .85rem; text-transform: uppercase; user-select: none; }
+  .av.lg { width: 38px; height: 38px; font-size: .95rem; }
+  .av-wrap { position: relative; display: inline-flex; }
+  .av-wrap .dot { position: absolute; right: -1px; bottom: -1px; width: 11px; height: 11px; border-radius: 50%; border: 2px solid var(--surface); background: var(--line-strong); }
+  .av-wrap .dot.on { background: #2eb67d; }
+
+  /* Sidebar */
+  .side { display: flex; flex-direction: column; background: var(--surface); border-right: 1px solid var(--line); min-height: 0; }
+  .side-scroll { flex: 1; overflow-y: auto; padding: 14px 10px; display: grid; gap: 16px; align-content: start; }
+  .side h2 { font-size: .74rem; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-soft); margin: 0 0 6px 8px; }
+  .side ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+  .side button.room { width: 100%; display: flex; align-items: center; gap: 10px; text-align: left; border: 0; background: none; color: var(--ink); font: inherit; padding: 7px 8px; border-radius: 8px; cursor: pointer; }
+  .side button.room .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .side button.room:hover { background: var(--line); }
+  .side button.room[aria-current="true"] { background: var(--bg); box-shadow: 0 0 0 1px var(--line); font-weight: 600; }
+  .side button.room.unread .nm { font-weight: 700; }
+  .side .badge { background: #e01e5a; color: #fff; border-radius: 999px; font-size: .72rem; font-weight: 700; padding: 1px 7px; }
+  .side .req { display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; padding: 6px 8px; }
+  .side .req .nm { flex: 1; min-width: 90px; overflow-wrap: anywhere; font-size: .95rem; }
+  .side .req .nm small { color: var(--ink-soft); }
+  .side .req button { border: 1px solid var(--line-strong); background: var(--bg); color: var(--ink); border-radius: 999px; font: inherit; font-size: .8rem; font-weight: 600; padding: 3px 10px; cursor: pointer; }
+  .side .req button:hover { border-color: var(--ink); }
+  .add { display: flex; gap: 6px; padding: 0 2px; }
+  .add input { min-height: 38px; border-radius: 999px; padding: 0 14px; }
+  .add .btn { min-height: 38px; padding: 0 14px; border-radius: 999px; }
+  .side .wide { width: 100%; min-height: 38px; border-radius: 999px; }
+  .me { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-top: 1px solid var(--line); }
+  .me .nm { flex: 1; min-width: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .me .nm small { display: block; font-weight: 400; font-size: .78rem; color: var(--ink-soft); }
+  .icon-btn { border: 0; background: none; color: var(--ink-soft); width: 32px; height: 32px; border-radius: 8px; display: grid; place-items: center; cursor: pointer; padding: 0; }
+  .icon-btn:hover { background: var(--line); color: var(--ink); }
+  .icon-btn svg { width: 18px; height: 18px; }
+  .rename { display: flex; gap: 6px; padding: 10px 12px; border-top: 1px solid var(--line); }
+  .rename input { min-height: 36px; }
+  .rename .btn { min-height: 36px; padding: 0 12px; }
+
+  /* Conversation */
+  .pane { display: grid; grid-template-rows: auto 1fr auto; min-width: 0; min-height: 0; }
+  .pane-head { display: flex; gap: 10px; align-items: center; padding: 10px 14px; border-bottom: 1px solid var(--line); min-height: 60px; }
+  .pane-head .who { flex: 1; min-width: 0; }
+  .pane-head h2 { font-size: 1.05rem; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pane-head .status { font-size: .8rem; color: var(--ink-soft); }
+  .pane-head .btn { min-height: 34px; padding: 0 14px; font-size: .88rem; border-radius: 999px; }
+  #back-btn { display: none; }
+  .log { overflow-y: auto; padding: 12px 0 8px; min-height: 0; }
+  .day { display: flex; align-items: center; gap: 12px; margin: 14px 16px 6px; font-size: .78rem; font-weight: 600; color: var(--ink-soft); }
+  .day::before, .day::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+  .msg { display: grid; grid-template-columns: 38px 1fr auto; column-gap: 12px; padding: 2px 16px; position: relative; }
+  .msg.first { margin-top: 10px; }
+  .msg:hover { background: var(--surface); }
+  .msg .av { grid-row: span 2; margin-top: 2px; }
+  .msg .head { display: flex; align-items: baseline; gap: 8px; }
+  .msg .head b { font-weight: 700; }
+  .msg time { font-size: .74rem; color: var(--ink-soft); }
+  .msg .side-time { grid-column: 1; text-align: right; font-size: .68rem; color: var(--ink-soft); visibility: hidden; padding-top: 3px; }
+  .msg:hover .side-time { visibility: visible; }
+  .msg .t { grid-column: 2; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.45; }
+  .msg.pending .t { opacity: .5; }
+  .msg .rep { grid-column: 3; grid-row: 1; border: 0; background: none; color: var(--ink-soft); font-size: .75rem; cursor: pointer; visibility: hidden; align-self: start; }
   .msg:hover .rep, .msg .rep:focus { visibility: visible; }
-  .composer { display: flex; gap: 8px; padding: 10px 12px; border-top: 1px solid var(--line); }
-  .composer textarea { flex: 1; min-height: 46px; max-height: 160px; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--line-strong); font: inherit; color: var(--ink); background: var(--bg); resize: none; }
-  .call { display: flex; gap: 10px; align-items: center; padding: 10px 12px; background: var(--surface); border-bottom: 1px solid var(--line); flex-wrap: wrap; }
-  .call .btn { min-height: 36px; padding: 0 12px; }
-  .auth { max-width: 420px; display: grid; gap: 14px; margin-top: 20px; }
+  .empty { color: var(--ink-soft); padding: 48px 24px; text-align: center; max-width: 36ch; margin: auto; }
+  .empty b { display: block; color: var(--ink); font-size: 1.1rem; margin-bottom: 6px; }
+  .composer { display: flex; gap: 8px; align-items: flex-end; margin: 0 14px 14px; padding: 6px 6px 6px 14px; border: 1px solid var(--line-strong); border-radius: 22px; background: var(--bg); }
+  .composer:focus-within { border-color: var(--ink); }
+  .composer textarea { flex: 1; min-height: 34px; max-height: 160px; padding: 7px 0; border: 0; outline: none; font: inherit; color: var(--ink); background: transparent; resize: none; line-height: 1.4; }
+  .send { width: 36px; height: 36px; border-radius: 50%; border: 0; background: var(--ink); color: var(--bg); display: grid; place-items: center; cursor: pointer; flex: none; }
+  .send svg { width: 18px; height: 18px; }
+  .call { display: flex; gap: 10px; align-items: center; padding: 10px 14px; background: var(--surface); border-bottom: 1px solid var(--line); flex-wrap: wrap; font-weight: 600; }
+  .call span { margin-right: auto; }
+  .call .btn { min-height: 34px; padding: 0 14px; border-radius: 999px; }
+  .call #hang-btn { background: #e01e5a; border-color: #e01e5a; color: #fff; }
+
+  /* Phones: show the list, or the open conversation with a back button. */
+  @media (max-width: 759px) {
+    .chat-app { height: calc(100dvh - 150px); margin-top: 12px; }
+    .chat-app.in-room .side { display: none; }
+    .chat-app:not(.in-room) .pane { display: none; }
+    #back-btn { display: grid; }
+  }
+
+  .auth { max-width: 400px; display: grid; gap: 14px; margin: 32px auto 0; padding: 24px; border: 1px solid var(--line); border-radius: 14px; }
   .auth input[type="password"] { width: 100%; min-height: 46px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--line-strong); background: var(--bg); color: var(--ink); font: inherit; }
-  .note.error { color: var(--bad); }
+  .auth .segmented { display: flex; } .auth .segmented label { flex: 1; text-align: center; }
+  .note.error { color: var(--bad); margin: 10px 0 0; }
+  .note.ok { color: var(--ink-soft); margin: 10px 0 0; }
 </style>
 </head>
 <body>
@@ -77,7 +131,7 @@
         <label><input type="radio" name="mode" value="signup"><span>Sign up</span></label>
       </div>
       <div class="field"><label for="a-name">Login name</label><input type="text" id="a-name" maxlength="24" autocomplete="username" required><p class="hint" id="name-hint" hidden>Private. Only used to sign in.</p></div>
-      <div class="field" id="user-row" hidden><label for="a-user">Username</label><input type="text" id="a-user" maxlength="24" autocomplete="nickname"><p class="hint">What people see, and how friends find you.</p></div>
+      <div class="field" id="user-row" hidden><label for="a-user">Username</label><input type="text" id="a-user" maxlength="24" autocomplete="nickname"><p class="hint">What people see. You can change it later.</p></div>
       <div class="field"><label for="a-pass">Password</label><input type="password" id="a-pass" maxlength="200" autocomplete="current-password" required></div>
       <label class="check" id="age-row" hidden><input type="checkbox" id="a-age"> I'm 13 or older</label>
       <button class="btn" type="submit" id="a-go">Sign in</button>
@@ -87,29 +141,40 @@
 
     <div class="chat-app" id="app" hidden>
       <aside class="side">
-        <div id="ch-wrap" hidden><h2>Channels</h2><ul id="channels"></ul></div>
-        <div id="req-wrap" hidden><h2>Friend requests</h2><ul id="requests"></ul></div>
-        <div id="on-wrap" hidden><h2>Online now</h2><ul id="online"></ul></div>
-        <div><h2>Friends</h2><ul id="dms"></ul></div>
-        <form id="dm-form"><input type="text" id="dm-name" placeholder="Username" maxlength="25" aria-label="Add a friend by username"><button class="btn btn-quiet" type="submit" style="min-height:38px;padding:0 12px">Add</button></form>
-        <div id="blk-wrap" hidden><h2>Blocked</h2><ul id="blocks"></ul></div>
-        <button class="btn btn-quiet" type="button" id="notif-btn" hidden style="min-height:38px">Turn on notifications</button>
-        <p class="meta">Signed in as <b id="me-name"></b> &middot; <a href="#" id="logout">Sign out</a></p>
+        <div class="side-scroll">
+          <div id="ch-wrap" hidden><h2>Channels</h2><ul id="channels"></ul></div>
+          <div id="req-wrap" hidden><h2>Friend requests</h2><ul id="requests"></ul></div>
+          <div><h2>Messages</h2><ul id="dms"></ul></div>
+          <div id="on-wrap" hidden><h2>Online now</h2><ul id="online"></ul></div>
+          <form class="add" id="dm-form"><input type="text" id="dm-name" placeholder="Add friend by username" maxlength="25" aria-label="Add a friend by username"><button class="btn btn-quiet" type="submit">Add</button></form>
+          <div id="blk-wrap" hidden><h2>Blocked</h2><ul id="blocks"></ul></div>
+          <button class="btn btn-quiet wide" type="button" id="notif-btn" hidden>Turn on notifications</button>
+        </div>
+        <form class="rename" id="rename-form" hidden><input type="text" id="rename-input" maxlength="24" aria-label="New username" autocomplete="nickname"><button class="btn" type="submit">Save</button><button class="btn btn-quiet" type="button" id="rename-cancel">Cancel</button></form>
+        <div class="me" id="me-bar">
+          <span class="av" id="me-av"></span>
+          <span class="nm"><span id="me-name"></span><small>Online</small></span>
+          <button class="icon-btn" type="button" id="rename-btn" aria-label="Change username" title="Change username"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M4 17.25V20h2.75L17.81 8.94l-2.75-2.75L4 17.25Zm16.71-10.04a1 1 0 0 0 0-1.41l-2.51-2.51a1 1 0 0 0-1.41 0l-1.96 1.96 3.92 3.92 1.96-1.96Z"/></svg></button>
+          <button class="icon-btn" type="button" id="logout" aria-label="Sign out" title="Sign out"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M10 3h9a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-9v-2h9V5h-9V3Zm-.6 4.6L10.8 9l-2 2H16v2H8.8l2 2-1.4 1.4L5 12l4.4-4.4Z"/></svg></button>
+        </div>
       </aside>
-      <section class="pane" aria-live="polite">
+      <section class="pane">
         <div>
-          <div class="pane-head"><h2 id="room-title"></h2>
+          <div class="pane-head">
+            <button class="icon-btn" type="button" id="back-btn" aria-label="Back to messages"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M15.4 5.4 14 4l-8 8 8 8 1.4-1.4L8.8 12l6.6-6.6Z"/></svg></button>
+            <span id="room-av"></span>
+            <div class="who"><h2 id="room-title"></h2><div class="status" id="room-status"></div></div>
             <button class="btn btn-quiet" type="button" id="call-btn" hidden>Call</button>
             <button class="btn btn-quiet" type="button" id="block-btn" hidden>Block</button>
           </div>
           <div class="call" id="call-bar" hidden><span id="call-text"></span>
             <button class="btn" type="button" id="accept-btn" hidden>Answer</button>
             <button class="btn btn-quiet" type="button" id="mute-btn" hidden>Mute</button>
-            <button class="btn btn-quiet" type="button" id="hang-btn">Hang up</button>
+            <button class="btn" type="button" id="hang-btn">Hang up</button>
           </div>
         </div>
-        <div class="log" id="log"></div>
-        <form class="composer" id="send-form"><textarea id="text" maxlength="2000" placeholder="Message" aria-label="Message"></textarea><button class="btn" type="submit">Send</button></form>
+        <div class="log" id="log" aria-live="polite"></div>
+        <form class="composer" id="send-form"><textarea id="text" rows="1" maxlength="2000" placeholder="Message" aria-label="Message"></textarea><button class="send" type="submit" aria-label="Send"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3.4 20.4 21 12 3.4 3.6 3.4 10l12.6 2-12.6 2z"/></svg></button></form>
       </section>
     </div>
     <audio id="remote-audio" autoplay></audio>
@@ -122,7 +187,7 @@
     <p><a href="/">Wezzet</a> · Follow <a href="https://x.com/WezzetX" rel="noopener">@WezzetX</a> on X.</p>
   </div>
 </footer>
-<script src="/assets/chat.js?v=4" defer></script>
+<script src="/assets/chat.js?v=5" defer></script>
 <script src="/assets/theme.js?v=4" defer></script>
 </body>
 </html>
