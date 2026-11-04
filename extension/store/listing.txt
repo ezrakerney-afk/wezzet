@@ -1,0 +1,20 @@
+Name: Wezzet: convert any file
+Category: Tools
+Short description (132 max):
+Right-click any image, video, audio file or link to convert it with Wezzet. 200+ free tools. Files never leave your device.
+
+Detailed description:
+Wezzet puts 200+ free file tools one right-click away.
+
+- Right-click an image, video, audio file or link and choose "Convert with Wezzet". It opens in Wezzet's converter with the file already loaded: HEIC to JPG, MOV to MP4, WebP to PNG, video to MP3 or GIF, PDF tools, CSV to JSON, subtitles, GPS tracks and more.
+- Select text, right-click, and choose "Ask WezzetAI" to get an answer, with live web search.
+- Click the toolbar button to search every Wezzet tool.
+
+Everything runs in your browser. Wezzet doesn't upload your files, needs no account, and adds no watermarks.
+
+Privacy practices (Chrome Web Store form):
+- Single purpose: send a file, link or selected text the user chooses to wezzet.com's tools.
+- contextMenus: adds the "Convert with Wezzet" and "Ask WezzetAI" menu items.
+- storage: holds the right-clicked file's URL for a moment while the Wezzet tab opens, then deletes it.
+- Host permission (all sites): downloads only the file the user right-clicks, so it can go into the converter. Nothing else is read.
+- Data collected: none. No remote code.
