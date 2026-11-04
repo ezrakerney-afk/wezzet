@@ -2,11 +2,12 @@
 (() => {
   const $ = (id) => document.getElementById(id);
   const drop = $("drop"), input = $("files"), out = $("out");
-  const IMG = "jpg jpeg png webp avif gif bmp heic heif svg ico tif tiff";
+  const IMG = "jpg jpeg jfif pjpeg png apng webp avif gif bmp dib heic heif svg ico cur tif tiff psd tga ppm pgm pbm pnm cr2 cr3 nef nrw arw sr2 srf orf rw2 raf pef dng 3fr erf kdc mrw srw x3f";
   const VID = "mp4 mov m4v mkv webm avi wmv flv 3gp mpg mpeg ts mts";
   const AUD = "mp3 wav m4a aac ogg oga opus flac wma aiff aif amr";
   const EMB = "pes dst jef exp vp3 xxx hus pec sew vip vp4 u01 shv dsb dsz tbf 10o 100 ksm pcs pcm pcq jpx stx zhs";
   const SHEET = "xlsx xls xlsm xlsb ods numbers fods";
+  const DOC = "docx docm dotx odt odp pptx pptm ppsx epub fb2";
   // [extensions, tools: [label, path, query]]
   const ROUTES = [
     [IMG, [["Convert to JPG, PNG or WebP", "/image"], ["Resize", "/resize"], ["Compress to a file size", "/compress"], ["Remove the background", "/remove-bg"], ["Put into a PDF", "/jpg-to-pdf"], ["Make a favicon", "/favicon"]]],
@@ -17,7 +18,8 @@
     [SHEET, [["Convert to CSV, JSON or YAML", "/data"]]],
     ["csv tsv", [["Convert to JSON or YAML", "/data"]]],
     ["json yaml yml", [["Convert to CSV, JSON or YAML", "/data"], ["Format JSON", "/json"]]],
-    ["zip", [["Open the zip", "/zip"]]],
+    [DOC, [["Open as a zip", "/zip"]]],
+    ["zip jar apk ipa xpi crx cbz", [["Open the zip", "/zip"]]],
   ].map(([exts, tools]) => [new Set(exts.split(" ")), tools]);
 
   const ext = (f) => ((f.name.match(/\.([^.]+)$/) || [])[1] || "").toLowerCase();
@@ -72,7 +74,7 @@
   const parse = (h) => { const d = new DOMParser().parseFromString(h, "text/html"); d.querySelectorAll("script,style").forEach((n) => n.remove()); return d; };
   function html2text(h) { const d = parse(h); d.querySelectorAll("br,p,div,li,h1,h2,h3,h4,tr").forEach((n) => n.append("\n")); return (d.body.textContent || "").replace(/\n{3,}/g, "\n\n").trim(); }
   function html2md(h) { const w = (n) => [...n.childNodes].map(md).join(""); const md = (n) => { if (n.nodeType === 3) return n.textContent; const t = n.tagName; if (!t) return ""; const i = w(n); return ({ H1: `\n# ${i}\n`, H2: `\n## ${i}\n`, H3: `\n### ${i}\n`, P: `\n${i}\n`, BR: "\n", LI: `\n- ${i}`, B: `**${i}**`, STRONG: `**${i}**`, I: `*${i}*`, EM: `*${i}*`, A: `[${i}](${n.getAttribute("href") || ""})`, IMG: `![${n.alt || ""}](${n.getAttribute("src") || ""})` })[t] ?? i; }; return w(parse(h).body).replace(/\n{3,}/g, "\n\n").trim(); }
-  function lnkTarget(b) { const u = new Uint8Array(b); let best = "", cur = ""; for (const c of u) { if (c >= 32 && c < 127) cur += String.fromCharCode(c); else { if (/^[a-z]:\|^\\|^https?:/i.test(cur) && cur.length > best.length) best = cur; cur = ""; } } return best; }
+  function lnkTarget(b) { const u = new Uint8Array(b); let best = "", cur = ""; for (const c of u) { if (c >= 32 && c < 127) cur += String.fromCharCode(c); else { if (/^[a-z]:\\|^\\\\|^https?:/i.test(cur) && cur.length > best.length) best = cur; cur = ""; } } return best; }
   function printPdf(title, body) { const w = window.open(""); if (!w) return; w.document.write(page(title, body) + "<script>onload=()=>print()<\/script>"); w.document.close(); }
 
   async function extra(f) {
@@ -101,7 +103,8 @@
       add("Convert to Word (.doc)", () => save(page(base, body), base + ".doc", "application/msword"));
       add("Convert to .json", () => save(JSON.stringify({ name: f.name, text: t }, null, 2), base + ".json", "application/json"));
     }
-    if (window.wzMore) await wzMore(f, e, add, save, note);
+    // One unreadable file must not take the other conversions down with it.
+    if (window.wzMore) { try { await wzMore(f, e, add, save, note); } catch (er) { note("Some conversions were skipped: this file couldn't be fully read (" + er.message + ")."); } }
     add("Convert to Base64", () => { const r = new FileReader(); r.onload = () => save(r.result.split(",")[1], f.name + ".base64.txt", "text/plain"); r.readAsDataURL(f); });
     add("Hex dump", async () => { const u = new Uint8Array(await f.slice(0, 2e6).arrayBuffer()); let s = ""; for (let i = 0; i < u.length; i += 16) { const r = [...u.subarray(i, i + 16)]; s += i.toString(16).padStart(8, "0") + "  " + r.map((x) => x.toString(16).padStart(2, "0")).join(" ").padEnd(48) + "  " + r.map((x) => (x > 31 && x < 127 ? String.fromCharCode(x) : ".")).join("") + "\n"; } save(s, f.name + ".hex.txt", "text/plain"); });
     const h = document.createElement("h2"); h.textContent = "Convert right here"; out.append(h);
