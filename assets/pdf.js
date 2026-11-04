@@ -7,8 +7,7 @@
 
   function kindOf(f) {
     if (f.type === "application/pdf" || /\.pdf$/i.test(f.name)) return "pdf";
-    if (f.type.startsWith("image/") || /\.(jpe?g|png|webp|gif|bmp|avif)$/i.test(f.name)) return "image";
-    return null;
+    return "image";
   }
 
   function render() {
@@ -53,7 +52,8 @@
     const buf = new Uint8Array(await file.arrayBuffer());
     if (isJpg) return { bytes: buf, type: "jpg" };
     if (isPng) return { bytes: buf, type: "png" };
-    const bmp = await createImageBitmap(file);
+    const extra = window.wzDecodeExtra && await wzDecodeExtra(file).catch(() => null);
+    const bmp = await createImageBitmap(extra || file);
     const c = document.createElement("canvas");
     c.width = bmp.width; c.height = bmp.height;
     c.getContext("2d").drawImage(bmp, 0, 0);
