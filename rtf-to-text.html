@@ -23,6 +23,7 @@
 <script>try{(function(t){if(t==="dark"||t==="light")document.documentElement.dataset.theme=t})(localStorage.getItem("wz-theme"))}catch(e){}</script>
 <style>.logo .logo-dark{display:none}:root[data-theme="dark"] .logo .logo-light{display:none}:root[data-theme="dark"] .logo .logo-dark{display:block}@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .logo .logo-light{display:none}:root:not([data-theme="light"]) .logo .logo-dark{display:block}}</style>
 <link rel="stylesheet" href="/assets/site.css?v=5">
+<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"SoftwareApplication","name":"RTF to plain text | Wezzet","url":"https://wezzet.com/rtf-to-text","applicationCategory":"UtilitiesApplication","operatingSystem":"Any (web browser)","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}},{"@type":"FAQPage","mainEntity":[{"@type":"Question","name":"What happens to my file?","acceptedAnswer":{"@type":"Answer","text":"It stays in your browser. Wezzet reads it with JavaScript on your own device, so nothing is uploaded or stored."}},{"@type":"Question","name":"Is it free?","acceptedAnswer":{"@type":"Answer","text":"Yes. There is no account, no watermark and no limit on how many files you convert."}},{"@type":"Question","name":"Does it work on my phone?","acceptedAnswer":{"@type":"Answer","text":"Yes. It works in any modern browser on iPhone, Android, Windows, Mac and Linux."}},{"@type":"Question","name":"My file is a different format. What now?","acceptedAnswer":{"@type":"Answer","text":"Drop it on the any-file converter at /convert. It shows every conversion Wezzet can do for that type of file."}}]}]}</script>
 </head>
 <body>
 <header class="site-header">
@@ -46,9 +47,21 @@
     </div>
     <p class="note error" id="msg" role="alert" hidden></p>
     <div id="out"></div>
+    <section class="section about" aria-labelledby="about">
+      <h2 id="about">About RTF to plain text</h2>
+      <p>RTF is the Rich Text Format that WordPad and TextEdit save by default. This page reads it and saves the result as a new file.</p>
+      <p>Drop the file above (or choose it), then press RTF to plain text. The result downloads right away. Everything runs in your browser, so the file never leaves your device, there is no sign-up, and you can do as many files as you like.</p>
+    </section>
     <section class="section faq" aria-labelledby="faq">
       <h2 id="faq">Questions</h2>
-      <details><summary>What happens to my file?</summary><p>It stays in your browser and is passed to the tool you pick. Nothing is uploaded.</p></details>
+      <details><summary>What happens to my file?</summary><p>It stays in your browser. Wezzet reads it with JavaScript on your own device, so nothing is uploaded or stored.</p></details>
+      <details><summary>Is it free?</summary><p>Yes. There is no account, no watermark and no limit on how many files you convert.</p></details>
+      <details><summary>Does it work on my phone?</summary><p>Yes. It works in any modern browser on iPhone, Android, Windows, Mac and Linux.</p></details>
+      <details><summary>My file is a different format. What now?</summary><p>Drop it on the any-file converter at /convert. It shows every conversion Wezzet can do for that type of file.</p></details>
+    </section>
+    <section class="section" aria-labelledby="related">
+      <h2 id="related">Related tools</h2>
+      <ul><li><a href="/convert">Convert any file</a></li><li><a href="/csv-to-json">CSV to JSON</a></li><li><a href="/html-to-pdf">HTML to PDF</a></li><li><a href="/svg-to-png">SVG to PNG</a></li><li><a href="/srt-to-vtt">SRT to VTT</a></li><li><a href="/file-checksum">File Checksum (SHA-256)</a></li></ul>
     </section>
   </div>
 </main>
