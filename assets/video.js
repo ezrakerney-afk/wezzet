@@ -22,7 +22,24 @@ const PRESETS = {
   m4a: ["m4a", "audio/mp4", ["-vn", "-c:a", "aac", "-b:a", "192k"]],
   wav: ["wav", "audio/wav", ["-vn"]],
   ogg: ["ogg", "audio/ogg", ["-vn", "-c:a", "libvorbis", "-q:a", "5"]],
+  mov: ["mov", "video/quicktime", ["-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-c:a", "aac", "-b:a", "160k"]],
+  mkv: ["mkv", "video/x-matroska", ["-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-c:a", "aac", "-b:a", "160k"]],
+  avi: ["avi", "video/x-msvideo", ["-c:v", "mpeg4", "-q:v", "4", "-c:a", "libmp3lame", "-q:a", "4"]],
+  wmv: ["wmv", "video/x-ms-wmv", ["-c:v", "wmv2", "-q:v", "4", "-c:a", "wmav2", "-b:a", "160k"]],
+  flv: ["flv", "video/x-flv", ["-c:v", "flv1", "-q:v", "4", "-c:a", "libmp3lame", "-ar", "44100", "-b:a", "128k"]],
+  "3gp": ["3gp", "video/3gpp", ["-vf", "scale='min(640,iw)':-2", "-c:v", "mpeg4", "-q:v", "6", "-c:a", "aac", "-ac", "1", "-b:a", "64k"]],
+  mpg: ["mpg", "video/mpeg", ["-c:v", "mpeg2video", "-q:v", "4", "-c:a", "mp2", "-b:a", "192k"]],
+  flac: ["flac", "audio/flac", ["-vn", "-c:a", "flac"]],
+  aiff: ["aiff", "audio/aiff", ["-vn", "-c:a", "pcm_s16be"]],
+  wma: ["wma", "audio/x-ms-wma", ["-vn", "-c:a", "wmav2", "-b:a", "160k"]],
+  opus: ["opus", "audio/opus", ["-vn", "-c:a", "libopus", "-b:a", "128k"]],
+  ac3: ["ac3", "audio/ac3", ["-vn", "-c:a", "ac3", "-b:a", "192k"]],
+  m4r: ["m4r", "audio/mp4", ["-vn", "-t", "40", "-c:a", "aac", "-b:a", "192k", "-f", "ipod"]],
 };
+const LABELS = { mov: "MOV video", mkv: "MKV video", avi: "AVI video", wmv: "WMV video", flv: "FLV video", "3gp": "3GP video (phones)",
+  mpg: "MPG / DVD video", flac: "FLAC audio", aiff: "AIFF audio", wma: "WMA audio", opus: "Opus audio", ac3: "AC3 audio", m4r: "iPhone ringtone (M4R)" };
+// Older pages list only the original presets; add the rest so every page offers every format.
+for (const [k, label] of Object.entries(LABELS)) if (!$("to").querySelector(`option[value="${k}"]`)) $("to").add(new Option(label, k));
 
 async function engine() {
   if (ff) return ff;
@@ -101,5 +118,5 @@ drop.addEventListener("drop", (e) => { e.preventDefault(); add([...e.dataTransfe
 window.addEventListener("dragover", (e) => e.preventDefault());
 window.addEventListener("drop", (e) => e.preventDefault());
 // Pre-select the format from links like /video?to=mp3
-const pre = new URLSearchParams(location.search).get("to");
+const pre = new URLSearchParams(location.search).get("to") || document.querySelector("main").dataset.to;
 if (pre && PRESETS[pre]) $("to").value = pre;

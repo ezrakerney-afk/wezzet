@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MP4 to MPG Converter: Free, No Upload | Wezzet</title>
+<meta name="description" content="Convert MP4 to MPG. Free, runs in your browser, nothing uploaded.">
+<link rel="canonical" href="https://wezzet.com/mp4-to-mpg">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Wezzet">
+<meta property="og:title" content="MP4 to MPG Converter: Free, No Upload | Wezzet">
+<meta property="og:url" content="https://wezzet.com/mp4-to-mpg">
+<meta property="og:image" content="https://wezzet.com/assets/og/video.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://wezzet.com/assets/og/video.png">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#121212" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="icon" href="/assets/icon-32.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+<script>try{(function(t){if(t==="dark"||t==="light")document.documentElement.dataset.theme=t})(localStorage.getItem("wz-theme"))}catch(e){}</script>
+<style>.logo .logo-dark{display:none}:root[data-theme="dark"] .logo .logo-light{display:none}:root[data-theme="dark"] .logo .logo-dark{display:block}@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .logo .logo-light{display:none}:root:not([data-theme="light"]) .logo .logo-dark{display:block}}</style>
+<link rel="stylesheet" href="/assets/site.css?v=6">
+<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"SoftwareApplication","name":"MP4 to MPG","url":"https://wezzet.com/mp4-to-mpg","applicationCategory":"UtilitiesApplication","operatingSystem":"Any (web browser)","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"description":"Convert MP4 to MPG. Free, runs in your browser, nothing uploaded."},{"@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Is my video uploaded?","acceptedAnswer":{"@type":"Answer","text":"No. The converter runs on your device. The first time, your browser downloads the converter itself (about 32 MB); your files never leave."}},{"@type":"Question","name":"Why is it slow on big videos?","acceptedAnswer":{"@type":"Answer","text":"It runs on your computer's processor inside the browser, which is slower than a desktop app. Short clips and audio are quick."}}]}]}</script>
+</head>
+<body>
+<header class="site-header">
+  <div class="wrap">
+    <a class="logo" href="/"><img class="logo-light" src="/assets/logo.png" alt="Wezzet" width="113" height="52"><img class="logo-dark" src="/assets/logo-dark.png" alt="Wezzet" width="113" height="52"></a>
+    <nav class="site-nav" aria-label="Main"><a href="/">All tools</a><button class="theme-toggle" type="button" aria-label="Switch between light and dark mode"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm0 2v16a8 8 0 0 1 0-16Z"/></svg></button></nav>
+  </div>
+</header>
+
+<main data-to="mpg">
+  <div class="wrap">
+    <div class="tool-head">
+      <h1>MP4 to MPG</h1>
+      <p class="lede">Convert MP4 to MPG.</p>
+    </div>
+
+    <div class="options">
+      <div class="field"><label for="to">Save as</label><select id="to"><option value="mp4" selected>MP4 video</option><option value="mp4-small">MP4, smaller file</option><option value="webm">WebM video</option><option value="gif">GIF</option><option value="mp3">MP3 audio</option><option value="m4a">M4A audio</option><option value="wav">WAV audio</option><option value="ogg">OGG audio</option></select></div>
+      <div class="field"><label for="start">Start (optional)</label><input id="start" placeholder="0:05" style="max-width:120px"></div>
+      <div class="field"><label for="end">End (optional)</label><input id="end" placeholder="1:30" style="max-width:120px"></div>
+    </div>
+    <div class="dropzone" id="drop">
+      <button class="btn" type="button" id="choose">Choose files</button>
+      <p>or drop them here</p>
+      <input type="file" id="files" multiple hidden>
+    </div>
+    <p class="note error" id="msg" role="alert" hidden></p>
+    <p id="status" aria-live="polite"></p><progress id="bar" max="1" value="0" hidden style="width:100%"></progress>
+    <ul class="files" id="list" aria-live="polite"></ul>
+    <section class="section faq" aria-labelledby="faq">
+      <h2 id="faq">Questions</h2>
+      <details><summary>Is my video uploaded?</summary><p>No. The converter runs on your device. The first time, your browser downloads the converter itself (about 32 MB); your files never leave.</p></details>
+      <details><summary>Why is it slow on big videos?</summary><p>It runs on your computer's processor inside the browser, which is slower than a desktop app. Short clips and audio are quick.</p></details>
+    </section>
+  </div>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <p><a href="/">Wezzet</a> · Follow <a href="https://x.com/WezzetX" rel="noopener">@WezzetX</a> on X.</p>
+  </div>
+</footer>
+<script src="/assets/video.js?v=2" type="module"></script>
+<script src="/assets/handoff.js?v=1" defer></script>
+<script src="/assets/theme.js?v=4" defer></script>
+</body>
+</html>

@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Currency Converter: Live Exchange Rates | Wezzet</title>
+<meta name="description" content="Convert between 160+ currencies with exchange rates updated weekly. Free, no sign-up.">
+<link rel="canonical" href="https://wezzet.com/currency">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Wezzet">
+<meta property="og:title" content="Currency Converter: Live Exchange Rates | Wezzet">
+<meta property="og:url" content="https://wezzet.com/currency">
+<meta property="og:image" content="https://wezzet.com/assets/og/tip.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://wezzet.com/assets/og/tip.png">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#121212" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="icon" href="/assets/icon-32.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+<script>try{(function(t){if(t==="dark"||t==="light")document.documentElement.dataset.theme=t})(localStorage.getItem("wz-theme"))}catch(e){}</script>
+<style>.logo .logo-dark{display:none}:root[data-theme="dark"] .logo .logo-light{display:none}:root[data-theme="dark"] .logo .logo-dark{display:block}@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .logo .logo-light{display:none}:root:not([data-theme="light"]) .logo .logo-dark{display:block}}</style>
+<link rel="stylesheet" href="/assets/site.css?v=6">
+</head>
+<body>
+<header class="site-header">
+  <div class="wrap">
+    <a class="logo" href="/"><img class="logo-light" src="/assets/logo.png" alt="Wezzet" width="113" height="52"><img class="logo-dark" src="/assets/logo-dark.png" alt="Wezzet" width="113" height="52"></a>
+    <nav class="site-nav" aria-label="Main"><a href="/">All tools</a><button class="theme-toggle" type="button" aria-label="Switch between light and dark mode"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm0 2v16a8 8 0 0 1 0-16Z"/></svg></button></nav>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <div class="tool-head">
+      <h1>Currency converter</h1>
+      <p class="lede">Convert between 160+ currencies.</p>
+    </div>
+    <div class="tight" style="display:grid;gap:16px">
+      <div class="field"><label for="amt">Amount</label><input type="number" id="amt" value="100" min="0" step="any" style="max-width:180px"></div>
+      <div class="options">
+        <div class="field"><label for="from">From</label><select id="from"></select></div>
+        <div class="field"><label for="to">To</label><select id="to"></select></div>
+        <div class="field"><span class="label">&nbsp;</span><button class="btn btn-quiet" type="button" id="swap">Swap</button></div>
+      </div>
+      <div class="stats" aria-live="polite"><div class="stat"><b id="out">-</b><span id="rate">Loading rates…</span></div></div>
+      <p class="note" id="info"></p>
+      <p class="note">Rates are for reference only and can differ from what banks and card providers charge. Don't use them for trading or financial decisions.</p>
+    </div>
+  </div>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <p><a href="/">Wezzet</a> · Follow <a href="https://x.com/WezzetX" rel="noopener">@WezzetX</a> on X.</p>
+  </div>
+</footer>
+<script>(()=>{const $=(i)=>document.getElementById(i);
+// Rates come from open.er-api.com and are cached in the browser for 7 days, so they refresh about once a week.
+const KEY="wz-fx",WEEK=7*864e5;let fx=null;
+const names=(()=>{try{return new Intl.DisplayNames(["en"],{type:"currency"})}catch(e){return null}})();
+const label=(c)=>c+(names?" – "+names.of(c):"");
+function fill(){const codes=Object.keys(fx.rates).sort();for(const s of [$("from"),$("to")]){s.innerHTML=codes.map(c=>`<option value="${c}">${label(c)}</option>`).join("")}
+let saved={};try{saved=JSON.parse(localStorage.getItem("wz-fx-pick")||"{}")}catch(e){}
+$("from").value=saved.f||"USD";$("to").value=saved.t||"EUR";
+$("info").textContent="Rates last updated "+new Date(fx.time*1000).toLocaleDateString("en-US",{dateStyle:"long"})+". They refresh once a week.";calc()}
+function calc(){if(!fx)return;const a=parseFloat($("amt").value)||0,f=$("from").value,t=$("to").value,r=fx.rates[t]/fx.rates[f];
+const fmt=(v,c)=>{try{return new Intl.NumberFormat("en-US",{style:"currency",currency:c,maximumFractionDigits:v<1?4:2}).format(v)}catch(e){return v.toFixed(2)+" "+c}};
+$("out").textContent=fmt(a*r,t);$("rate").textContent=`1 ${f} = ${(r).toPrecision(6)} ${t}`;
+try{localStorage.setItem("wz-fx-pick",JSON.stringify({f,t}))}catch(e){}}
+async function load(){let c=null;try{c=JSON.parse(localStorage.getItem(KEY)||"null")}catch(e){}
+if(c&&Date.now()-c.saved<WEEK){fx=c;return fill()}
+try{const j=await (await fetch("https://open.er-api.com/v6/latest/USD")).json();if(j.result!=="success")throw 0;fx={rates:j.rates,time:j.time_last_update_unix,saved:Date.now()};try{localStorage.setItem(KEY,JSON.stringify(fx))}catch(e){}fill()}
+catch(e){if(c){fx=c;fill();$("info").textContent+=" (couldn't refresh, showing saved rates)"}else{$("rate").textContent="Couldn't load exchange rates. Check your connection and reload."}}}
+$("amt").addEventListener("input",calc);$("from").addEventListener("change",calc);$("to").addEventListener("change",calc);
+$("swap").addEventListener("click",()=>{const f=$("from").value;$("from").value=$("to").value;$("to").value=f;calc()});
+load()})();</script>
+<script src="/assets/theme.js?v=4" defer></script>
+</body>
+</html>
