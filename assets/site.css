@@ -351,3 +351,8 @@ textarea.mono, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consola
 .bg-view[data-bg="black"] img { background: #000; }
 .bg-view .row-actions { justify-content: center; flex-wrap: wrap; align-items: center; }
 .bg-pick { display: inline-flex; gap: 6px; align-items: center; color: var(--ink-soft); font-size: 0.95rem; }
+
+/* Mobile: keep grid tool layouts inside the screen */
+.tight[style*="grid"] { grid-template-columns: minmax(0, 1fr); }
+.tight > *, .stats > * { min-width: 0; }
+.segmented { max-width: 100%; flex-wrap: wrap; }
