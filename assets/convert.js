@@ -108,6 +108,10 @@
     const box = document.createElement("div"); box.className = "row-actions";
     acts.forEach(([l, fn]) => { const b = document.createElement("button"); b.type = "button"; b.className = "btn btn-quiet"; b.textContent = l; b.addEventListener("click", fn); box.append(b); });
     out.append(box);
+    // On a landing page like /csv-to-json, put the matching conversion first
+    const want = (document.querySelector("h1")?.textContent || "").toLowerCase().replace(/ \(.*$/, "");
+    const hit = [...box.children].find((b) => b.textContent.toLowerCase().includes(want));
+    if (hit && location.pathname !== "/convert") { hit.className = "btn"; box.prepend(hit); }
   }
 
   // Never keep files around: clear anything a previous visit left in the handoff store.
