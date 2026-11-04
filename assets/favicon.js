@@ -6,6 +6,8 @@
   const PNG_SIZES = { "apple-touch-icon.png": 180, "icon-192.png": 192, "icon-512.png": 512 };
 
   async function decode(file) {
+    const extra = window.wzDecodeExtra && await wzDecodeExtra(file).catch(() => null);
+    if (extra) file = extra;
     try { return await createImageBitmap(file); } catch (e) {
       const url = URL.createObjectURL(file);
       try { return await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; }); }

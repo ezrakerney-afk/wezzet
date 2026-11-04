@@ -27,6 +27,8 @@
 
   async function decode(file) {
     let blob = file;
+    const extra = window.wzDecodeExtra && await wzDecodeExtra(file).catch(() => null);
+    if (extra) blob = extra;
     if (isHeic(file)) {
       const out = await (await loadHeic())({ blob: file, toType: "image/png" });
       blob = Array.isArray(out) ? out[0] : out;

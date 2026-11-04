@@ -42,10 +42,13 @@
       <label for="cat">Type</label>
       <select id="cat"></select>
     </div>
-    <div class="field-row two tight" style="margin-top:14px">
-      <div class="field"><label for="val">Value</label><input type="number" id="val" value="1"></div>
+    <div class="field-row three tight" style="margin-top:14px">
+      <div class="field"><label for="val">Value</label><input type="number" id="val" value="1" step="any"></div>
       <div class="field"><label for="from">From</label><select id="from"></select></div>
+      <div class="field"><label for="to">To</label><select id="to"></select></div>
     </div>
+    <div class="row-actions" style="margin-top:12px"><button class="btn btn-quiet" type="button" id="swap">Swap</button></div>
+    <p id="answer" role="status" style="font-size:1.4rem;font-weight:700;margin:18px 0 0"></p>
     <table class="plain" style="margin-top:20px"><tbody id="table"></tbody></table>
     <section class="section faq" aria-labelledby="faq">
       <h2 id="faq">Questions</h2>
@@ -63,7 +66,7 @@
     <p><a href="/">Wezzet</a> · Follow <a href="https://x.com/WezzetX" rel="noopener">@WezzetX</a> on X.</p>
   </div>
 </footer>
-<script src="/assets/units.js?v=3" defer></script>
+<script src="/assets/units.js?v=5" defer></script>
 <script src="/assets/theme.js?v=4" defer></script>
 </body>
 </html>
