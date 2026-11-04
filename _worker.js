@@ -12,6 +12,7 @@ export default {
     const url = new URL(request.url);
     if (url.pathname.startsWith("/api/aicomms")) return aicomms(request, env, url);
     if (/^\/api\/(paste|read|calc|json|csv|hash|base64|uuid)(\/|$)/.test(url.pathname) || url.pathname === "/api" || url.pathname === "/api/") return tools(request, env, url);
+    if (url.pathname === "/api/ai") return wezzetAI(request, env);
     if (url.pathname === "/mcp" || url.pathname === "/mcp/") return mcp(request, env);
     if (url.pathname.startsWith("/api/chat/")) return chat(request, env, url, ctx);
     if (url.pathname.startsWith("/api/forum/")) {
@@ -1252,4 +1253,56 @@ async function chRoute(request, env, url, ctx) {
   }
 
   return chOut({ error: "Not found." }, 404);
+}
+
+// ---- /api/ai : WezzetAI, a general assistant with live web search (Claude API) ----
+// Needs the ANTHROPIC_API_KEY secret. Messages are never stored; only a hashed IP is counted for the rate limit.
+const AI_LIMIT = [30, 3600];
+const AI_SYSTEM = `You are WezzetAI, the assistant on wezzet.com. Wezzet is a site of 200+ free tools that run in the browser, where files are never uploaded.
+Help with anything: questions, writing, math, planning, explanations, and current events. Use web search for anything recent, time-sensitive or factual that you are unsure of, and mention where the information came from.
+When a Wezzet tool fits the request, link to it as a path like /convert, /pdf, /image, /video, /zip, /compress, /remove-bg, /resize, /json, /data or /csv-to-json, or tell them they can drop any file on /convert.
+Keep answers short and plain unless the user asks for depth. Write in plain text with simple line breaks, not Markdown headings. Never say "PH" for Product Hunt; write it out. Times are Eastern unless the user says otherwise.`;
+async function wezzetAI(request, env) {
+  if (request.method !== "POST") return json({ error: "POST {messages:[{role,content}]}" }, 405);
+  if (!env.ANTHROPIC_API_KEY) return json({ error: "WezzetAI isn't connected yet." }, 503);
+  let d; try { d = await request.json(); } catch (e) { return json({ error: "bad json" }, 400); }
+  const msgs = (Array.isArray(d.messages) ? d.messages : []).slice(-12)
+    .filter((m) => (m.role === "user" || m.role === "assistant") && typeof m.content === "string" && m.content.trim())
+    .map((m) => ({ role: m.role, content: m.content.slice(0, 4000) }));
+  while (msgs.length && msgs[0].role !== "user") msgs.shift();
+  if (!msgs.length || msgs.at(-1).role !== "user") return json({ error: "the last message must be from the user" }, 400);
+  if (env.DB) {
+    await tlInit(env);
+    const who = await tlWho(request);
+    const r = await env.DB.prepare("SELECT COUNT(*) AS n FROM actions WHERE who = ? AND action = 'ai' AND created_at > ?").bind(who, Date.now() - AI_LIMIT[1] * 1000).first();
+    if ((r ? r.n : 0) >= AI_LIMIT[0]) return json({ error: "You've hit WezzetAI's limit of 30 messages an hour. Try again later." }, 429);
+    await tlLog(env, who, "ai");
+  }
+  const now = new Date().toLocaleString("en-US", { timeZone: "America/New_York", dateStyle: "full", timeStyle: "short" });
+  const req = {
+    model: "claude-opus-5-5", max_tokens: 16000,
+    output_config: { effort: "medium" },
+    fallbacks: "default",
+    system: AI_SYSTEM,
+    tools: [{ type: "web_search_20260209", name: "web_search", max_uses: 5 }, { type: "web_fetch_20260209", name: "web_fetch", max_uses: 3 }],
+    messages: [...msgs.slice(0, -1), { role: "user", content: `[It is ${now} Eastern.]\n\n${msgs.at(-1).content}` }],
+  };
+  let res;
+  // Server tools can stop with pause_turn on long searches; send the partial turn back to let it continue.
+  for (let i = 0; i < 4; i++) {
+    const r = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "anthropic-beta": "server-side-fallback-2026-07-01" },
+      body: JSON.stringify(req),
+    });
+    res = await r.json().catch(() => null);
+    if (!r.ok || !res) return json({ error: r.status === 429 ? "WezzetAI is busy right now. Try again in a minute." : "WezzetAI couldn't answer that. Try again." }, 502);
+    if (res.stop_reason !== "pause_turn") break;
+    req.messages = [...req.messages, { role: "assistant", content: res.content }];
+  }
+  if (res.stop_reason === "refusal") return json({ reply: "I can't help with that one." });
+  const text = res.content.filter((b) => b.type === "text").map((b) => b.text).join("").trim();
+  const sources = [];
+  for (const b of res.content) for (const c of b.citations || []) if (c.url && !sources.some((s) => s.url === c.url)) sources.push({ url: c.url, title: c.title || c.url });
+  return json({ reply: text || "I couldn't come up with an answer. Try asking another way.", sources: sources.slice(0, 6) });
 }
