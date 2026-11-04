@@ -1,12 +1,11 @@
 /* WezzetAI: a helper that finds the right Wezzet tool for what you type or drop.
-   Uses /api/ai (Workers AI) when the site has it, and falls back to matching the tool list in the browser.
+   Answers with an open-weight model that runs on the visitor's GPU (WebLLM) plus free live search from /api/search.
    Nothing is stored; dropped files only go to the tool you pick. */
 (() => {
   const $ = (id) => document.getElementById(id);
   const log = $("log"), form = $("ask"), q = $("q"), drop = $("drop"), input = $("files");
   let TOOLS = [];
   const history = [];
-  let thinking = null;
   fetch("/assets/home.js").then((r) => r.text()).then((t) => {
     TOOLS = [...t.matchAll(/^\s*\["([^"]+)", "(\/[^"]*)", "([^"]*)"\]/gm)].map((m) => ({ name: m[1], path: m[2], words: (m[1] + " " + m[3]).toLowerCase() }));
   });
@@ -41,21 +40,58 @@
     try { const v = Function(`"use strict";return (${m.replace(/\^/g, "**")})`)(); return Number.isFinite(v) ? v : null; } catch (e) { return null; }
   }
 
+  // The model runs on the visitor's own GPU through WebLLM, so it costs nothing to run and has no usage cap.
+  // To swap in our own weights, point MODEL at an MLC-compiled model (see webllm "custom model" docs) and add it to appConfig.
+  const WEBLLM = "https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm@0.2.86/+esm";
+  const MODELS = ["Qwen3-8B-q4f16_1-MLC", "Qwen3-4B-q4f16_1-MLC", "Qwen2.5-3B-Instruct-q4f16_1-MLC"];
+  let engine = null, loading = null;
+  async function getEngine(status) {
+    if (engine) return engine;
+    if (!navigator.gpu) return null;
+    loading = loading || (async () => {
+      const webllm = await import(WEBLLM);
+      const ids = webllm.prebuiltAppConfig.model_list.map((m) => m.model_id);
+      const small = (navigator.deviceMemory || 8) < 8;
+      const id = (small ? MODELS.slice(1) : MODELS).find((m) => ids.includes(m)) || ids.find((m) => /Instruct/.test(m));
+      engine = await webllm.CreateMLCEngine(id, { initProgressCallback: (p) => status(`Loading WezzetAI onto your device (first time only): ${Math.round((p.progress || 0) * 100)}%`) });
+      return engine;
+    })();
+    try { return await loading; } catch (e) { loading = null; return null; }
+  }
+
+  const now = () => new Date().toLocaleString("en-US", { timeZone: "America/New_York", dateStyle: "full", timeStyle: "short" });
+  const SYSTEM = `You are WezzetAI, the assistant on wezzet.com, a site of 200+ free tools that run in the browser without uploading files. Help with anything. Answer briefly and plainly, without Markdown headings. Use the search results you are given for anything recent, and say which source it came from. If the results don't cover it, say you aren't sure instead of guessing. If a Wezzet tool from the list fits, mention its path (like /convert). Never write "PH" for Product Hunt. Give times in Eastern.`;
+
   async function answer(text) {
     history.push({ role: "user", content: text });
     const c = calc(text);
     if (c !== null) return say("bot", `${text.replace(/[=?]/g, "").trim()} = ${+c.toFixed(10)}`);
     const hits = match(text);
-    let reply = null;
-    say("bot", "…"); thinking = log.lastChild;
+    const toolish = hits.length && text.length < 50 && !/\?|^(who|what|when|why|how|is|are|did|does|should|tell|explain|write)\b/i.test(text);
+    if (toolish) return say("bot", hits.length > 1 ? "These should do it:" : "This should do it:", hits.map((t) => [t.name, t.path]));
+    say("bot", "Searching…"); const bubble = log.lastChild, status = (s) => { bubble.firstChild.textContent = s; };
+    let found = { web: [], news: [] };
+    try { const r = await fetch("/api/search?q=" + encodeURIComponent(text)); if (r.ok) found = await r.json(); } catch (e) {}
+    const srcs = [...found.news.slice(0, 4), ...found.web.slice(0, 4)];
+    const links = srcs.slice(0, 4).map((x) => { let h = x.source || ""; try { h = h || new URL(x.url).hostname.replace(/^www\./, ""); } catch (e) {} return [h || "source", x.url]; });
+    const eng = await getEngine(status);
+    if (!eng) {
+      bubble.remove();
+      if (srcs.length) say("bot", "Your browser can't run WezzetAI's on-device model (it needs WebGPU, in recent Chrome or Edge). Here's what the web has on it:\n" + srcs.slice(0, 5).map((x) => "• " + x.title).join("\n"), [...links, ...hits.slice(0, 2).map((t) => [t.name, t.path])]);
+      else say("bot", "I couldn't find anything on that. Try different words.", hits.map((t) => [t.name, t.path]));
+      return;
+    }
+    status("Thinking…");
+    const ctx = `Now: ${now()} Eastern.\nWezzet tools that may fit: ${hits.map((t) => `${t.name} (${t.path})`).join(", ") || "none"}.\nSearch results:\n` +
+      (srcs.map((x, i) => `[${i + 1}] ${x.title}${x.source ? " — " + x.source : ""}${x.date ? " (" + x.date + ")" : ""}\n${x.snippet || ""}`).join("\n") || "none");
+    const msgs = [{ role: "system", content: SYSTEM }, ...history.slice(-8, -1), { role: "user", content: ctx + "\n\nQuestion: " + text + " /no_think" }];
+    let out = "", raw = "";
     try {
-      const r = await fetch("/api/ai", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ messages: history.slice(-8) }) });
-      if (r.ok) { const j = await r.json(); reply = j.reply; var src = j.sources || []; }
-    } catch (e) {}
-    thinking.remove();
-    if (reply) { history.push({ role: "assistant", content: reply }); return say("bot", reply, [...(src || []).map((x) => [new URL(x.url).hostname.replace(/^www\./, ""), x.url]), ...(src && src.length ? [] : hits.slice(0, 2).map((t) => [t.name, t.path]))]); }
-    if (hits.length) say("bot", hits.length > 1 ? "These should do it:" : "This should do it:", hits.map((t) => [t.name, t.path]));
-    else say("bot", "I couldn't find a tool for that yet. Try different words, drop the file here, or ask for it in the forum.", [["Convert any file", "/convert"], ["Request it", "/forum"]]);
+      const stream = await eng.chat.completions.create({ messages: msgs, stream: true, temperature: 0.5, max_tokens: 700 });
+      for await (const ch of stream) { raw += ch.choices[0]?.delta?.content || ""; out = raw.replace(/<think>[\s\S]*?(<\/think>|$)/, "").trimStart(); status(out || "Thinking…"); }
+    } catch (e) { out = out || "Something went wrong running the model. Reload and try again."; status(out); }
+    history.push({ role: "assistant", content: out });
+    bubble.remove(); say("bot", out, [...links, ...hits.slice(0, 2).map((t) => [t.name, t.path])]);
   }
 
   async function files(list) {
