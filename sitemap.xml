@@ -109,4 +109,48 @@
   <url><loc>https://wezzet.com/image-to-ascii</loc><lastmod>2026-11-04</lastmod></url>
   <url><loc>https://wezzet.com/file-checksum</loc><lastmod>2026-11-04</lastmod></url>
   <url><loc>https://wezzet.com/text-to-morse</loc><lastmod>2026-11-04</lastmod></url>
+  <url><loc>https://wezzet.com/csv-to-tsv</loc><lastmod>2026-11-04</lastmod></url>
+  <url><loc>https://wezzet.com/tsv-to-csv</loc><lastmod>2026-11-04</lastmod></url>
+  <url><loc>https://wezzet.com/csv-to-sql</loc><lastmod>2026-11-04</lastmod></url>
+  <url><loc>https://wezzet.com/csv-to-xml</loc><lastmod>2026-11-04</lastmod></url>
+  <url><loc>https://wezzet.com/csv-to-yaml</loc><lastmod>2026-11-04</lastmod></url>
+  <url><loc>https://wezzet.com/csv-to-html-table</loc><lastmod>2026-11-04</lastmod></url>
+  <url><loc>https://wezzet.com/csv-to-markdown-table</loc><lastmod>2026-11-04</lastmod></url>
+  <url><loc>https://wezzet.com/csv-to-vcf</loc><lastmod>2026-11-04</lastmod></url>
+  <url><loc>https://wezzet.com/json-to-xml</loc><lastmod>2026-11-04</lastmod></url>
+  <url><loc>https://wezzet.com/json-to-typescript</loc><lastmod>2026-11-04</lastmod></url>
+  <url><loc>https://wezzet.com/json-to-env</loc><lastmod>2026-11-04</lastmod></url>
+  <url><loc>https://wezzet.com/minify-json</loc><lastmod>2026-11-04</lastmod></url>
+  <url><loc>https://wezzet.com/jsonl-to-json</loc><lastmod>2026-11-04</lastmod></url>
+  <url><loc>https://wezzet.com/srt-to-text</loc><lastmod>2026-11-04</lastmod></url>
+  <url><loc>https://wezzet.com/gpx-to-geojson</loc><lastmod>2026-11-04</lastmod></url>
+  <url><loc>https://wezzet.com/kml-to-csv</loc><lastmod>2026-11-04</lastmod></url>
+  <url><loc>https://wezzet.com/m3u-to-text</loc><lastmod>2026-11-04</lastmod></url>
+  <url><loc>https://wezzet.com/opml-to-csv</loc><lastmod>2026-11-04</lastmod></url>
+  <url><loc>https://wezzet.com/rss-to-csv</loc><lastmod>2026-11-04</lastmod></url>
+  <url><loc>https://wezzet.com/rtf-to-text</loc><lastmod>2026-11-04</lastmod></url>
+  <url><loc>https://wezzet.com/eml-to-text</loc><lastmod>2026-11-04</lastmod></url>
+  <url><loc>https://wezzet.com/minify-css</loc><lastmod>2026-11-04</lastmod></url>
+  <url><loc>https://wezzet.com/html-table-to-csv</loc><lastmod>2026-11-04</lastmod></url>
+  <url><loc>https://wezzet.com/extract-links</loc><lastmod>2026-11-04</lastmod></url>
+  <url><loc>https://wezzet.com/text-to-binary</loc><lastmod>2026-11-04</lastmod></url>
+  <url><loc>https://wezzet.com/text-to-braille</loc><lastmod>2026-11-04</lastmod></url>
+  <url><loc>https://wezzet.com/upside-down-text</loc><lastmod>2026-11-04</lastmod></url>
+  <url><loc>https://wezzet.com/rot13</loc><lastmod>2026-11-04</lastmod></url>
+  <url><loc>https://wezzet.com/nato-alphabet</loc><lastmod>2026-11-04</lastmod></url>
+  <url><loc>https://wezzet.com/word-frequency</loc><lastmod>2026-11-04</lastmod></url>
+  <url><loc>https://wezzet.com/sort-lines</loc><lastmod>2026-11-04</lastmod></url>
+  <url><loc>https://wezzet.com/file-to-base64</loc><lastmod>2026-11-04</lastmod></url>
+  <url><loc>https://wezzet.com/hex-viewer</loc><lastmod>2026-11-04</lastmod></url>
+  <url><loc>https://wezzet.com/gzip-file</loc><lastmod>2026-11-04</lastmod></url>
+  <url><loc>https://wezzet.com/file-to-data-uri</loc><lastmod>2026-11-04</lastmod></url>
+  <url><loc>https://wezzet.com/image-to-grayscale</loc><lastmod>2026-11-04</lastmod></url>
+  <url><loc>https://wezzet.com/svg-to-jpg</loc><lastmod>2026-11-04</lastmod></url>
+  <url><loc>https://wezzet.com/plist-to-json</loc><lastmod>2026-11-04</lastmod></url>
+  <url><loc>https://wezzet.com/txt-to-pdf</loc><lastmod>2026-11-04</lastmod></url>
+  <url><loc>https://wezzet.com/html-to-pdf</loc><lastmod>2026-11-04</lastmod></url>
+  <url><loc>https://wezzet.com/markdown-to-pdf</loc><lastmod>2026-11-04</lastmod></url>
+  <url><loc>https://wezzet.com/txt-to-word</loc><lastmod>2026-11-04</lastmod></url>
+  <url><loc>https://wezzet.com/sha512-checksum</loc><lastmod>2026-11-04</lastmod></url>
+  <url><loc>https://wezzet.com/sha1-checksum</loc><lastmod>2026-11-04</lastmod></url>
 </urlset>
