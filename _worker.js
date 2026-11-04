@@ -1282,15 +1282,13 @@ async function wzSearch(request, env, url) {
   }, 200, { "cache-control": "public, max-age=300" });
 }
 
-// ---- /api/ai : WezzetAI on Cloudflare Workers AI (open-weight model, runs in Cloudflare's cloud) ----
-// Needs the Workers AI binding named AI. Free within Cloudflare's daily allowance; when that runs out the page
-// falls back to running the model in the visitor's browser. To use our own fine-tuned weights, upload a LoRA
-// adapter to Workers AI and set AI_LORA to its name.
+// ---- /api/ai : WezzetAI ----
+// Main model: our own open-weight model (Qwen3 4B on llama.cpp) on a free Hugging Face Space, set by WEZZETAI_URL
+// (+ WEZZETAI_KEY). Source for that server is in the wezzetai-space folder; swap the weights there to tune it.
+// Backup: Cloudflare Workers AI if the AI binding exists. If both fail the page runs a model in the visitor's browser.
 const AI_MODEL = "@cf/meta/llama-3.1-8b-instruct-fast";
-const AI_LORA = "";
 async function wzAI(request, env) {
   if (request.method !== "POST") return json({ error: "POST {messages}" }, 405);
-  if (!env.AI) return json({ error: "Workers AI isn't connected" }, 503);
   let d; try { d = await request.json(); } catch (e) { return json({ error: "bad json" }, 400); }
   const msgs = (Array.isArray(d.messages) ? d.messages : []).slice(-10)
     .filter((m) => ["system", "user", "assistant"].includes(m.role) && typeof m.content === "string")
@@ -1303,12 +1301,21 @@ async function wzAI(request, env) {
     if ((r ? r.n : 0) >= 60) return json({ error: "limit" }, 429);
     await tlLog(env, who, "ai");
   }
-  try {
-    const opts = { messages: msgs, max_tokens: 700, temperature: 0.5 };
-    if (AI_LORA) opts.lora = AI_LORA;
-    const r = await env.AI.run(AI_MODEL, opts);
-    return json({ reply: (r && r.response || "").trim() });
-  } catch (e) {
-    return json({ error: "quota" }, 503); // daily free allowance used up or model unavailable: the page runs it on-device instead
+  const clean = (t) => (t || "").replace(/<think>[\s\S]*?<\/think>/g, "").trim();
+  if (env.WEZZETAI_URL) {
+    try {
+      const last = msgs.at(-1);
+      const r = await fetch(env.WEZZETAI_URL.replace(/\/$/, "") + "/v1/chat/completions", {
+        method: "POST",
+        headers: { "content-type": "application/json", ...(env.WEZZETAI_KEY ? { authorization: "Bearer " + env.WEZZETAI_KEY } : {}) },
+        body: JSON.stringify({ messages: [...msgs.slice(0, -1), { ...last, content: last.content + " /no_think" }], max_tokens: 700, temperature: 0.6 }),
+        signal: AbortSignal.timeout(90000),
+      });
+      if (r.ok) { const j = await r.json(); const t = clean(j.choices?.[0]?.message?.content); if (t) return json({ reply: t }); }
+    } catch (e) {}
   }
+  if (env.AI) {
+    try { const r = await env.AI.run(AI_MODEL, { messages: msgs, max_tokens: 700 }); const t = clean(r && r.response); if (t) return json({ reply: t }); } catch (e) {}
+  }
+  return json({ error: "unavailable" }, 503);
 }
