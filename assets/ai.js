@@ -6,6 +6,7 @@
   const log = $("log"), form = $("ask"), q = $("q"), drop = $("drop"), input = $("files");
   let TOOLS = [];
   const history = [];
+  let thinking = null;
   fetch("/assets/home.js").then((r) => r.text()).then((t) => {
     TOOLS = [...t.matchAll(/^\s*\["([^"]+)", "(\/[^"]*)", "([^"]*)"\]/gm)].map((m) => ({ name: m[1], path: m[2], words: (m[1] + " " + m[3]).toLowerCase() }));
   });
@@ -46,11 +47,13 @@
     if (c !== null) return say("bot", `${text.replace(/[=?]/g, "").trim()} = ${+c.toFixed(10)}`);
     const hits = match(text);
     let reply = null;
+    say("bot", "…"); thinking = log.lastChild;
     try {
       const r = await fetch("/api/ai", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ messages: history.slice(-8) }) });
-      if (r.ok) reply = (await r.json()).reply;
+      if (r.ok) { const j = await r.json(); reply = j.reply; var src = j.sources || []; }
     } catch (e) {}
-    if (reply) { history.push({ role: "assistant", content: reply }); return say("bot", reply, hits.slice(0, 3).map((t) => [t.name, t.path])); }
+    thinking.remove();
+    if (reply) { history.push({ role: "assistant", content: reply }); return say("bot", reply, [...(src || []).map((x) => [new URL(x.url).hostname.replace(/^www\./, ""), x.url]), ...(src && src.length ? [] : hits.slice(0, 2).map((t) => [t.name, t.path]))]); }
     if (hits.length) say("bot", hits.length > 1 ? "These should do it:" : "This should do it:", hits.map((t) => [t.name, t.path]));
     else say("bot", "I couldn't find a tool for that yet. Try different words, drop the file here, or ask for it in the forum.", [["Convert any file", "/convert"], ["Request it", "/forum"]]);
   }
@@ -74,6 +77,6 @@
   window.addEventListener("dragover", (e) => e.preventDefault());
   window.addEventListener("drop", (e) => e.preventDefault());
   const pre = new URLSearchParams(location.search).get("q");
-  say("bot", "Hi, I'm WezzetAI. Tell me what you need, like \"heic to jpg\", \"shrink a pdf\" or \"cut the first 5 seconds of a video\", or drop a file here.");
+  say("bot", "Hi, I'm WezzetAI. Ask me anything, including today's news, or tell me what you need done, like \"heic to jpg\". You can also drop a file here.");
   if (pre) setTimeout(() => { say("you", pre); answer(pre); }, 400);
 })();
