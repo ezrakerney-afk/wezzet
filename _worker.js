@@ -928,12 +928,16 @@ const CH_SCHEMA = [
   "CREATE TABLE IF NOT EXISTS ch_reads (uid INTEGER, room TEXT, last INTEGER, PRIMARY KEY (uid, room))",
   "CREATE TABLE IF NOT EXISTS ch_push (endpoint TEXT PRIMARY KEY, uid INTEGER, ts INTEGER)",
   "CREATE TABLE IF NOT EXISTS ch_config (k TEXT PRIMARY KEY, v TEXT)",
+  // Group chats: rooms "g:<id>", up to CH_GROUP_MAX members, any member can add people.
+  "CREATE TABLE IF NOT EXISTS ch_groups (id INTEGER PRIMARY KEY, name TEXT, owner INTEGER, created INTEGER, updated INTEGER)",
+  "CREATE TABLE IF NOT EXISTS ch_members (gid INTEGER, uid INTEGER, joined INTEGER, PRIMARY KEY (gid, uid))",
+  "CREATE INDEX IF NOT EXISTS ch_members_uid ON ch_members (uid)",
 ];
 // Public username shown to others ("display"); ch_users.name is the private login name.
 const CH_ALTER = ["ALTER TABLE ch_users ADD COLUMN display TEXT", "CREATE UNIQUE INDEX IF NOT EXISTS ch_users_display ON ch_users (display COLLATE NOCASE)"];
 const CH_NAME = "COALESCE(u.display, u.name)";
 let chReady = false;
-const CH_MAX = 2000, CH_HIDE_AT = 3;
+const CH_MAX = 2000, CH_HIDE_AT = 3, CH_GROUP_MAX = 20;
 const chOut = (d, s = 200, h = {}) => json(d, s, { "x-robots-tag": "noindex", ...h });
 const chCookie = (v, age) => `wzc=${v}; Path=/api/chat; Max-Age=${age}; HttpOnly; Secure; SameSite=Lax`;
 const chB64 = (u8) => btoa(String.fromCharCode(...u8));
@@ -1068,8 +1072,12 @@ async function chRoute(request, env, url, ctx) {
 
   // Which room is this, and may I use it? Rooms are "c:<channel id>" or "d:<dm id>".
   const room = async (r) => {
-    const m = String(r || "").match(/^([cd]):(\d{1,9})$/);
+    const m = String(r || "").match(/^([cdg]):(\d{1,9})$/);
     if (!m) return null;
+    if (m[1] === "g") {
+      const g = await DB.prepare("SELECT g.id, g.name FROM ch_groups g JOIN ch_members x ON x.gid = g.id AND x.uid = ? WHERE g.id = ?").bind(me, +m[2]).first();
+      return g ? { key: r, group: g.id, name: g.name } : null;
+    }
     if (m[1] === "c") return (await DB.prepare("SELECT id FROM ch_channels WHERE id = ?").bind(+m[2]).first()) ? { key: r } : null;
     const dm = await DB.prepare("SELECT id, a, b FROM ch_dms WHERE id = ? AND (a = ? OR b = ?)").bind(+m[2], me, me).first();
     if (!dm) return null;
@@ -1097,7 +1105,10 @@ async function chRoute(request, env, url, ctx) {
     // Everyone seen in the last 2 minutes, minus me and anyone blocked either way.
     const online = (await DB.prepare(`SELECT ${CH_NAME} AS name FROM ch_users u WHERE u.seen > ? AND u.id <> ? AND u.banned = 0
       AND u.id NOT IN (SELECT blocked FROM ch_blocks WHERE uid = ?) AND u.id NOT IN (SELECT uid FROM ch_blocks WHERE blocked = ?) ORDER BY u.seen DESC LIMIT 100`).bind(now - 120e3, me, me, me).all()).results.map((x) => x.name);
-    return chOut({ channels: ch, dms, requests, blocks, online });
+    const groups = (await DB.prepare(`SELECT g.id, g.name, (SELECT COUNT(*) FROM ch_members WHERE gid = g.id) AS n,
+      (SELECT COUNT(*) FROM ch_msgs m WHERE m.room = 'g:' || g.id AND m.uid <> ? AND m.hidden = 0 AND m.id > COALESCE((SELECT last FROM ch_reads WHERE uid = ? AND room = 'g:' || g.id), 0)) AS unread
+      FROM ch_groups g JOIN ch_members x ON x.gid = g.id AND x.uid = ? ORDER BY g.updated DESC LIMIT 100`).bind(me, me, me).all()).results;
+    return chOut({ channels: ch, dms, groups, requests, blocks, online });
   }
 
   // One poll returns new messages for the open room plus any call signals for me.
@@ -1172,6 +1183,14 @@ async function chRoute(request, env, url, ctx) {
       await DB.prepare("UPDATE ch_dms SET updated = ? WHERE id = ?").bind(now, r.dm).run();
       await note(r.other, r.key, "msg", sess.name, text);
     }
+    if (r.group) {
+      // Notify every other member who hasn't blocked me.
+      const ids = (await DB.prepare("SELECT uid FROM ch_members WHERE gid = ? AND uid <> ? AND uid NOT IN (SELECT uid FROM ch_blocks WHERE blocked = ?)").bind(r.group, me, me).all()).results.map((x) => x.uid);
+      await DB.batch([DB.prepare("UPDATE ch_groups SET updated = ? WHERE id = ?").bind(now, r.group),
+        ...ids.map((uid) => DB.prepare("INSERT INTO ch_notes (uid, room, kind, title, body, ts) VALUES (?, ?, 'msg', ?, ?, ?)").bind(uid, r.key, r.name, sess.name + ": " + text.slice(0, 120), now))]);
+      const job = Promise.all(ids.map((uid) => pushTo(DB, uid)));
+      if (ctx && ctx.waitUntil) ctx.waitUntil(job); else await job;
+    }
     return chOut({ id: m.id });
   }
 
@@ -1221,6 +1240,62 @@ async function chRoute(request, env, url, ctx) {
     await DB.prepare("INSERT OR IGNORE INTO ch_dms (a, b, updated) VALUES (?, ?, ?)").bind(a, b, now).run();
     const dm = await DB.prepare("SELECT id FROM ch_dms WHERE a = ? AND b = ?").bind(a, b).first();
     return chOut({ room: "d:" + dm.id, name: u.name });
+  }
+
+  // ---- group chats ----
+  const notBlocked = async (uid) => !(await DB.prepare("SELECT 1 FROM ch_blocks WHERE (uid = ? AND blocked = ?) OR (uid = ? AND blocked = ?)").bind(me, uid, uid, me).first());
+  const groupName = (n) => clean(n, 40).replace(/\s+/g, " ");
+  if (post && p === "/group/new") {
+    const name = groupName(d.name);
+    if (name.length < 1) return chOut({ error: "Give the group a name." }, 400);
+    const names = [...new Set([].concat(d.members || []).map((x) => String(x).trim()).filter(Boolean))].slice(0, CH_GROUP_MAX - 1);
+    const who = "chat-u" + me;
+    if ((await DB.prepare("SELECT COUNT(*) n FROM actions WHERE who = ? AND action = 'chat-group' AND created_at > ?").bind(who, now - 3600e3).first()).n >= 10) return chOut({ error: "You've made a lot of groups. Try later." }, 429);
+    const ids = [];
+    for (const n of names) {
+      const u = await userByName(n);
+      if (!u) return chOut({ error: "No one has the username " + n + "." }, 404);
+      if (u.id !== me && await notBlocked(u.id)) ids.push(u.id);
+    }
+    const g = await DB.prepare("INSERT INTO ch_groups (name, owner, created, updated) VALUES (?, ?, ?, ?) RETURNING id").bind(name, me, now, now).first();
+    await DB.batch([
+      DB.prepare("INSERT INTO actions (who, action, created_at) VALUES (?, 'chat-group', ?)").bind(who, now),
+      ...[me, ...new Set(ids)].map((uid) => DB.prepare("INSERT OR IGNORE INTO ch_members (gid, uid, joined) VALUES (?, ?, ?)").bind(g.id, uid, now)),
+      ...[...new Set(ids)].map((uid) => DB.prepare("INSERT INTO ch_notes (uid, room, kind, title, body, ts) VALUES (?, ?, 'friend', ?, ?, ?)").bind(uid, "g:" + g.id, name, sess.name + " added you to the group", now)),
+    ]);
+    return chOut({ room: "g:" + g.id, name });
+  }
+  if (p.startsWith("/group/")) {
+    const r = await room(post ? d.room : q.get("room"));
+    if (!r || !r.group) return chOut({ error: "Group not found." }, 404);
+    if (p === "/group/members") {
+      const members = (await DB.prepare(`SELECT ${CH_NAME} AS name, u.seen, u.id FROM ch_members x JOIN ch_users u ON u.id = x.uid WHERE x.gid = ? ORDER BY x.joined`).bind(r.group).all()).results
+        .map((x) => ({ name: x.name, online: now - (x.seen || 0) < 120e3, me: x.id === me }));
+      return chOut({ name: r.name, members });
+    }
+    if (post && p === "/group/add") {
+      const u = await userByName(d.name);
+      if (!u) return chOut({ error: "No one has that username." }, 404);
+      if (!(await notBlocked(u.id))) return chOut({ error: "You can't add this person." }, 403);
+      if ((await DB.prepare("SELECT COUNT(*) n FROM ch_members WHERE gid = ?").bind(r.group).first()).n >= CH_GROUP_MAX) return chOut({ error: "Groups can have up to " + CH_GROUP_MAX + " people." }, 400);
+      const res = await DB.prepare("INSERT OR IGNORE INTO ch_members (gid, uid, joined) VALUES (?, ?, ?)").bind(r.group, u.id, now).run();
+      if (res.meta.changes) await note(u.id, r.key, "friend", r.name, sess.name + " added you to the group");
+      return chOut({ ok: true, name: u.name });
+    }
+    if (post && p === "/group/rename") {
+      const name = groupName(d.name);
+      if (!name) return chOut({ error: "Give the group a name." }, 400);
+      await DB.prepare("UPDATE ch_groups SET name = ? WHERE id = ?").bind(name, r.group).run();
+      return chOut({ ok: true, name });
+    }
+    if (post && p === "/group/leave") {
+      await DB.batch([
+        DB.prepare("DELETE FROM ch_members WHERE gid = ? AND uid = ?").bind(r.group, me),
+        DB.prepare("DELETE FROM ch_groups WHERE id = ? AND NOT EXISTS (SELECT 1 FROM ch_members WHERE gid = ?)").bind(r.group, r.group),
+      ]);
+      return chOut({ ok: true });
+    }
+    return chOut({ error: "Not found." }, 404);
   }
 
   if (post && (p === "/block" || p === "/unblock")) {

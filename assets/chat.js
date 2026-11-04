@@ -8,12 +8,25 @@
     if (!r.ok && j.error) throw new Error(j.error);
     return j;
   };
-  const showErr = (el, e, ok) => { el.textContent = e ? e.message || e : ""; el.hidden = !e; el.className = "note " + (ok ? "ok" : "error"); };
-  let me = null, cur = null, rooms = { channels: [], dms: [], requests: [], blocks: [], online: [] }, last = 0, sig = 0, timer = 0, noteAt = -1, pushOn = false;
+  let toastT = 0;
+  const showErr = (el, e, ok) => {
+    el.textContent = e ? e.message || e : ""; el.hidden = !e; el.className = "note " + (ok ? "ok" : "error");
+    if (el.id === "err" && e && !el.dataset.net) { clearTimeout(toastT); toastT = setTimeout(() => { if (!el.dataset.net) el.hidden = true; }, ok ? 3500 : 6000); }
+  };
+  let me = null, cur = null, rooms = { channels: [], dms: [], groups: [], requests: [], blocks: [], online: [] }, last = 0, sig = 0, timer = 0, noteAt = -1, pushOn = false;
   let ctrl = null, roomsAt = 0, lastMsg = null;
 
   // Avatars: initial on a color picked from the name.
   const hue = (n) => { let h = 0; for (const c of n.toLowerCase()) h = (h * 31 + c.charCodeAt(0)) % 360; return h; };
+  const SVG = {
+    call: '<svg viewBox="0 0 24 24"><path fill="currentColor" d="M6.6 10.8a15.1 15.1 0 0 0 6.6 6.6l2.2-2.2a1 1 0 0 1 1-.25 11.4 11.4 0 0 0 3.6.57 1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.25.2 2.45.57 3.57a1 1 0 0 1-.25 1L6.6 10.8Z"/></svg>',
+    msg: '<svg viewBox="0 0 24 24"><path fill="currentColor" d="M4 4h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H8l-4 4V6a2 2 0 0 1 2-2Z"/></svg>',
+    block: '<svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm-8 10a8 8 0 0 1 12.9-6.3L5.7 16.9A8 8 0 0 1 4 12Zm8 8a8 8 0 0 1-4.9-1.7L18.3 7.1A8 8 0 0 1 12 20Z"/></svg>',
+    add: '<svg viewBox="0 0 24 24"><path fill="currentColor" d="M15 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4Zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6Zm9 4c-2.7 0-8 1.3-8 4v2h16v-2c0-2.7-5.3-4-8-4Z"/></svg>',
+    remove: '<svg viewBox="0 0 24 24"><path fill="currentColor" d="M15 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4Zm-14-2v2h8v-2H1Zm14 4c-2.7 0-8 1.3-8 4v2h16v-2c0-2.7-5.3-4-8-4Z"/></svg>',
+    leave: '<svg viewBox="0 0 24 24"><path fill="currentColor" d="M10 3h9a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-9v-2h9V5h-9V3Zm-.6 4.6L10.8 9l-2 2H16v2H8.8l2 2-1.4 1.4L5 12l4.4-4.4Z"/></svg>',
+    edit: '<svg viewBox="0 0 24 24"><path fill="currentColor" d="M4 17.25V20h2.75L17.81 8.94l-2.75-2.75L4 17.25Zm16.71-10.04a1 1 0 0 0 0-1.41l-2.51-2.51a1 1 0 0 0-1.41 0l-1.96 1.96 3.92 3.92 1.96-1.96Z"/></svg>',
+  };
   const avatar = (name, cls) => {
     const a = document.createElement("span"); a.className = "av" + (cls ? " " + cls : "");
     a.textContent = (name || "?")[0]; a.style.background = `hsl(${hue(name || "?")} 55% 42%)`; a.setAttribute("aria-hidden", "true");
@@ -47,7 +60,7 @@
 
   const showMe = () => { $("me-name").textContent = me.name; $("me-av").replaceWith(Object.assign(avatar(me.name), { id: "me-av" })); };
   async function start(user) {
-    me = user; auth.hidden = true; $("app").hidden = false; showMe();
+    me = user; $("auth-wrap").hidden = true; $("app").hidden = false; showMe();
     if ("Notification" in window) enablePush(false);
     await loadRooms(); open(location.hash.slice(1), true);
     poll();
@@ -72,7 +85,7 @@
       const li = document.createElement("li"), b = document.createElement("button"), nm = document.createElement("span");
       b.className = "room" + (unread && key !== cur ? " unread" : ""); b.type = "button"; b.dataset.room = key;
       nm.className = "nm"; nm.textContent = label;
-      b.append(key[0] === "d" ? withDot(avatar(label), online) : "", nm);
+      b.append(key[0] === "d" ? withDot(avatar(label), online) : key[0] === "g" ? avatar(label, "grp") : "", nm);
       if (unread && key !== cur) { const n = document.createElement("span"); n.className = "badge"; n.textContent = unread > 99 ? "99+" : unread; b.append(n); }
       b.onclick = () => open(key); li.append(b); return li;
     };
@@ -92,6 +105,7 @@
     $("channels").replaceChildren(...rooms.channels.map((c) => item("c:" + c.id, "# " + c.name)));
     $("req-wrap").hidden = !rooms.requests.length;
     $("requests").replaceChildren(...rooms.requests.map((r) => r.incoming ? row(r.name, "", [["Accept", "friend"], ["Decline", "unfriend"]]) : row(r.name, "sent", [["Cancel", "unfriend"]])));
+    $("groups").replaceChildren(...(rooms.groups || []).map((g) => item("g:" + g.id, g.name, undefined, g.unread)));
     $("dms").replaceChildren(...rooms.dms.map((d) => item("d:" + d.id, d.name, d.online, d.unread)));
     if (!rooms.dms.length) { const li = document.createElement("li"); li.className = "req"; li.innerHTML = '<span class="nm"><small>No conversations yet</small></span>'; $("dms").append(li); }
     const friends = new Set(rooms.dms.map((d) => d.name));
@@ -104,23 +118,107 @@
   }
   // Unread total in the tab title.
   const badge = () => {
-    const n = rooms.dms.reduce((t, d) => t + ("d:" + d.id === cur && !document.hidden ? 0 : d.unread || 0), 0) + rooms.requests.filter((r) => r.incoming).length;
+    const sum = (list, k) => list.reduce((t, d) => t + (k + d.id === cur && !document.hidden ? 0 : d.unread || 0), 0);
+    const n = sum(rooms.dms, "d:") + sum(rooms.groups || [], "g:") + rooms.requests.filter((r) => r.incoming).length;
     document.title = (n ? "(" + n + ") " : "") + "Chat | Wezzet";
   };
   const mark = () => document.querySelectorAll("button.room").forEach((b) => b.setAttribute("aria-current", b.dataset.room === cur));
-  const roomInfo = (key) => !key ? null : key[0] === "c" ? rooms.channels.find((c) => "c:" + c.id === key) : rooms.dms.find((d) => "d:" + d.id === key);
+  const roomInfo = (key) => !key ? null : key[0] === "c" ? rooms.channels.find((c) => "c:" + c.id === key)
+    : key[0] === "g" ? (rooms.groups || []).find((g) => "g:" + g.id === key) : rooms.dms.find((d) => "d:" + d.id === key);
   function head() {
-    const info = roomInfo(cur), dm = cur && cur[0] === "d";
+    const info = roomInfo(cur), dm = cur && cur[0] === "d", grp = cur && cur[0] === "g";
     if (!info) return;
-    $("room-title").textContent = dm ? info.name : "# " + info.name;
-    $("room-status").textContent = dm ? (rooms.blocks.includes(info.name) ? "Blocked" : info.online ? "Online" : "Offline") : "";
-    $("room-av").replaceChildren(dm ? withDot(avatar(info.name, "lg"), info.online) : "");
-    $("call-btn").hidden = !dm; $("block-btn").hidden = !dm;
-    if (dm) $("block-btn").textContent = rooms.blocks.includes(info.name) ? "Unblock" : "Block";
+    $("room-title").textContent = dm || grp ? info.name : "# " + info.name;
+    $("room-status").textContent = dm ? (rooms.blocks.includes(info.name) ? "Blocked" : info.online ? "Online" : "Offline") : grp ? info.n + " members" : "";
+    $("room-av").replaceChildren(dm ? withDot(avatar(info.name, "lg"), info.online) : grp ? avatar(info.name, "lg grp") : "");
+    $("call-btn").hidden = !dm; $("info-btn").hidden = !(dm || grp);
+    $("text").placeholder = "Message " + (dm || grp ? info.name : "#" + info.name);
+    if (!$("profile").hidden) { if (grp) groupPanel(); else if (dm) profile(info.name); }
   }
 
+  // ---------- profile / group panel ----------
+  const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; };
+  const act = (icon, label, fn, danger) => { const b = el("button", "act" + (danger ? " danger" : "")); b.type = "button"; b.innerHTML = SVG[icon]; b.append(label); b.onclick = fn; return b; };
+  const showPanel = (nodes) => { $("profile-body").replaceChildren(...nodes); $("profile").hidden = false; $("app").classList.add("with-profile"); };
+  const closePanel = () => { $("profile").hidden = true; $("app").classList.remove("with-profile"); };
+  $("profile-close").addEventListener("click", closePanel);
+  const isOnline = (name) => (rooms.online || []).includes(name) || rooms.dms.some((d) => d.name === name && d.online);
+  const run = async (fn) => { try { await fn(); } catch (e) { showErr($("err"), e); } };
+  function profile(name) {
+    if (!name || name === me.name) return;
+    const dm = rooms.dms.find((d) => d.name === name), blocked = rooms.blocks.includes(name), on = isOnline(name);
+    const card = el("div", "card"), st = el("div", "status"), dot = el("span", "dot" + (on ? " on" : ""));
+    st.append(dot, blocked ? "Blocked" : on ? "Online" : "Offline");
+    card.append(avatar(name), el("h3", "", name), st);
+    const acts = el("div", "actions");
+    const openDm = async () => { const j = await api("dm", { name }); await loadRooms(); open(j.room); return j.room; };
+    if (!blocked) {
+      if (!dm || "d:" + dm.id !== cur) acts.append(act("msg", "Message", () => run(openDm)));
+      acts.append(act("call", "Call", () => run(async () => { if (!dm || "d:" + dm.id !== cur) await openDm(); $("call-btn").click(); })));
+    }
+    acts.append(act("block", blocked ? "Unblock" : "Block", () => run(async () => {
+      if (!blocked && !confirm("Block " + name + "? They'll be removed from your friends and can't message or call you.")) return;
+      await api(blocked ? "unblock" : "block", { name }); await loadRooms(); if (!roomInfo(cur)) open(""); profile(name);
+    }), !blocked));
+    if (dm && !blocked) acts.append(act("remove", "Unfriend", () => run(async () => {
+      if (!confirm("Remove " + name + " from your messages?")) return;
+      await api("unfriend", { name }); await loadRooms(); open(""); closePanel();
+    })));
+    card.append(acts);
+    showPanel([card]);
+  }
+  async function groupPanel() {
+    const key = cur, info = roomInfo(key);
+    if (!info || key[0] !== "g") return;
+    const j = await api("group/members?room=" + key).catch((e) => { showErr($("err"), e); return null; });
+    if (!j || cur !== key) return;
+    const card = el("div", "card"), st = el("div", "status", j.members.length + " members");
+    card.append(avatar(j.name, "grp"), el("h3", "", j.name), st);
+    const acts = el("div", "actions");
+    acts.append(act("edit", "Rename", () => run(async () => {
+      const n = prompt("Group name", j.name); if (!n || !n.trim()) return;
+      await api("group/rename", { room: key, name: n.trim() }); await loadRooms(); groupPanel();
+    })));
+    acts.append(act("leave", "Leave", () => run(async () => {
+      if (!confirm("Leave " + j.name + "?")) return;
+      await api("group/leave", { room: key }); closePanel(); await loadRooms(); open("");
+    }), true));
+    card.append(acts);
+    const sect = el("div", "sect"), ul = el("ul"), form = el("form", "add");
+    sect.append(el("h4", "", "Members"));
+    for (const m of j.members) {
+      const li = el("li"), nm = el("span", "nm", m.name);
+      if (m.me) nm.append(el("small", "", " (you)"));
+      li.append(withDot(avatar(m.name), m.online), nm);
+      if (!m.me) li.onclick = () => profile(m.name);
+      ul.append(li);
+    }
+    const inp = el("input"); inp.type = "text"; inp.placeholder = "Add by username"; inp.maxLength = 25; inp.setAttribute("aria-label", "Add someone to the group");
+    const add = el("button", "btn btn-quiet", "Add"); add.type = "submit";
+    form.append(inp, add);
+    form.onsubmit = (ev) => { ev.preventDefault(); run(async () => { const r = await api("group/add", { room: key, name: inp.value.trim() }); showErr($("err"), r.name + " added.", true); await loadRooms(); groupPanel(); }); };
+    sect.append(ul, form);
+    showPanel([card, sect]);
+  }
+  const details = () => { const info = roomInfo(cur); if (!info) return; if (!$("profile").hidden) return closePanel(); cur[0] === "g" ? groupPanel() : profile(info.name); };
+  $("info-btn").addEventListener("click", details);
+  $("who").addEventListener("click", details);
+  $("who").addEventListener("keydown", (ev) => { if (ev.key === "Enter") details(); });
+
+  // New group
+  $("new-group-btn").addEventListener("click", () => { $("group-form").hidden = !$("group-form").hidden; if (!$("group-form").hidden) $("g-name").focus(); });
+  $("g-cancel").addEventListener("click", () => { $("group-form").hidden = true; });
+  $("group-form").addEventListener("submit", (ev) => {
+    ev.preventDefault();
+    run(async () => {
+      const j = await api("group/new", { name: $("g-name").value.trim(), members: $("g-members").value.split(/[,\s]+/).filter(Boolean) });
+      $("g-name").value = $("g-members").value = ""; $("group-form").hidden = true;
+      await loadRooms(); open(j.room);
+    });
+  });
+
   function open(key, boot) {
-    if (!roomInfo(key)) key = boot && innerWidth < 760 ? "" : rooms.dms[0] ? "d:" + rooms.dms[0].id : rooms.channels[0] ? "c:" + rooms.channels[0].id : "";
+    if (!roomInfo(key)) key = boot && innerWidth < 760 ? "" : rooms.dms[0] ? "d:" + rooms.dms[0].id : (rooms.groups || [])[0] ? "g:" + rooms.groups[0].id : rooms.channels[0] ? "c:" + rooms.channels[0].id : "";
     cur = key; last = 0; lastMsg = null; history.replaceState(null, "", key ? "#" + key : location.pathname);
     $("app").classList.toggle("in-room", !!key);
     $("send-form").hidden = !key;
@@ -128,7 +226,7 @@
       const p = document.createElement("div"); p.className = "empty";
       p.innerHTML = "<b>Say hi to someone</b>Message anyone under Online now, or add a friend by their username.";
       $("log").replaceChildren(p); $("room-title").textContent = "Chat"; $("room-status").textContent = ""; $("room-av").replaceChildren();
-      $("call-btn").hidden = $("block-btn").hidden = true; mark(); restart(); return;
+      $("call-btn").hidden = $("info-btn").hidden = true; closePanel(); mark(); restart(); return;
     }
     $("log").replaceChildren(); head();
     mark(); badge(); restart();
@@ -143,11 +241,6 @@
       if (j.room) { open(j.room); showErr($("err")); } else { if (!cur) open(""); showErr($("err"), "Friend request sent to " + j.name + ".", true); }
     }
     catch (e) { showErr($("err"), e); }
-  });
-  $("block-btn").addEventListener("click", async () => {
-    const name = roomInfo(cur).name, blocked = rooms.blocks.includes(name);
-    if (!blocked && !confirm("Block " + name + "? They'll be removed from your friends and can't message or call you.")) return;
-    try { await api(blocked ? "unblock" : "block", { name }); await loadRooms(); open(cur); } catch (e) { showErr($("err"), e); }
   });
 
   // ---------- messages ----------
@@ -169,7 +262,8 @@
     if (first) {
       const h = document.createElement("div"), b = document.createElement("b"), t = document.createElement("time");
       h.className = "head"; b.textContent = m.name; t.textContent = fmt(m.ts); t.dateTime = new Date(m.ts).toISOString();
-      h.append(b, t); div.append(avatar(m.name, "lg"), h, p);
+      h.append(b, t); const av = avatar(m.name, "lg"); div.append(av, h, p);
+      if (m.uid !== me.id) av.onclick = b.onclick = () => profile(m.name);
     } else {
       const t = document.createElement("time"); t.className = "side-time"; t.textContent = fmt(m.ts); div.append(t, p);
     }
@@ -363,5 +457,5 @@
   }
 
   // ---------- boot ----------
-  api("me").then((j) => (j.me ? start(j.me) : (auth.hidden = false))).catch(() => { auth.hidden = false; });
+  api("me").then((j) => (j.me ? start(j.me) : ($("auth-wrap").hidden = false))).catch(() => { $("auth-wrap").hidden = false; });
 })();
