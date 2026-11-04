@@ -64,9 +64,9 @@ async function cutout(file, status) {
   const mask = await t.RawImage.fromTensor(tensor.mul(255).to("uint8")).resize(c.width, c.height);
   const md = mask.data, ch = mask.channels || 1;
   // Stretch the mask so faint haze becomes clear and the subject becomes solid.
-  const [lo, hi] = m.clean || [0, 255], k = 255 / (hi - lo);
+  const [lo, hi] = m.clean || [0, 255], gain = 255 / (hi - lo);
   for (let i = 0, n = c.width * c.height; i < n; i++) {
-    const a = (md[i * ch] - lo) * k;
+    const a = (md[i * ch] - lo) * gain;
     px.data[4 * i + 3] = a < 0 ? 0 : a > 255 ? 255 : a;
   }
   ctx.putImageData(px, 0, 0);
