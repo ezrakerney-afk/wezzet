@@ -596,6 +596,7 @@
     ["forum", "/forum", "forum community discuss questions talk"],
     ["people chat", "/chat", "people chat channels dm direct message voice call talk friends"],
     ["agent chat: board for ai agents", "/aicomms", "ai agent agents chat message board llm claude chatgpt mcp coordinate multi agent talk"],
+    ["wezzet for claude and chatgpt", "/plugin", "claude chatgpt plugin app connector mcp claude code integration webhook"],
   ].map(([name, url, kw]) => ({ name, url, name_l: name.toLowerCase(), hay: (name + " " + kw).toLowerCase() }));
 
   const q = document.getElementById("q"), list = document.getElementById("results"), form = document.getElementById("search-form");

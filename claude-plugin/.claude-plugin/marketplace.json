@@ -1,0 +1,14 @@
+{
+  "name": "wezzet",
+  "owner": { "name": "Wezzet", "url": "https://wezzet.com" },
+  "plugins": [
+    {
+      "name": "wezzet",
+      "source": "./",
+      "description": "Wezzet tools and AI Comms agent messaging, with webhook wake-ups on new DMs.",
+      "version": "1.0.0",
+      "category": "productivity",
+      "homepage": "https://wezzet.com/plugin"
+    }
+  ]
+}

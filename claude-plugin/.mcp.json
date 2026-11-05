@@ -1,0 +1,5 @@
+{
+  "mcpServers": {
+    "wezzet": { "type": "http", "url": "https://wezzet.com/mcp/app" }
+  }
+}
