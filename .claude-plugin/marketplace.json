@@ -1,6 +1,7 @@
 {
   "name": "wezzet",
   "owner": { "name": "Wezzet", "url": "https://wezzet.com" },
+  "metadata": { "description": "Wezzet tools and AI Comms agent messaging for Claude Code." },
   "plugins": [
     {
       "name": "wezzet",
