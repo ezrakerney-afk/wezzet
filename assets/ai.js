@@ -104,21 +104,25 @@
     const c = calc(text);
     if (c !== null) return say("bot", `${text.replace(/[=?]/g, "").trim()} = ${+c.toFixed(10)}`);
     const hits = match(text);
-    const bubble = say("bot", "Searching"), body = bubble.firstChild;
+    const bubble = say("bot", "Thinking"), body = bubble.firstChild;
     body.classList.add("ai-wait");
     const status = (s, done) => { body.classList.toggle("ai-wait", !done); body.innerHTML = md(s); down(); };
     let found = { web: [], news: [] };
-    const chat = /^(hi|hello|hey|yo|thanks|thank you|ok|okay|cool|nice|lol)\b[\s!.?]*$/i.test(text);
-    if (!chat) try { const r = await fetch("/api/search?q=" + encodeURIComponent(text), { signal: AbortSignal.timeout(4000) }); if (r.ok) found = await r.json(); } catch (e) {}
-    const srcs = [...found.news.slice(0, 4), ...found.web.slice(0, 4)];
+    // Search only when the question needs fresh or factual info: it makes the prompt longer and the answer slower.
+    const needs = /\b(news|today|tonight|yesterday|tomorrow|latest|current|currently|now|recent|this (week|month|year)|20[2-3]\d|price|cost|weather|score|won|election|who is|who's|who was|when (is|did|was)|where is|stock|release|launch|update|happened|ceo|president)\b/i.test(text) || /[A-Z][a-z]+ [A-Z][a-z]+/.test(text.slice(1));
+    if (needs) status("Searching");
+    if (needs) try { const r = await fetch("/api/search?q=" + encodeURIComponent(text), { signal: AbortSignal.timeout(4000) }); if (r.ok) found = await r.json(); } catch (e) {}
+    const srcs = [...found.news.slice(0, 3), ...found.web.slice(0, 3)];
     const links = srcs.slice(0, 4).map((x) => { let h = x.source || ""; try { h = h || new URL(x.url).hostname.replace(/^www\./, ""); } catch (e) {} return [h || "source", x.url]; });
     status("Thinking");
     const ctx = `Now: ${now()} Eastern.\nWezzet tools that may fit: ${hits.map((t) => `${t.name} (${t.path})`).join(", ") || "none"}.\nSearch results:\n` +
-      (srcs.map((x, i) => `[${i + 1}] ${x.title}${x.source ? " — " + x.source : ""}${x.date ? " (" + x.date + ")" : ""}\n${x.snippet || ""}`).join("\n") || "none");
-    const msgs = [{ role: "system", content: SYSTEM }, ...history.slice(-8, -1), { role: "user", content: ctx + "\n\nQuestion: " + text + " /no_think" }];
+      (!needs ? "not needed" : srcs.map((x, i) => `[${i + 1}] ${x.title}${x.source ? " — " + x.source : ""}${x.date ? " (" + x.date + ")" : ""}\n${(x.snippet || "").slice(0, 220)}`).join("\n") || "none");
+    const msgs = [{ role: "system", content: SYSTEM }, ...history.slice(-5, -1), { role: "user", content: ctx + "\n\nQuestion: " + text + " /no_think" }];
     try {
+      const mine = ctl, dog = setTimeout(() => mine.abort("slow"), 75000);
       const r = await fetch("/api/ai", { method: "POST", signal: ctl.signal, headers: { "content-type": "application/json" }, body: JSON.stringify({ stream: true, messages: msgs.map((m) => ({ ...m, content: m.content.replace(" /no_think", "") })) }) });
       let reply = "";
+      clearTimeout(dog);
       if (r.ok && /text\/plain/.test(r.headers.get("content-type") || "")) {
         // Streamed answer: show the words as they arrive.
         const rd = r.body.getReader(), dec = new TextDecoder();
@@ -127,11 +131,11 @@
         reply = reply.trim();
       } else if (r.ok) { const j = await r.json(); reply = j.reply || ""; }
       if (reply) { history.push({ role: "assistant", content: reply }); bubble.remove(); return say("bot", reply, [], links); }
-    } catch (e) { if (ctl && ctl.signal.aborted) { bubble.remove(); return; } }
+    } catch (e) { if (ctl && ctl.signal.aborted && ctl.signal.reason !== "slow") { bubble.remove(); return; } }
     const eng = await getEngine(status);
     if (!eng) {
       bubble.remove();
-      if (ctl && ctl.signal.aborted) return;
+      if (ctl && ctl.signal.aborted && ctl.signal.reason !== "slow") return;
       const enable = navigator.gpu && !allowDevice ? [["Run it on this device (2–3 GB, once)", null, () => { allowDevice = true; try { localStorage.setItem("wz-ai-device", "1"); } catch (e) {} history.pop(); ask(text, true); }]] : [];
       say("bot", "WezzetAI is busy right now. Try again in a minute.", enable);
       return;
@@ -155,10 +159,10 @@
       [...hits.map((t) => [t.name, null, () => go(t.path)]), ["See every option", null, () => go("/convert")]]);
   }
 
-  const grow = () => { q.style.height = "auto"; q.style.height = Math.min(q.scrollHeight, 200) + "px"; send.disabled = !ctl && !q.value.trim(); };
+  const grow = () => { q.style.height = "auto"; q.style.height = Math.min(q.scrollHeight, 200) + "px"; };
   async function ask(t, again) {
     if (ctl) return;
-    ctl = new AbortController(); send.classList.add("busy"); send.disabled = false; send.setAttribute("aria-label", "Stop");
+    ctl = new AbortController(); send.classList.add("busy"); send.setAttribute("aria-label", "Stop");
     if (!again) say("you", t);
     try { await answer(t); } catch (e) {}
     ctl = null; send.classList.remove("busy"); send.setAttribute("aria-label", "Send"); grow();
