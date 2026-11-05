@@ -1406,16 +1406,38 @@ async function wzAI(request, env) {
   }
   const clean = (t) => (t || "").replace(/<think>[\s\S]*?<\/think>/g, "").trim();
   if (env.WEZZETAI_URL) {
+    // Ollama's native /api/chat: think:false skips qwen3's hidden reasoning (about half the wait on a CPU box),
+    // keep_alive keeps the model loaded, and tokens stream to the page as they come (when it asks with stream:true).
+    const base = env.WEZZETAI_URL.replace(/\/$/, "");
+    const headers = { "content-type": "application/json", ...(env.WEZZETAI_KEY ? { authorization: "Bearer " + env.WEZZETAI_KEY } : {}), ...(env.CF_ACCESS_CLIENT_ID ? { "CF-Access-Client-Id": env.CF_ACCESS_CLIENT_ID, "CF-Access-Client-Secret": env.CF_ACCESS_CLIENT_SECRET } : {}) };
+    const model = env.WEZZETAI_MODEL || "qwen3.6:35b-a3b";
+    const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 60000);
     try {
-      const last = msgs.at(-1);
-      const r = await fetch(env.WEZZETAI_URL.replace(/\/$/, "") + "/v1/chat/completions", {
-        method: "POST",
-        headers: { "content-type": "application/json", ...(env.WEZZETAI_KEY ? { authorization: "Bearer " + env.WEZZETAI_KEY } : {}), ...(env.CF_ACCESS_CLIENT_ID ? { "CF-Access-Client-Id": env.CF_ACCESS_CLIENT_ID, "CF-Access-Client-Secret": env.CF_ACCESS_CLIENT_SECRET } : {}) },
-        body: JSON.stringify({ model: env.WEZZETAI_MODEL || "qwen3.6:35b-a3b", messages: [...msgs.slice(0, -1), { ...last, content: last.content + " /no_think" }], max_tokens: 700, temperature: 0.6 }),
-        signal: AbortSignal.timeout(90000),
+      const r = await fetch(base + "/api/chat", {
+        method: "POST", headers, signal: ctl.signal,
+        body: JSON.stringify({ model, messages: msgs, think: false, stream: !!d.stream, keep_alive: "24h", options: { num_predict: 700, temperature: 0.6 } }),
       });
-      if (r.ok) { const j = await r.json(); const t = clean(j.choices?.[0]?.message?.content); if (t) return json({ reply: t }); }
-    } catch (e) {}
+      const ct = r.headers.get("content-type") || "";
+      if (r.ok && d.stream && ct.includes("ndjson")) {
+        clearTimeout(timer);
+        const enc = new TextEncoder(), dec = new TextDecoder();
+        let buf = "", inThink = false;
+        const emit = (c, t) => {
+          if (!t) return;
+          // Belt and braces: drop any <think> block a model sends anyway.
+          if (inThink) { const e = t.indexOf("</think>"); if (e < 0) return; inThink = false; t = t.slice(e + 8); }
+          const s0 = t.indexOf("<think>"); if (s0 >= 0) { if (s0) c.enqueue(enc.encode(t.slice(0, s0))); inThink = true; return emit(c, t.slice(s0 + 7)); }
+          if (t) c.enqueue(enc.encode(t));
+        };
+        const line = (c, l) => { if (!l.trim()) return; try { const j = JSON.parse(l); emit(c, j.message && j.message.content); } catch (e) {} };
+        const body = r.body.pipeThrough(new TransformStream({
+          transform(ch, c) { buf += dec.decode(ch, { stream: true }); const ls = buf.split("\n"); buf = ls.pop(); ls.forEach((l) => line(c, l)); },
+          flush(c) { line(c, buf); },
+        }));
+        return new Response(body, { headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store", "x-wz-model": "wezzetai" } });
+      }
+      if (r.ok && !d.stream) { const j = await r.json(); const t = clean(j.message && j.message.content); if (t) return json({ reply: t }); }
+    } catch (e) {} finally { clearTimeout(timer); }
   }
   if (env.AI) {
     try { const r = await env.AI.run(AI_MODEL, { messages: msgs, max_tokens: 700 }); const t = clean(r && r.response); if (t) return json({ reply: t }); } catch (e) {}
