@@ -232,6 +232,9 @@ table.plain td:first-child { font-weight: 600; white-space: nowrap; }
 }
 .site-footer p { margin: 0 0 6px; }
 .site-footer a { color: var(--ink-soft); }
+.home-links { position: fixed; left: 0; right: 0; bottom: 12px; margin: 0; text-align: center; font-size: 0.85rem; color: var(--ink-soft); }
+.home-links a { color: var(--ink-soft); text-decoration: none; }
+.home-links a:hover { text-decoration: underline; }
 
 /* Homepage tool list */
 .tools { list-style: none; padding: 0; margin: 32px 0 0; display: grid; gap: 12px; max-width: 760px; }
