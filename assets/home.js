@@ -647,6 +647,8 @@
     if (t && (q.value.trim() || active >= 0)) location.href = t.url;
   });
   document.addEventListener("click", (e) => { if (!form.contains(e.target)) open(false); });
+  const ai = document.getElementById("ai-btn");
+  if (ai) ai.addEventListener("click", (e) => { const v = q.value.trim(); if (v) { e.preventDefault(); location.href = "/ai?q=" + encodeURIComponent(v); } });
 
   // Recently used tools (saved by theme.js on each tool page)
   try {
