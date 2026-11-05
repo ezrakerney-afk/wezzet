@@ -3,9 +3,10 @@
   const $ = (id) => document.getElementById(id);
   const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
   const LOC = ["Standard", "Left", "Right", "Numpad"];
-  const stat = (v, l) => `<div class="stat" data-copy="${esc(v)}" title="Click to copy"><b>${esc(v)}</b><span>${l}</span></div>`;
+  const stat = (v, l) => `<button type="button" class="stat" data-copy="${esc(v)}" aria-label="Copy ${l}: ${esc(v)}" title="Click to copy"><b>${esc(v)}</b><span>${l}</span></button>`;
   document.addEventListener("keydown", (e) => {
     if (e.target.closest && e.target.closest("input, textarea, select")) return;
+    if ((e.key === "Enter" || e.key === " ") && e.target.closest && e.target.closest("[data-copy]")) return;
     if (!e.metaKey && !(e.ctrlKey && /^[rlw]$/i.test(e.key))) e.preventDefault();
     $("big").textContent = e.key === " " ? "Space" : e.key;
     const mods = ["ctrlKey", "shiftKey", "altKey", "metaKey"].filter((m) => e[m]).map((m) => m.replace("Key", "")).join(" + ") || "None";
