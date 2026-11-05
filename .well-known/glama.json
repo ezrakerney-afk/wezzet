@@ -1,0 +1,4 @@
+{
+  "$schema": "https://glama.ai/mcp/schemas/connector.json",
+  "maintainers": [{ "github": "NoahPuckett-IO" }, { "github": "ezrakerney-afk" }]
+}
