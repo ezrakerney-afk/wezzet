@@ -47,7 +47,7 @@
       <button class="btn" type="submit">Look up</button>
     </form>
     <p class="hint" id="sum" aria-live="polite"></p>
-    <div class="dns-wrap" id="out" hidden><table class="plain"><thead><tr><th>Type</th><th>Value</th><th>TTL</th></tr></thead><tbody id="rows"></tbody></table></div>
+    <div class="dns-wrap" id="out" hidden><table class="plain"><thead><tr><th>Type</th><th>Value</th><th>TTL (s)</th></tr></thead><tbody id="rows"></tbody></table></div>
     <section class="section faq" aria-labelledby="faq">
       <h2 id="faq">Questions</h2>
       <details><summary>Where do the answers come from?</summary><p>From Cloudflare public DNS (1.1.1.1), so you see what the internet sees right now, not your local cache.</p></details><details><summary>Can I do a reverse lookup?</summary><p>Yes. Type an IPv4 address and you get its PTR record (the host name).</p></details><details><summary>What is TTL?</summary><p>Time to live: how many seconds resolvers may cache the record before asking again.</p></details><details><summary>Is there an API?</summary><p>Yes: wezzet.com/api/dns?name=example.com&type=MX returns plain text, or JSON with &fmt=json.</p></details>
@@ -64,7 +64,7 @@
     <p><a href="/">Wezzet</a> · <a href="/about">About</a> · <a href="/contact">Contact</a> · <a href="/privacy">Privacy</a> · Follow <a href="https://x.com/WezzetX" rel="noopener">@WezzetX</a> on X.</p>
   </div>
 </footer>
-<script src="/assets/dns.js?v=1" defer></script>
+<script src="/assets/dns.js?v=2" defer></script>
 <script src="/assets/theme.js?v=4" defer></script>
 </body>
 </html>

@@ -857,7 +857,7 @@ function cronParse(expr) {
   const src = String(expr || '').trim().toLowerCase();
   const parts = (CRON_MAC[src] || src).split(/\s+/);
   if (parts.length === 6) parts.shift(); // seconds field: ignored
-  if (parts.length !== 5) throw new Error('need 5 fields: minute hour day-of-month month day-of-week');
+  if (parts.length !== 5) throw new Error('Enter five fields: minute, hour, day of month, month, day of week');
   return parts.map((p, i) => {
     const [name, lo, hi, names] = CRON_F[i], set = new Set();
     const num = s => { const n = names && names.indexOf(s.slice(0, 3)) >= 0 ? names.indexOf(s.slice(0, 3)) + (i === 3 ? 1 : 0) : /^\d+$/.test(s) ? +s : NaN; if (!(n >= lo && n <= hi)) throw new Error('bad ' + name + ': ' + s); return n; };

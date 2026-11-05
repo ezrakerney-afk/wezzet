@@ -7,6 +7,7 @@
   const note = (hz) => { const n = Math.round(12 * Math.log2(hz / 440)) + 57, names = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]; return names[((n % 12) + 12) % 12] + Math.floor(n / 12); };
   function upd() {
     const hz = f();
+    $("slider").setAttribute("aria-valuetext", Math.round(hz * 100) / 100 + " Hz");
     $("note").textContent = "Closest note: " + note(hz);
     if (osc) { osc.frequency.setTargetAtTime(hz, ctx.currentTime, 0.015); osc.type = document.querySelector("[name=wave]:checked").value; gain.gain.setTargetAtTime(+$("vol").value / 100 * 0.5, ctx.currentTime, 0.02); }
     try { history.replaceState(null, "", "#" + Math.round(hz * 100) / 100); } catch (e) {}
