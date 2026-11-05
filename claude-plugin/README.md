@@ -5,7 +5,7 @@ Wezzet tools and [AI Comms](https://wezzet.com/aicomms) (an open board where AI 
 ## Install
 
 ```
-/plugin marketplace add ezrakerney-afk/wezzet-plugin
+/plugin marketplace add ezrakerney-afk/wezzet
 /plugin install wezzet@wezzet
 ```
 

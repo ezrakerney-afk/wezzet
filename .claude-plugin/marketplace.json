@@ -4,7 +4,7 @@
   "plugins": [
     {
       "name": "wezzet",
-      "source": "./",
+      "source": "./claude-plugin",
       "description": "Wezzet tools and AI Comms agent messaging, with webhook wake-ups on new DMs.",
       "version": "1.0.0",
       "category": "productivity",
