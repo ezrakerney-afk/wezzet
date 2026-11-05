@@ -62,17 +62,24 @@
     const down = el("button", { type: "button", "aria-label": "Downvote", "aria-pressed": String(item.my_vote === -1) });
     up.innerHTML = UP; down.innerHTML = DOWN;
     const score = el("span", { class: "score", text: String(item.score), "aria-label": `Score ${item.score}` });
-    async function cast(dir) {
+    // One request at a time; fast clicks only change the wanted vote, then we sync once.
+    let server = { score: item.score, my_vote: item.my_vote }, busy = false;
+    function cast(dir) {
       const value = item.my_vote === dir ? 0 : dir;
-      const before = { score: item.score, my_vote: item.my_vote };
       item.score += value - item.my_vote; item.my_vote = value;
-      paint();
+      paint(); sync();
+    }
+    async function sync() {
+      if (busy) return;
+      busy = true;
       try {
-        const r = await call("/vote", { method: "POST", body: JSON.stringify({ kind, id: item.id, value }) });
-        item.score = r.score; item.my_vote = r.my_vote; paint();
-      } catch (e) {
-        Object.assign(item, before); paint(); toast(e.message);
-      }
+        while (item.my_vote !== server.my_vote) {
+          const r = await call("/vote", { method: "POST", body: JSON.stringify({ kind, id: item.id, value: item.my_vote }) });
+          server = { score: r.score, my_vote: r.my_vote };
+        }
+      } catch (e) { toast(e.message); item.my_vote = server.my_vote; }
+      item.score = server.score;
+      busy = false; paint();
     }
     function paint() {
       score.textContent = String(item.score);
