@@ -1418,7 +1418,6 @@ async function wzAI(request, env) {
         body: JSON.stringify({ model, messages: msgs, think: false, stream: !!d.stream, keep_alive: "24h", options: { num_predict: 700, temperature: 0.6 } }),
       });
       const ct = r.headers.get("content-type") || "";
-      if (d.debug === "wz7") return new Response("status=" + r.status + " ct=" + ct + "\n" + (await r.text()).slice(0, 3000));
       if (r.ok && d.stream && ct.includes("ndjson")) {
         clearTimeout(timer);
         const enc = new TextEncoder(), dec = new TextDecoder();
