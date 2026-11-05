@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Regex Tester: Test Regular Expressions Online | Wezzet</title>
+<meta name="description" content="Test JavaScript regular expressions with live match highlighting, groups and replace.">
+<link rel="canonical" href="https://wezzet.com/regex">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Wezzet">
+<meta property="og:title" content="Regex Tester: Test Regular Expressions Online | Wezzet">
+<meta property="og:url" content="https://wezzet.com/regex">
+<meta property="og:image" content="https://wezzet.com/assets/og/json.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://wezzet.com/assets/og/json.png">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#121212" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="icon" href="/assets/icon-32.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+<script>try{(function(t){if(t==="dark"||t==="light")document.documentElement.dataset.theme=t})(localStorage.getItem("wz-theme"))}catch(e){}</script>
+<style>.logo .logo-dark{display:none}:root[data-theme="dark"] .logo .logo-light{display:none}:root[data-theme="dark"] .logo .logo-dark{display:block}@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .logo .logo-light{display:none}:root:not([data-theme="light"]) .logo .logo-dark{display:block}}</style>
+<link rel="stylesheet" href="/assets/site.css?v=7">
+<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"SoftwareApplication","name":"Regex tester","url":"https://wezzet.com/regex","applicationCategory":"UtilitiesApplication","operatingSystem":"Any (web browser)","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"description":"Test JavaScript regular expressions with live match highlighting, groups and replace."}]}</script>
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1814434432126124" crossorigin="anonymous"></script>
+<style>.rx{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.rx input#re{flex:1 1 260px}.rx #fl{width:90px}.hl{white-space:pre-wrap;overflow-wrap:anywhere;border:1px solid var(--line);border-radius:10px;padding:12px 14px;min-height:3em;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.95rem}.hl mark{background:#ffe58a;color:#1a1a1a;border-radius:3px}.hl mark:nth-of-type(even){background:#a8dcff}.groups{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.9rem;overflow:auto;max-height:260px}.groups table{border-collapse:collapse}.groups td,.groups th{border-bottom:1px solid var(--line);padding:4px 10px;text-align:left;vertical-align:top;overflow-wrap:anywhere}</style>
+</head>
+<body>
+<header class="site-header">
+  <div class="wrap">
+    <a class="logo" href="/"><img class="logo-light" src="/assets/logo.png" alt="Wezzet" width="113" height="52"><img class="logo-dark" src="/assets/logo-dark.png" alt="Wezzet" width="113" height="52"></a>
+    <nav class="site-nav" aria-label="Main"><a href="/">All tools</a><button class="theme-toggle" type="button" aria-label="Switch between light and dark mode"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm0 2v16a8 8 0 0 1 0-16Z"/></svg></button></nav>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <div class="tool-head">
+      <h1>Regex tester</h1>
+    </div>
+
+    <div class="field"><label for="re">Pattern</label><div class="rx"><span class="mono">/</span><input type="text" id="re" class="mono" placeholder="[a-z]+@\w+\.com" autocomplete="off" spellcheck="false" autofocus><span class="mono">/</span><input type="text" id="fl" class="mono" value="g" aria-label="Flags" spellcheck="false"></div><p class="hint">Flags: g all, i ignore case, m multiline, s dot matches newline, u unicode.</p></div>
+    <div class="field" style="margin-top:14px"><label for="t">Test text</label><textarea id="t" class="big mono" style="min-height:140px" spellcheck="false">Mail ana@example.com or bob@test.com</textarea></div>
+    <p class="hint" id="st" aria-live="polite"></p>
+    <div class="hl" id="hl"></div>
+    <div class="groups" id="groups"></div>
+    <div class="field" style="margin-top:18px"><label for="rep">Replace with</label><input type="text" id="rep" class="mono" placeholder="$1, $&lt;name&gt; or text" spellcheck="false"></div>
+    <div class="hl" id="repout" style="margin-top:10px"></div>
+    <section class="section faq" aria-labelledby="faq">
+      <h2 id="faq">Questions</h2>
+      <details><summary>Which regex flavor is this?</summary><p>JavaScript (ECMAScript). Most patterns also work in Python, PHP and Java, but lookbehind and named groups differ slightly.</p></details><details><summary>How do I match across lines?</summary><p>Use the m flag so ^ and $ match at each line, or the s flag so . also matches newlines.</p></details><details><summary>Is my text sent anywhere?</summary><p>No. Everything runs in your browser.</p></details>
+    </section>
+    <section class="section related" aria-labelledby="related">
+      <h2 id="related">Related tools</h2>
+      <ul><li><a href="/diff">Text compare</a></li><li><a href="/json">JSON formatter</a></li><li><a href="/case">Case converter</a></li><li><a href="/extract-links">Extract links</a></li><li><a href="/url-encode">URL encode</a></li><li><a href="/words">Word counter</a></li></ul>
+    </section>
+  </div>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <p><a href="/">Wezzet</a> · <a href="/about">About</a> · <a href="/contact">Contact</a> · <a href="/privacy">Privacy</a> · Follow <a href="https://x.com/WezzetX" rel="noopener">@WezzetX</a> on X.</p>
+  </div>
+</footer>
+<script src="/assets/regex.js?v=1" defer></script>
+<script src="/assets/theme.js?v=4" defer></script>
+</body>
+</html>

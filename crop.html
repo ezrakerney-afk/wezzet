@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Crop Image Online: JPG, PNG and WebP | Wezzet</title>
+<meta name="description" content="Crop a photo to any size or aspect ratio in your browser. Nothing is uploaded.">
+<link rel="canonical" href="https://wezzet.com/crop">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Wezzet">
+<meta property="og:title" content="Crop Image Online: JPG, PNG and WebP | Wezzet">
+<meta property="og:url" content="https://wezzet.com/crop">
+<meta property="og:image" content="https://wezzet.com/assets/og/image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://wezzet.com/assets/og/image.png">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#121212" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="icon" href="/assets/icon-32.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+<script>try{(function(t){if(t==="dark"||t==="light")document.documentElement.dataset.theme=t})(localStorage.getItem("wz-theme"))}catch(e){}</script>
+<style>.logo .logo-dark{display:none}:root[data-theme="dark"] .logo .logo-light{display:none}:root[data-theme="dark"] .logo .logo-dark{display:block}@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .logo .logo-light{display:none}:root:not([data-theme="light"]) .logo .logo-dark{display:block}}</style>
+<link rel="stylesheet" href="/assets/site.css?v=7">
+<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"SoftwareApplication","name":"Crop image","url":"https://wezzet.com/crop","applicationCategory":"UtilitiesApplication","operatingSystem":"Any (web browser)","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"description":"Crop a photo to any size or aspect ratio in your browser. Nothing is uploaded."}]}</script>
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1814434432126124" crossorigin="anonymous"></script>
+<style>.crop-stage{position:relative;display:inline-block;max-width:100%;touch-action:none;user-select:none;margin-top:14px;line-height:0;overflow:hidden}.crop-stage img{max-width:100%;max-height:70vh;display:block}.crop-box{position:absolute;border:2px solid #fff;box-shadow:0 0 0 9999px rgba(0,0,0,.5);cursor:move;outline:1px solid rgba(0,0,0,.4)}.crop-box i{position:absolute;width:16px;height:16px;background:#fff;border:1px solid #333;border-radius:3px}.crop-box i[data-h=nw]{left:-3px;top:-3px;cursor:nwse-resize}.crop-box i[data-h=ne]{right:-3px;top:-3px;cursor:nesw-resize}.crop-box i[data-h=sw]{left:-3px;bottom:-3px;cursor:nesw-resize}.crop-box i[data-h=se]{right:-3px;bottom:-3px;cursor:nwse-resize}</style>
+</head>
+<body>
+<header class="site-header">
+  <div class="wrap">
+    <a class="logo" href="/"><img class="logo-light" src="/assets/logo.png" alt="Wezzet" width="113" height="52"><img class="logo-dark" src="/assets/logo-dark.png" alt="Wezzet" width="113" height="52"></a>
+    <nav class="site-nav" aria-label="Main"><a href="/">All tools</a><button class="theme-toggle" type="button" aria-label="Switch between light and dark mode"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm0 2v16a8 8 0 0 1 0-16Z"/></svg></button></nav>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <div class="tool-head">
+      <h1>Crop image</h1>
+    </div>
+
+    <div class="dropzone" id="drop">
+      <button class="btn" type="button" id="choose">Choose image</button>
+      <p>or drop it here, or paste</p>
+      <input type="file" id="file" accept="image/*" hidden>
+    </div>
+    <div id="ed" hidden>
+      <div class="options">
+        <div class="field"><span class="label">Shape</span><div class="segmented" role="radiogroup" aria-label="Aspect ratio"><label><input type="radio" name="ar" value="0" checked><span>Free</span></label><label><input type="radio" name="ar" value="1"><span>1:1</span></label><label><input type="radio" name="ar" value="1.3333"><span>4:3</span></label><label><input type="radio" name="ar" value="1.7778"><span>16:9</span></label><label><input type="radio" name="ar" value="0.5625"><span>9:16</span></label></div></div>
+        <div class="field"><span class="label">Size (px)</span><div class="row-actions" style="margin:0;align-items:center"><input type="number" id="cw" min="1" aria-label="Crop width" style="max-width:100px"><span>×</span><input type="number" id="ch" min="1" aria-label="Crop height" style="max-width:100px"></div></div>
+        <div class="field"><span class="label">Save as</span><div class="segmented" role="radiogroup" aria-label="Output format"><label><input type="radio" name="to" value="same" checked><span>Same</span></label><label><input type="radio" name="to" value="jpg"><span>JPG</span></label><label><input type="radio" name="to" value="png"><span>PNG</span></label><label><input type="radio" name="to" value="webp"><span>WebP</span></label></div></div>
+      </div>
+      <div class="crop-wrap"><div class="crop-stage" id="stage"><img id="img" alt="Image to crop"><div class="crop-box" id="box"><i data-h="nw"></i><i data-h="ne"></i><i data-h="sw"></i><i data-h="se"></i></div></div></div>
+      <div class="btn-row"><button class="btn" type="button" id="save">Crop and download</button><button class="btn btn-quiet" type="button" id="other">Another image</button></div>
+    </div>
+    <section class="section faq" aria-labelledby="faq">
+      <h2 id="faq">Questions</h2>
+      <details><summary>Is my photo uploaded?</summary><p>No. The image is cropped in your browser and never leaves your device.</p></details><details><summary>Does cropping lower the quality?</summary><p>No. The crop uses the full resolution of the original. JPG and WebP are saved at high quality.</p></details><details><summary>How do I make a square profile picture?</summary><p>Pick 1:1, drag the box over the face, then download.</p></details>
+    </section>
+    <section class="section related" aria-labelledby="related">
+      <h2 id="related">Related tools</h2>
+      <ul><li><a href="/resize">Resize image</a></li><li><a href="/compress">Compress image</a></li><li><a href="/image">Image converter</a></li><li><a href="/remove-bg">Remove background</a></li><li><a href="/image-to-grayscale">Grayscale image</a></li><li><a href="/favicon">Favicon generator</a></li></ul>
+    </section>
+  </div>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <p><a href="/">Wezzet</a> · <a href="/about">About</a> · <a href="/contact">Contact</a> · <a href="/privacy">Privacy</a> · Follow <a href="https://x.com/WezzetX" rel="noopener">@WezzetX</a> on X.</p>
+  </div>
+</footer>
+<script src="/assets/crop.js?v=1" defer></script>
+<script src="/assets/theme.js?v=4" defer></script>
+</body>
+</html>

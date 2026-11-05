@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Diff Checker: Compare Two Texts Online | Wezzet</title>
+<meta name="description" content="Paste two texts and see what changed, line by line, with added and removed words highlighted.">
+<link rel="canonical" href="https://wezzet.com/diff">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Wezzet">
+<meta property="og:title" content="Diff Checker: Compare Two Texts Online | Wezzet">
+<meta property="og:url" content="https://wezzet.com/diff">
+<meta property="og:image" content="https://wezzet.com/assets/og/words.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://wezzet.com/assets/og/words.png">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#121212" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="icon" href="/assets/icon-32.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+<script>try{(function(t){if(t==="dark"||t==="light")document.documentElement.dataset.theme=t})(localStorage.getItem("wz-theme"))}catch(e){}</script>
+<style>.logo .logo-dark{display:none}:root[data-theme="dark"] .logo .logo-light{display:none}:root[data-theme="dark"] .logo .logo-dark{display:block}@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .logo .logo-light{display:none}:root:not([data-theme="light"]) .logo .logo-dark{display:block}}</style>
+<link rel="stylesheet" href="/assets/site.css?v=7">
+<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"SoftwareApplication","name":"Text compare","url":"https://wezzet.com/diff","applicationCategory":"UtilitiesApplication","operatingSystem":"Any (web browser)","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"description":"Paste two texts and see what changed, line by line, with added and removed words highlighted."}]}</script>
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1814434432126124" crossorigin="anonymous"></script>
+<style>.diff-in{display:grid;gap:12px;grid-template-columns:minmax(0,1fr)}@media(min-width:760px){.diff-in{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}}.diff-in textarea.big{min-height:220px}.diff-out{border:1px solid var(--line);border-radius:10px;overflow:auto;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.9rem;margin-top:14px}.diff-out div{white-space:pre-wrap;overflow-wrap:anywhere;padding:1px 10px 1px 34px;position:relative;min-height:1.4em}.diff-out div::before{position:absolute;left:12px;color:var(--ink-soft)}.diff-out .a{background:var(--good-bg)}.diff-out .a::before{content:'+';color:var(--good)}.diff-out .r{background:var(--bad-bg)}.diff-out .r::before{content:'-';color:var(--bad)}.diff-out ins{background:var(--good-bg);color:var(--good);text-decoration:none;font-weight:700}.diff-out del{background:var(--bad-bg);color:var(--bad);font-weight:700}.diff-out .gap{color:var(--ink-soft);font-style:italic}</style>
+</head>
+<body>
+<header class="site-header">
+  <div class="wrap">
+    <a class="logo" href="/"><img class="logo-light" src="/assets/logo.png" alt="Wezzet" width="113" height="52"><img class="logo-dark" src="/assets/logo-dark.png" alt="Wezzet" width="113" height="52"></a>
+    <nav class="site-nav" aria-label="Main"><a href="/">All tools</a><button class="theme-toggle" type="button" aria-label="Switch between light and dark mode"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm0 2v16a8 8 0 0 1 0-16Z"/></svg></button></nav>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <div class="tool-head">
+      <h1>Text compare</h1>
+    </div>
+
+    <div class="diff-in">
+      <textarea id="a" class="big mono" placeholder="Original text" aria-label="Original text"></textarea>
+      <textarea id="b" class="big mono" placeholder="Changed text" aria-label="Changed text"></textarea>
+    </div>
+    <div class="btn-row"><button class="btn" type="button" id="go">Compare</button><label class="check"><input type="checkbox" id="ws"> Ignore spaces</label><label class="check"><input type="checkbox" id="ic"> Ignore case</label><label class="check"><input type="checkbox" id="all"> Show all lines</label></div>
+    <p class="hint" id="sum" aria-live="polite"></p>
+    <div class="diff-out" id="out" hidden></div>
+    <section class="section faq" aria-labelledby="faq">
+      <h2 id="faq">Questions</h2>
+      <details><summary>Is my text sent anywhere?</summary><p>No. The comparison runs in your browser.</p></details><details><summary>How big can the texts be?</summary><p>Tens of thousands of lines work fine on most devices.</p></details><details><summary>What do the colors mean?</summary><p>Green lines were added, red lines were removed. Bold parts show the exact words that changed.</p></details>
+    </section>
+    <section class="section related" aria-labelledby="related">
+      <h2 id="related">Related tools</h2>
+      <ul><li><a href="/words">Word counter</a></li><li><a href="/case">Case converter</a></li><li><a href="/sort-lines">Sort lines</a></li><li><a href="/regex">Regex tester</a></li><li><a href="/json">JSON formatter</a></li><li><a href="/notepad">Notepad</a></li></ul>
+    </section>
+  </div>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <p><a href="/">Wezzet</a> · <a href="/about">About</a> · <a href="/contact">Contact</a> · <a href="/privacy">Privacy</a> · Follow <a href="https://x.com/WezzetX" rel="noopener">@WezzetX</a> on X.</p>
+  </div>
+</footer>
+<script src="/assets/diff.js?v=1" defer></script>
+<script src="/assets/theme.js?v=4" defer></script>
+</body>
+</html>
