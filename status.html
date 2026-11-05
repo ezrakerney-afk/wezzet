@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HTTP Status and Redirect Checker | Wezzet</title>
+<meta name="description" content="Check any URL: HTTP status code, every redirect in the chain, response time and the response headers.">
+<link rel="canonical" href="https://wezzet.com/status">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Wezzet">
+<meta property="og:title" content="HTTP Status and Redirect Checker | Wezzet">
+<meta property="og:url" content="https://wezzet.com/status">
+<meta property="og:image" content="https://wezzet.com/assets/og/domains.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://wezzet.com/assets/og/domains.png">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#121212" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="icon" href="/assets/icon-32.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+<script>try{(function(t){if(t==="dark"||t==="light")document.documentElement.dataset.theme=t})(localStorage.getItem("wz-theme"))}catch(e){}</script>
+<style>.logo .logo-dark{display:none}:root[data-theme="dark"] .logo .logo-light{display:none}:root[data-theme="dark"] .logo .logo-dark{display:block}@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .logo .logo-light{display:none}:root:not([data-theme="light"]) .logo .logo-dark{display:block}}</style>
+<link rel="stylesheet" href="/assets/site.css?v=7">
+<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"SoftwareApplication","name": "HTTP status checker","url":"https://wezzet.com/status","applicationCategory":"UtilitiesApplication","operatingSystem":"Any (web browser)","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"description":"Check any URL: HTTP status code, every redirect in the chain, response time and the response headers."}]}</script>
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1814434432126124" crossorigin="anonymous"></script>
+<style>.st-f{display:flex;flex-wrap:wrap;gap:10px;align-items:end}.st-f .field{flex:1 1 300px}.chain{list-style:none;padding:0;margin:14px 0 0}.chain li{padding:8px 0;border-bottom:1px solid var(--line);overflow-wrap:anywhere}.chain b{display:inline-block;min-width:3.2em}.chain .ok{color:var(--good)}.chain .re{color:var(--ink-soft)}.chain .er{color:var(--bad)}table.plain td.mono{overflow-wrap:anywhere;font-size:.88rem}.st-wrap{overflow-x:auto}</style>
+</head>
+<body>
+<header class="site-header">
+  <div class="wrap">
+    <a class="logo" href="/"><img class="logo-light" src="/assets/logo.png" alt="Wezzet" width="113" height="52"><img class="logo-dark" src="/assets/logo-dark.png" alt="Wezzet" width="113" height="52"></a>
+    <nav class="site-nav" aria-label="Main"><a href="/">All tools</a><button class="theme-toggle" type="button" aria-label="Switch between light and dark mode"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm0 2v16a8 8 0 0 1 0-16Z"/></svg></button></nav>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <div class="tool-head">
+      <h1>HTTP status checker</h1>
+    </div>
+
+    <form class="st-f" id="f">
+      <div class="field"><label for="url">URL</label><input type="text" id="url" placeholder="example.com/page" spellcheck="false" autocomplete="off" autocapitalize="off" inputmode="url"></div>
+      <button class="btn" type="submit">Check</button>
+    </form>
+    <p class="hint" id="sum" aria-live="polite"></p>
+    <div id="res" hidden>
+      <ol class="chain" id="chain"></ol>
+      <div id="hd"><h2 style="font-size:1.05rem;margin:22px 0 8px">Response headers</h2><div class="st-wrap"><table class="plain"><tbody id="rows"></tbody></table></div></div>
+    </div>
+    <section class="section faq" aria-labelledby="faq">
+      <h2 id="faq">Questions</h2>
+      <details><summary>What do the status codes mean?</summary><p>2xx is success, 3xx is a redirect, 4xx means the page was not found or is blocked (404, 403) and 5xx is a server error.</p></details><details><summary>Why does my site show 403 here but work in my browser?</summary><p>Some sites block automated checks or visitors from data centers. The check runs from Cloudflare, not from your computer.</p></details><details><summary>How many redirects are followed?</summary><p>Up to 10, so you can spot redirect loops and long chains that slow pages down.</p></details><details><summary>Is there an API?</summary><p>Yes: wezzet.com/api/status?url=example.com returns the chain and headers as text or JSON.</p></details>
+    </section>
+    <section class="section related" aria-labelledby="related">
+      <h2 id="related">Related tools</h2>
+      <ul><li><a href="/dns">DNS lookup</a></li><li><a href="/read">Web page to text</a></li><li><a href="/url-parser">URL parser</a></li><li><a href="/extract-links">Extract links</a></li><li><a href="/domains">Domain name search</a></li><li><a href="/json">JSON formatter</a></li></ul>
+    </section>
+  </div>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <p><a href="/">Wezzet</a> · <a href="/about">About</a> · <a href="/contact">Contact</a> · <a href="/privacy">Privacy</a> · Follow <a href="https://x.com/WezzetX" rel="noopener">@WezzetX</a> on X.</p>
+  </div>
+</footer>
+<script src="/assets/status.js?v=1" defer></script>
+<script src="/assets/theme.js?v=4" defer></script>
+</body>
+</html>

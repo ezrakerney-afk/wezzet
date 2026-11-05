@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Online Metronome with Tap Tempo | Wezzet</title>
+<meta name="description" content="A free online metronome: set the BPM from 20 to 300, pick the beats per bar, or tap the tempo.">
+<link rel="canonical" href="https://wezzet.com/metronome">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Wezzet">
+<meta property="og:title" content="Online Metronome with Tap Tempo | Wezzet">
+<meta property="og:url" content="https://wezzet.com/metronome">
+<meta property="og:image" content="https://wezzet.com/assets/og/timer.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://wezzet.com/assets/og/timer.png">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#121212" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="icon" href="/assets/icon-32.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+<script>try{(function(t){if(t==="dark"||t==="light")document.documentElement.dataset.theme=t})(localStorage.getItem("wz-theme"))}catch(e){}</script>
+<style>.logo .logo-dark{display:none}:root[data-theme="dark"] .logo .logo-light{display:none}:root[data-theme="dark"] .logo .logo-dark{display:block}@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .logo .logo-light{display:none}:root:not([data-theme="light"]) .logo .logo-dark{display:block}}</style>
+<link rel="stylesheet" href="/assets/site.css?v=7">
+<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"SoftwareApplication","name": "Metronome","url":"https://wezzet.com/metronome","applicationCategory":"UtilitiesApplication","operatingSystem":"Any (web browser)","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"description":"A free online metronome: set the BPM from 20 to 300, pick the beats per bar, or tap the tempo."}]}</script>
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1814434432126124" crossorigin="anonymous"></script>
+<style>.mt-bpm{display:flex;align-items:center;justify-content:center;gap:12px;margin:8px 0}.mt-bpm output{font-size:clamp(3rem,12vw,5rem);font-weight:800;min-width:3ch;text-align:center;font-variant-numeric:tabular-nums}#bpmr{width:100%;max-width:520px;display:block;margin:0 auto}.dots{display:flex;justify-content:center;gap:12px;margin:22px 0}.dots span{width:22px;height:22px;border-radius:50%;border:2px solid var(--line-strong)}.dots span.first{border-color:var(--ink)}.dots span.on{background:var(--ink);border-color:var(--ink)}.mt-ctl{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;align-items:center}</style>
+</head>
+<body>
+<header class="site-header">
+  <div class="wrap">
+    <a class="logo" href="/"><img class="logo-light" src="/assets/logo.png" alt="Wezzet" width="113" height="52"><img class="logo-dark" src="/assets/logo-dark.png" alt="Wezzet" width="113" height="52"></a>
+    <nav class="site-nav" aria-label="Main"><a href="/">All tools</a><button class="theme-toggle" type="button" aria-label="Switch between light and dark mode"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm0 2v16a8 8 0 0 1 0-16Z"/></svg></button></nav>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <div class="tool-head">
+      <h1>Metronome</h1>
+    </div>
+
+    <div class="mt-bpm"><button class="btn btn-quiet" type="button" id="minus" aria-label="Slower">&minus;</button><output id="bpmo" aria-live="polite">120</output><button class="btn btn-quiet" type="button" id="plus" aria-label="Faster">+</button></div>
+    <p class="hint" style="text-align:center;margin:0 auto">BPM</p>
+    <input type="range" id="bpmr" min="20" max="300" value="120" aria-label="Beats per minute">
+    <div class="dots" id="dots"></div>
+    <div class="mt-ctl"><button class="btn" type="button" id="go">Start</button><button class="btn btn-quiet" type="button" id="tap">Tap tempo</button>
+      <label class="check">BPM <input type="number" id="bpm" value="120" min="20" max="300" style="width:84px"></label>
+      <label class="check">Beats <select id="beats"><option>1</option><option>2</option><option>3</option><option selected>4</option><option>5</option><option>6</option><option>7</option><option>9</option><option>12</option></select></label>
+      <label class="check">Volume <input type="range" id="vol" min="1" max="100" value="70"></label></div>
+    <section class="section faq" aria-labelledby="faq">
+      <h2 id="faq">Questions</h2>
+      <details><summary>How do I use tap tempo?</summary><p>Tap the button in time with the music, 4 taps or more. The BPM is set from the average gap between taps.</p></details><details><summary>Is the timing accurate?</summary><p>Yes. Clicks are scheduled with the Web Audio clock, so they stay steady even if the page is busy.</p></details><details><summary>Is there a shortcut?</summary><p>Press the space bar to start and stop.</p></details>
+    </section>
+    <section class="section related" aria-labelledby="related">
+      <h2 id="related">Related tools</h2>
+      <ul><li><a href="/tone">Tone generator</a></li><li><a href="/timer">Timer</a></li><li><a href="/countdown">Countdown</a></li><li><a href="/mic-test">Mic test</a></li><li><a href="/typing">Typing test</a></li><li><a href="/cps">Click speed test</a></li></ul>
+    </section>
+  </div>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <p><a href="/">Wezzet</a> · <a href="/about">About</a> · <a href="/contact">Contact</a> · <a href="/privacy">Privacy</a> · Follow <a href="https://x.com/WezzetX" rel="noopener">@WezzetX</a> on X.</p>
+  </div>
+</footer>
+<script src="/assets/metronome.js?v=1" defer></script>
+<script src="/assets/theme.js?v=4" defer></script>
+</body>
+</html>

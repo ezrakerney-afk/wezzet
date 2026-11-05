@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tone Generator: Play Any Frequency | Wezzet</title>
+<meta name="description" content="Play a pure tone at any frequency from 1 Hz to 20,000 Hz with sine, square, triangle or sawtooth waves.">
+<link rel="canonical" href="https://wezzet.com/tone">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Wezzet">
+<meta property="og:title" content="Tone Generator: Play Any Frequency | Wezzet">
+<meta property="og:url" content="https://wezzet.com/tone">
+<meta property="og:image" content="https://wezzet.com/assets/og/mp3.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://wezzet.com/assets/og/mp3.png">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#121212" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="icon" href="/assets/icon-32.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+<script>try{(function(t){if(t==="dark"||t==="light")document.documentElement.dataset.theme=t})(localStorage.getItem("wz-theme"))}catch(e){}</script>
+<style>.logo .logo-dark{display:none}:root[data-theme="dark"] .logo .logo-light{display:none}:root[data-theme="dark"] .logo .logo-dark{display:block}@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .logo .logo-light{display:none}:root:not([data-theme="light"]) .logo .logo-dark{display:block}}</style>
+<link rel="stylesheet" href="/assets/site.css?v=7">
+<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"SoftwareApplication","name": "Tone generator","url":"https://wezzet.com/tone","applicationCategory":"UtilitiesApplication","operatingSystem":"Any (web browser)","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"description":"Play a pure tone at any frequency from 1 Hz to 20,000 Hz with sine, square, triangle or sawtooth waves."}]}</script>
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1814434432126124" crossorigin="anonymous"></script>
+<style>.tg-f{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.tg-f input[type=number]{width:130px;font-size:1.4rem;font-weight:700}#slider{width:100%;max-width:620px}.presets{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}.presets .btn{padding:6px 12px;font-size:.9rem}</style>
+</head>
+<body>
+<header class="site-header">
+  <div class="wrap">
+    <a class="logo" href="/"><img class="logo-light" src="/assets/logo.png" alt="Wezzet" width="113" height="52"><img class="logo-dark" src="/assets/logo-dark.png" alt="Wezzet" width="113" height="52"></a>
+    <nav class="site-nav" aria-label="Main"><a href="/">All tools</a><button class="theme-toggle" type="button" aria-label="Switch between light and dark mode"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm0 2v16a8 8 0 0 1 0-16Z"/></svg></button></nav>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <div class="tool-head">
+      <h1>Tone generator</h1>
+    </div>
+
+    <div class="tg-f"><input type="number" id="freq" value="440" min="1" max="20000" step="any" aria-label="Frequency in hertz"><span style="font-weight:700">Hz</span><button class="btn btn-quiet" type="button" data-step="-1" aria-label="Down a semitone">&minus;</button><button class="btn btn-quiet" type="button" data-step="1" aria-label="Up a semitone">+</button></div>
+    <p class="hint" id="note"></p>
+    <input type="range" id="slider" min="0" max="1000" step="1" aria-label="Frequency">
+    <div class="btn-row"><button class="btn" type="button" id="play">Play</button>
+      <div class="segmented" role="radiogroup" aria-label="Wave"><label><input type="radio" name="wave" value="sine" checked><span>Sine</span></label><label><input type="radio" name="wave" value="square"><span>Square</span></label><label><input type="radio" name="wave" value="triangle"><span>Triangle</span></label><label><input type="radio" name="wave" value="sawtooth"><span>Saw</span></label></div>
+      <label class="check">Volume <input type="range" id="vol" min="0" max="100" value="40"></label></div>
+    <div class="presets"><button class="btn btn-quiet" type="button" data-hz="60">60 Hz hum</button><button class="btn btn-quiet" type="button" data-hz="261.63">Middle C</button><button class="btn btn-quiet" type="button" data-hz="440">A 440</button><button class="btn btn-quiet" type="button" data-hz="1000">1 kHz</button><button class="btn btn-quiet" type="button" data-hz="10000">10 kHz</button><button class="btn btn-quiet" type="button" data-hz="17400">17.4 kHz</button></div>
+    <section class="section faq" aria-labelledby="faq">
+      <h2 id="faq">Questions</h2>
+      <details><summary>Is it safe for my ears and speakers?</summary><p>Start with the volume low. Very low and very high tones can be louder than they sound and can harm small speakers.</p></details><details><summary>What can I use it for?</summary><p>Tuning instruments, testing speakers and headphones, checking your hearing range, or finding a rattle.</p></details><details><summary>Why can I not hear high tones?</summary><p>Most adults hear up to about 15,000 to 17,000 Hz, and many phone speakers cannot play the very low or very high end.</p></details>
+    </section>
+    <section class="section related" aria-labelledby="related">
+      <h2 id="related">Related tools</h2>
+      <ul><li><a href="/metronome">Metronome</a></li><li><a href="/mic-test">Mic test</a></li><li><a href="/mp3">Audio converter</a></li><li><a href="/sound-converter">Sound converter</a></li><li><a href="/frequency-converter">Frequency converter</a></li><li><a href="/timer">Timer</a></li></ul>
+    </section>
+  </div>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <p><a href="/">Wezzet</a> · <a href="/about">About</a> · <a href="/contact">Contact</a> · <a href="/privacy">Privacy</a> · Follow <a href="https://x.com/WezzetX" rel="noopener">@WezzetX</a> on X.</p>
+  </div>
+</footer>
+<script src="/assets/tone.js?v=1" defer></script>
+<script src="/assets/theme.js?v=4" defer></script>
+</body>
+</html>

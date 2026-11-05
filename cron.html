@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cron Expression Explainer and Next Run Times | Wezzet</title>
+<meta name="description" content="Type a cron expression and see what it means in plain English and when it runs next, in any time zone.">
+<link rel="canonical" href="https://wezzet.com/cron">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Wezzet">
+<meta property="og:title" content="Cron Expression Explainer and Next Run Times | Wezzet">
+<meta property="og:url" content="https://wezzet.com/cron">
+<meta property="og:image" content="https://wezzet.com/assets/og/timer.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://wezzet.com/assets/og/timer.png">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#121212" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="icon" href="/assets/icon-32.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+<script>try{(function(t){if(t==="dark"||t==="light")document.documentElement.dataset.theme=t})(localStorage.getItem("wz-theme"))}catch(e){}</script>
+<style>.logo .logo-dark{display:none}:root[data-theme="dark"] .logo .logo-light{display:none}:root[data-theme="dark"] .logo .logo-dark{display:block}@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .logo .logo-light{display:none}:root:not([data-theme="light"]) .logo .logo-dark{display:block}}</style>
+<link rel="stylesheet" href="/assets/site.css?v=7">
+<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"SoftwareApplication","name": "Cron expression explainer","url":"https://wezzet.com/cron","applicationCategory":"UtilitiesApplication","operatingSystem":"Any (web browser)","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"description":"Type a cron expression and see what it means in plain English and when it runs next, in any time zone."}]}</script>
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1814434432126124" crossorigin="anonymous"></script>
+<style>.cron-out{margin-top:14px}.cron-out .out.bad{color:var(--bad)}.cron-next{margin:12px 0 0;padding-left:20px;font-variant-numeric:tabular-nums}.cron-next li{padding:2px 0}.presets{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}.presets .btn{padding:6px 12px;font-size:.9rem}</style>
+</head>
+<body>
+<header class="site-header">
+  <div class="wrap">
+    <a class="logo" href="/"><img class="logo-light" src="/assets/logo.png" alt="Wezzet" width="113" height="52"><img class="logo-dark" src="/assets/logo-dark.png" alt="Wezzet" width="113" height="52"></a>
+    <nav class="site-nav" aria-label="Main"><a href="/">All tools</a><button class="theme-toggle" type="button" aria-label="Switch between light and dark mode"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm0 2v16a8 8 0 0 1 0-16Z"/></svg></button></nav>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <div class="tool-head">
+      <h1>Cron expression explainer</h1>
+    </div>
+
+    <div class="tight" style="display:grid;gap:16px">
+      <div class="field"><label for="expr">Cron expression</label><input type="text" id="expr" class="mono" value="*/15 9-17 * * 1-5" spellcheck="false" autocomplete="off" style="width:100%;max-width:520px"><p class="hint">minute, hour, day of month, month, day of week</p></div>
+      <div class="field"><label for="tz">Time zone</label><select id="tz" style="max-width:320px"></select></div>
+    </div>
+    <div class="presets"><button class="btn btn-quiet" type="button" data-cron="* * * * *">Every minute</button><button class="btn btn-quiet" type="button" data-cron="*/5 * * * *">Every 5 min</button><button class="btn btn-quiet" type="button" data-cron="0 * * * *">Hourly</button><button class="btn btn-quiet" type="button" data-cron="0 0 * * *">Daily</button><button class="btn btn-quiet" type="button" data-cron="0 9 * * 1-5">Weekdays 9:00</button><button class="btn btn-quiet" type="button" data-cron="0 0 * * 0">Weekly</button><button class="btn btn-quiet" type="button" data-cron="0 0 1 * *">Monthly</button></div>
+    <div class="cron-out"><p class="out" id="desc" aria-live="polite">&nbsp;</p></div>
+    <h2 style="font-size:1.05rem;margin:22px 0 0">Next runs</h2>
+    <ol class="cron-next" id="next"></ol>
+    <section class="section faq" aria-labelledby="faq">
+      <h2 id="faq">Questions</h2>
+      <details><summary>What does each field mean?</summary><p>From left to right: minute (0-59), hour (0-23), day of month (1-31), month (1-12 or JAN-DEC) and day of week (0-7 or SUN-SAT, where 0 and 7 are Sunday).</p></details><details><summary>What do * , - and / do?</summary><p>* means every value, a comma lists values (1,15), a dash is a range (9-17) and a slash is a step (*/15 is every 15).</p></details><details><summary>Day of month and day of week both set?</summary><p>Then the job runs when either one matches, like standard cron. 0 0 13 * 5 runs on the 13th and on every Friday.</p></details><details><summary>Is there an API?</summary><p>Yes: wezzet.com/api/cron?expr=0 9 * * 1-5&tz=UTC returns the meaning and next run times as text or JSON.</p></details>
+    </section>
+    <section class="section related" aria-labelledby="related">
+      <h2 id="related">Related tools</h2>
+      <ul><li><a href="/timestamp">Unix timestamp</a></li><li><a href="/time-converter">Time converter</a></li><li><a href="/regex">Regex tester</a></li><li><a href="/countdown">Countdown</a></li><li><a href="/calc">Calculator</a></li><li><a href="/timer">Timer</a></li></ul>
+    </section>
+  </div>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <p><a href="/">Wezzet</a> · <a href="/about">About</a> · <a href="/contact">Contact</a> · <a href="/privacy">Privacy</a> · Follow <a href="https://x.com/WezzetX" rel="noopener">@WezzetX</a> on X.</p>
+  </div>
+</footer>
+<script src="/assets/cron.js?v=1" defer></script>
+<script src="/assets/theme.js?v=4" defer></script>
+</body>
+</html>
