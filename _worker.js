@@ -298,7 +298,7 @@ async function aicomms(request, env, url, ctx) {
   if (key && r.status !== 401 && /^[\w-]{8,100}$/.test(key)) t = t.replace(/key=(KEY|TOKEN)\b/g, 'key=' + key);
   return new Response(t, { status: r.status, headers: r.headers });
 }
-async function acRoute(request, env, url, ctx) {
+async function acRoute(request, env, url, ctx, viaAgent) {
   const q = url.searchParams;
   let p = url.pathname.replace(/\/+$/, '').toLowerCase();
   const seg = p.slice('/api/aicomms/'.length);
@@ -315,7 +315,13 @@ async function acRoute(request, env, url, ctx) {
   const text = !(p === '/api/aicomms/msgs' || q.get('fmt') === 'json');
   // Open to any agent. A key is either a member key (humans; can run many agents with &as=) or an agent token from /join.
   let me = null;
-  if (key) {
+  if (viaAgent) {
+    // Signed in with a Wezzet account that this agent is linked to (checked in /api/chat/ac): act as the agent, like its token.
+    const a = await env.DB.prepare('SELECT name, owner FROM ac_agents WHERE name=?').bind(viaAgent).first();
+    if (!a) return acOut({ error: 'agent not found' }, 404);
+    me = { name: a.owner, agent: a.name };
+    d.as = a.name;
+  } else if (key) {
     const h = await acHash(key);
     me = await env.DB.prepare('SELECT name FROM ac_members WHERE key_hash=?').bind(h).first();
     if (!me) {
@@ -1109,7 +1115,12 @@ const CH_SCHEMA = [
   "CREATE TABLE IF NOT EXISTS ch_groups (id INTEGER PRIMARY KEY, name TEXT, owner INTEGER, created INTEGER, updated INTEGER)",
   "CREATE TABLE IF NOT EXISTS ch_members (gid INTEGER, uid INTEGER, joined INTEGER, PRIMARY KEY (gid, uid))",
   "CREATE INDEX IF NOT EXISTS ch_members_uid ON ch_members (uid)",
+  // Wezzet account (the chat login, used site-wide): AI Comms agents linked to an account, and small per-account saves (/ai history and settings).
+  "CREATE TABLE IF NOT EXISTS wz_links (agent TEXT PRIMARY KEY, uid INTEGER, ts INTEGER)",
+  "CREATE INDEX IF NOT EXISTS wz_links_uid ON wz_links (uid)",
+  "CREATE TABLE IF NOT EXISTS wz_store (uid INTEGER, k TEXT, v TEXT, ts INTEGER, PRIMARY KEY (uid, k))",
 ];
+const WZ_KEYS = ["ai"], WZ_MAX = 200000;
 // Public username shown to others ("display"); ch_users.name is the private login name.
 const CH_ALTER = ["ALTER TABLE ch_users ADD COLUMN display TEXT", "CREATE UNIQUE INDEX IF NOT EXISTS ch_users_display ON ch_users (display COLLATE NOCASE)"];
 const CH_NAME = "COALESCE(u.display, u.name)";
@@ -1240,6 +1251,43 @@ async function chRoute(request, env, url, ctx) {
       DB.prepare("INSERT INTO actions (who, action, created_at) VALUES (?, 'chat-rename', ?)").bind(who, now),
     ]);
     return chOut({ name: display });
+  }
+
+  // ---- Wezzet account features outside /chat ----
+  if (p === "/account") {
+    const agents = (await DB.prepare("SELECT agent FROM wz_links WHERE uid = ? ORDER BY ts LIMIT 50").bind(me).all()).results.map((r) => r.agent);
+    return chOut({ me: { id: me, name: sess.name }, agents });
+  }
+  // Link an AI Comms agent by proving its token once. The token itself is never stored (only its hash, as before).
+  if (post && p === "/account/link") {
+    const tok = String(d.token || "").trim();
+    const a = tok && await DB.prepare("SELECT name FROM ac_agents WHERE token_hash = ?").bind(await acHash(tok)).first();
+    if (!a) return chOut({ error: "That token is not valid." }, 400);
+    if ((await DB.prepare("SELECT COUNT(*) n FROM wz_links WHERE uid = ?").bind(me).first()).n >= 50) return chOut({ error: "You can link up to 50 agents." }, 400);
+    await DB.prepare("INSERT INTO wz_links (agent, uid, ts) VALUES (?, ?, ?) ON CONFLICT(agent) DO UPDATE SET uid = excluded.uid, ts = excluded.ts").bind(a.name, me, now).run();
+    return chOut({ agent: a.name });
+  }
+  if (post && p === "/account/unlink") {
+    await DB.prepare("DELETE FROM wz_links WHERE agent = ? AND uid = ?").bind(String(d.agent || ""), me).run();
+    return chOut({ ok: true });
+  }
+  if (p === "/store") {
+    const k = String((post ? d.k : q.get("k")) || "");
+    if (!WZ_KEYS.includes(k)) return chOut({ error: "Unknown key." }, 400);
+    if (!post) return chOut({ v: (await DB.prepare("SELECT v FROM wz_store WHERE uid = ? AND k = ?").bind(me, k).first())?.v ?? null });
+    if (d.v == null) { await DB.prepare("DELETE FROM wz_store WHERE uid = ? AND k = ?").bind(me, k).run(); return chOut({ ok: true }); }
+    const v = JSON.stringify(d.v);
+    if (v.length > WZ_MAX) return chOut({ error: "Too big to save." }, 413);
+    await DB.prepare("INSERT INTO wz_store (uid, k, v, ts) VALUES (?, ?, ?, ?) ON CONFLICT(uid, k) DO UPDATE SET v = excluded.v, ts = excluded.ts").bind(me, k, v, now).run();
+    return chOut({ ok: true });
+  }
+  // /aicomms page acting as a linked agent with the account cookie. The custom header can't be sent cross-site without CORS, which blocks CSRF.
+  if (p.startsWith("/ac/")) {
+    const agent = String(request.headers.get("x-wz-agent") || "").toLowerCase();
+    if (!agent || !(await DB.prepare("SELECT 1 FROM wz_links WHERE agent = ? AND uid = ?").bind(agent, me).first())) return chOut({ error: "That agent isn't linked to your account." }, 403);
+    const u2 = new URL(url); u2.pathname = "/api/aicomms/" + p.slice(4);
+    const r2 = new Request(u2, { method: request.method, headers: { "content-type": "application/json" }, body: post ? JSON.stringify(d) : undefined });
+    try { return await acRoute(r2, env, u2, ctx, agent); } catch (e) { return chOut({ error: "Something went wrong on our side." }, 500); }
   }
 
   if (post && p === "/logout") {

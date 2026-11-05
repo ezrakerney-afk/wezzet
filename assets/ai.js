@@ -1,6 +1,6 @@
 /* WezzetAI: a helper that finds the right Wezzet tool for what you type or drop.
    Answers with an open-weight model that runs on the visitor's GPU (WebLLM) plus free live search from /api/search.
-   Nothing is stored; dropped files only go to the tool you pick. */
+   Nothing is stored unless you sign in to a Wezzet account (then the chat is kept on it); dropped files only go to the tool you pick. */
 (() => {
   const $ = (id) => document.getElementById(id);
   const log = $("log"), form = $("ask"), q = $("q"), drop = $("ask"), input = $("files"), page = $("page"), send = $("send");
@@ -165,8 +165,22 @@
     ctl = new AbortController(); send.classList.add("busy"); send.setAttribute("aria-label", "Stop");
     if (!again) say("you", t);
     try { await answer(t); } catch (e) {}
-    ctl = null; send.classList.remove("busy"); send.setAttribute("aria-label", "Send"); grow();
+    ctl = null; send.classList.remove("busy"); send.setAttribute("aria-label", "Send"); grow(); keep();
   }
+
+  // Signed in to a Wezzet account (optional): the chat (last 60 messages) and settings are kept on the account.
+  const acct = () => window.wzAccount && window.wzAccount.me ? window.wzAccount : null;
+  const keep = () => { const A = acct(); if (A) A.call("store", { method: "POST", body: JSON.stringify({ k: "ai", v: { history: history.slice(-60), device: allowDevice } }) }); };
+  async function restore() {
+    const A = acct(); if (!A || history.length) return;
+    const r = await A.call("store?k=ai"), v = r && r.v && JSON.parse(r.v);
+    if (!v || history.length) return;
+    if (v.device) allowDevice = true;
+    for (const m of v.history || []) if (m && typeof m.content === "string") { history.push({ role: m.role === "user" ? "user" : "assistant", content: m.content }); say(m.role === "user" ? "you" : "bot", m.content); }
+  }
+  if (window.wzAccount) { window.wzAccount.ready.then(restore); document.addEventListener("wz-account", restore); }
+  const fresh = $("ai-new");
+  if (fresh) fresh.onclick = () => { if (ctl) return; history.length = 0; log.replaceChildren(); page.classList.remove("chatting"); keep(); q.focus(); };
   form.addEventListener("submit", (ev) => {
     ev.preventDefault();
     if (ctl) { ctl.abort(); return; }
