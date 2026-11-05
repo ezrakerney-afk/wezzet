@@ -14,6 +14,7 @@ export default {
     if (/^\/api\/(paste|read|calc|json|csv|hash|base64|uuid)(\/|$)/.test(url.pathname) || url.pathname === "/api" || url.pathname === "/api/") return tools(request, env, url);
     if (url.pathname === "/api/search") return wzSearch(request, env, url);
     if (url.pathname === "/api/ai") return wzAI(request, env);
+    if (url.pathname === "/api/vision") return wzVision(request, env);
     if (url.pathname === "/mcp" || url.pathname === "/mcp/") return mcp(request, env);
     if (url.pathname.startsWith("/api/chat/")) return chat(request, env, url, ctx);
     if (url.pathname.startsWith("/api/forum/")) {
@@ -1421,4 +1422,34 @@ async function wzAI(request, env) {
     try { const r = await env.AI.run(AI_MODEL, { messages: msgs, max_tokens: 700 }); const t = clean(r && r.response); if (t) return json({ reply: t }); } catch (e) {}
   }
   return json({ error: "unavailable" }, 503);
+}
+
+// ---- /api/vision : WezzetAI questions about an image (Workers AI Llama 3.2 Vision). Images aren't stored. ----
+const VISION_MODEL = "@cf/meta/llama-3.2-11b-vision-instruct";
+async function wzVision(request, env) {
+  if (request.method !== "POST") return json({ error: "POST {question, image}" }, 405);
+  if (!env.AI) return json({ error: "Workers AI isn't connected" }, 503);
+  let d; try { d = await request.json(); } catch (e) { return json({ error: "bad json" }, 400); }
+  if (typeof d.image !== "string" || d.image.length > 4e6) return json({ error: "send a base64 JPEG under 3 MB" }, 400);
+  if (env.DB) {
+    await tlInit(env);
+    const who = await tlWho(request);
+    const r = await env.DB.prepare("SELECT COUNT(*) AS n FROM actions WHERE who = ? AND action = 'ai' AND created_at > ?").bind(who, Date.now() - 3600e3).first();
+    if ((r ? r.n : 0) >= 60) return json({ error: "limit" }, 429);
+    await tlLog(env, who, "ai");
+  }
+  const bytes = [...Uint8Array.from(atob(d.image), (c) => c.charCodeAt(0))];
+  const q = (typeof d.question === "string" && d.question.trim() ? d.question : "Describe this image.").slice(0, 2000);
+  const opts = { messages: [{ role: "system", content: "You are WezzetAI on wezzet.com. Answer questions about the user's image briefly and plainly." }, { role: "user", content: q }], image: bytes, max_tokens: 600 };
+  const run = () => env.AI.run(VISION_MODEL, opts);
+  try {
+    let r;
+    try { r = await run(); } catch (e) {
+      // Meta's license has to be accepted once per account before the model will run.
+      if (!/agree/i.test(String(e && e.message))) throw e;
+      await env.AI.run(VISION_MODEL, { prompt: "agree" }).catch(() => {});
+      r = await run();
+    }
+    return json({ reply: (r && r.response || "").trim() });
+  } catch (e) { return json({ error: "vision unavailable" }, 503); }
 }

@@ -91,7 +91,26 @@
   const now = () => new Date().toLocaleString("en-US", { timeZone: "America/New_York", dateStyle: "full", timeStyle: "short" });
   const SYSTEM = `You are WezzetAI, the assistant on wezzet.com, a site of 200+ free tools that run in the browser without uploading files. Help with anything. Answer briefly and plainly, without Markdown headings. Use the search results you are given for anything recent, and say which source it came from. If the results don't cover it, say you aren't sure instead of guessing. If a Wezzet tool from the list fits, mention its path (like /convert). Never write "PH" for Product Hunt. Give times in Eastern.`;
 
+  // An image dropped on the chat stays attached, so the next question is answered about it with the vision model.
+  let image = null;
+  async function shrink(f) {
+    const bmp = await createImageBitmap(f), s = Math.min(1, 1024 / Math.max(bmp.width, bmp.height));
+    const c = document.createElement("canvas"); c.width = Math.round(bmp.width * s); c.height = Math.round(bmp.height * s);
+    c.getContext("2d").drawImage(bmp, 0, 0, c.width, c.height);
+    return c.toDataURL("image/jpeg", 0.85).split(",")[1];
+  }
+  async function askImage(text) {
+    say("bot", "Looking at the image…"); const b = log.lastChild;
+    try {
+      const r = await fetch("/api/vision", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ question: text, image }) });
+      const j = await r.json(); b.remove();
+      if (r.ok && j.reply) { history.push({ role: "assistant", content: j.reply }); return say("bot", j.reply); }
+    } catch (e) { b.remove(); }
+    say("bot", "I couldn't read the image right now. Try again in a minute, or ask without the image.", [["Remove image", null, () => { image = null; say("bot", "Image removed."); }]]);
+  }
+
   async function answer(text) {
+    if (image) return askImage(text);
     history.push({ role: "user", content: text });
     const c = calc(text);
     if (c !== null) return say("bot", `${text.replace(/[=?]/g, "").trim()} = ${+c.toFixed(10)}`);
@@ -135,8 +154,10 @@
     say("you", list.length > 1 ? `${list.length} files (${f.name}, …)` : f.name);
     const e = ((f.name.match(/\.([^.]+)$/) || [])[1] || "").toLowerCase();
     const hits = TOOLS.filter((t) => t.words.split(/\s+/).includes(e)).slice(0, 4);
+    if (f.type.startsWith("image/") && f.size < 30e6) { try { image = await shrink(f); } catch (er) { image = null; } }
     const go = async (path) => { try { await wzHandoff.put(list); location.href = path + "?handoff=1"; } catch (er) { location.href = path; } };
-    say("bot", hits.length ? `Here's what Wezzet can do with a .${e} file:` : `Open it in the any-file converter to see every option for .${e || "this"} files.`,
+    if (image) say("bot", "Got the image. Ask me anything about it, or pick a tool:", [...hits.map((t) => [t.name, null, () => go(t.path)]), ["Remove image", null, () => { image = null; say("bot", "Image removed."); }]]);
+    else say("bot", hits.length ? `Here's what Wezzet can do with a .${e} file:` : `Open it in the any-file converter to see every option for .${e || "this"} files.`,
       [...hits.map((t) => [t.name, null, () => go(t.path)]), ["See every option", null, () => go("/convert")]]);
   }
 
