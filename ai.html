@@ -35,46 +35,47 @@
 
 <main class="ai-main">
   <style>
-    .ai-main{padding-bottom:0}
+    .ai-main{padding-bottom:0;--wz1:#5c10fd;--wz2:#340fbf;--wz-ink:#4a12e0;--wz-soft:#f1ecff;--wz-line:#d9ccff;--wz-grad:linear-gradient(135deg,#7a3cff,#340fbf)}
+    :root[data-theme="dark"] .ai-main{--wz-ink:#a98bff;--wz-soft:#211a3a;--wz-line:#3d2f73;--wz-grad:linear-gradient(135deg,#8b5cff,#4a1fe0)}
+    @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .ai-main{--wz-ink:#a98bff;--wz-soft:#211a3a;--wz-line:#3d2f73;--wz-grad:linear-gradient(135deg,#8b5cff,#4a1fe0)}}
     .ai-page{max-width:760px;margin:0 auto;padding:0 16px;display:flex;flex-direction:column;min-height:calc(100vh - 140px);min-height:calc(100dvh - 140px)}
     .ai-empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px 0 24px}
-    .ai-empty h1{font-size:clamp(30px,6vw,42px);margin:0 0 6px;letter-spacing:-.02em}
+    .ai-empty h1{font-size:clamp(32px,7vw,48px);margin:0 0 6px;letter-spacing:-.02em;background:var(--wz-grad);-webkit-background-clip:text;background-clip:text;color:transparent}
     .ai-empty p{margin:0 0 22px;color:var(--ink-soft)}
     .ai-chips{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;max-width:560px}
     .ai-chip{font:inherit;font-size:14px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:999px;padding:8px 14px;cursor:pointer}
-    .ai-chip:hover{background:var(--surface);border-color:var(--line-strong)}
+    .ai-chip:hover{background:var(--wz-soft);border-color:var(--wz-line);color:var(--wz-ink)}
     .ai-page.chatting .ai-empty{display:none}
     .ai-log{flex:1;display:flex;flex-direction:column;gap:22px;padding:28px 0 20px}
     .ai-page:not(.chatting) .ai-log{display:none}
     .ai-msg{line-height:1.6;max-width:100%}
-    .ai-you{align-self:flex-end;max-width:80%;background:var(--surface);border:1px solid var(--line);padding:9px 15px;border-radius:20px;white-space:pre-wrap;overflow-wrap:anywhere}
+    .ai-you{align-self:flex-end;max-width:80%;background:var(--wz-soft);border:1px solid var(--wz-line);padding:9px 15px;border-radius:20px;white-space:pre-wrap;overflow-wrap:anywhere}
     .ai-bot{display:grid;grid-template-columns:28px minmax(0,1fr);gap:12px}
-    .ai-bot::before{content:"W";width:28px;height:28px;border-radius:50%;background:var(--accent);color:var(--accent-ink);font:700 13px/28px system-ui,sans-serif;text-align:center}
+    .ai-bot::before{content:"W";width:28px;height:28px;border-radius:50%;background:var(--wz-grad);color:#fff;font:700 13px/28px system-ui,sans-serif;text-align:center}
     .ai-bot>*{grid-column:2}
-    .ai-body{overflow-wrap:anywhere;padding-top:2px}.ai-body p{margin:0 0 10px}.ai-body p:last-child{margin:0}.ai-body ul{margin:4px 0 10px;padding-left:20px}.ai-body li{margin:4px 0}.ai-body code{background:var(--surface);border:1px solid var(--line);padding:1px 5px;border-radius:5px;font-size:.9em}.ai-body a{color:inherit;text-decoration:underline;text-underline-offset:2px}
-    .ai-wait{color:var(--ink-soft)}
+    .ai-body{overflow-wrap:anywhere;padding-top:2px}.ai-body p{margin:0 0 10px}.ai-body p:last-child{margin:0}.ai-body ul{margin:4px 0 10px;padding-left:20px}.ai-body li{margin:4px 0}.ai-body code{background:var(--surface);border:1px solid var(--line);padding:1px 5px;border-radius:5px;font-size:.9em}.ai-body a{color:var(--wz-ink);text-decoration:underline;text-underline-offset:2px}
+    .ai-wait{color:var(--ink-soft)}.ai-wait::after{background:var(--wz-ink)!important}
     .ai-wait::after{content:"";display:inline-block;width:6px;height:6px;margin-left:8px;border-radius:50%;background:currentColor;vertical-align:middle;animation:ai-pulse 1s ease-in-out infinite}
     @keyframes ai-pulse{50%{opacity:.25}}
     @media (prefers-reduced-motion:reduce){.ai-wait::after{animation:none}}
     .ai-src{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
     .ai-src a{font-size:13px;color:var(--ink-soft);text-decoration:none;border:1px solid var(--line);border-radius:999px;padding:3px 10px;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-    .ai-src a:hover{color:var(--ink);border-color:var(--line-strong)}
+    .ai-src a:hover{color:var(--wz-ink);border-color:var(--wz-line);background:var(--wz-soft)}
     .ai-msg .row-actions{margin-top:10px;display:flex;flex-wrap:wrap;gap:6px}
-    .ai-msg .row-actions .btn{padding:6px 12px;font-size:14px}
+    .ai-msg .row-actions .btn{padding:6px 12px;font-size:14px;background:var(--wz-grad);border-color:transparent;color:#fff}
     .ai-tools{display:flex;gap:4px;margin-top:6px}
     .ai-tools button{font:inherit;font-size:13px;color:var(--ink-soft);background:none;border:0;padding:4px 6px;border-radius:6px;cursor:pointer}
     .ai-tools button:hover{color:var(--ink);background:var(--surface)}
     .ai-dock{position:sticky;bottom:0;background:linear-gradient(transparent,var(--bg) 18px);padding:14px 0 12px}
     .ai-form{display:flex;align-items:flex-end;gap:6px;border:1px solid var(--line-strong);border-radius:24px;background:var(--bg);padding:6px;box-shadow:0 2px 12px rgba(0,0,0,.06)}
-    .ai-form:focus-within{border-color:var(--ink-soft)}
-    .ai-form.dragging{border-color:var(--ink);box-shadow:0 0 0 3px var(--line)}
+    .ai-form:focus-within{border-color:var(--wz-ink);box-shadow:0 0 0 3px var(--wz-soft)}
+    .ai-form.dragging{border-color:var(--wz-ink);box-shadow:0 0 0 4px var(--wz-line)}
     .ai-form textarea{flex:1;min-width:0;border:0;outline:0;resize:none;background:none;color:var(--ink);font:inherit;font-size:16px;line-height:1.45;padding:9px 6px;max-height:200px}
     .ai-ic{flex:none;width:38px;height:38px;border-radius:50%;border:0;display:grid;place-items:center;cursor:pointer;background:none;color:var(--ink-soft)}
     .ai-ic:hover{background:var(--surface);color:var(--ink)}
     .ai-ic svg{width:20px;height:20px}
-    .ai-send{background:var(--accent);color:var(--accent-ink)}
-    .ai-send:hover{background:var(--accent-hover);color:var(--accent-ink)}
-    .ai-send:disabled{opacity:.35;cursor:default}
+    .ai-send{background:var(--wz-grad);color:#fff}
+    .ai-send:hover{background:var(--wz-grad);color:#fff;filter:brightness(1.12)}
     .ai-send .i-stop,.ai-send.busy .i-up{display:none}.ai-send.busy .i-stop{display:block}
     .ai-hint{margin:8px 0 0;text-align:center;font-size:12px;color:var(--ink-soft)}
   </style>
@@ -94,7 +95,7 @@
       <form class="ai-form" id="ask">
         <button class="ai-ic" type="button" id="choose" aria-label="Add a file" title="Add a file"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M12 5v14M5 12h14"/></svg></button>
         <textarea id="q" rows="1" autocomplete="off" placeholder="Ask WezzetAI" aria-label="Ask WezzetAI"></textarea>
-        <button class="ai-ic ai-send" type="submit" id="send" aria-label="Send" disabled><svg class="i-up" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" d="M12 19V5M6 11l6-6 6 6"/></svg><svg class="i-stop" viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="7" width="10" height="10" rx="2" fill="currentColor"/></svg></button>
+        <button class="ai-ic ai-send" type="submit" id="send" aria-label="Send"><svg class="i-up" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" d="M12 19V5M6 11l6-6 6 6"/></svg><svg class="i-stop" viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="7" width="10" height="10" rx="2" fill="currentColor"/></svg></button>
       </form>
       <input type="file" id="files" multiple hidden>
       <p class="ai-hint">Files stay on your device. AI can make mistakes.</p>
@@ -108,7 +109,7 @@
   </div>
 </footer>
 <script src="/assets/handoff.js?v=1" defer></script>
-<script src="/assets/ai.js?v=7" defer></script>
+<script src="/assets/ai.js?v=8" defer></script>
 <script src="/assets/theme.js?v=4" defer></script>
 </body>
 </html>
