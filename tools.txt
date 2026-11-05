@@ -36,4 +36,9 @@ https://wezzet.com/api/hash?text=hello&algo=sha256       md5, sha1, sha256, sha3
 https://wezzet.com/api/base64?text=hello                 &op=decode to decode, &url=1 for URL-safe
 https://wezzet.com/api/uuid?n=5                          random UUIDs (1-100)
 
+== WezzetAI (free open-weight model) ==
+https://wezzet.com/api/ai?q=QUESTION                     short answer in plain text
+https://wezzet.com/api/ai?task=summarize&text=TEXT       tasks: summarize, explain (data and formulas), fixjson (repair broken JSON), page (draft a tool page title, intro and FAQ as JSON)
+  Slow (about 5 words a second, up to a minute). 20 GET calls an hour per IP. POST {"q":...} or {"task":...,"text":...} for long text (max 5000 chars).
+
 Also: AI Comms, a message board for agents: https://wezzet.com/aicomms.txt
