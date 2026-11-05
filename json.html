@@ -23,7 +23,7 @@
 <script>try{(function(t){if(t==="dark"||t==="light")document.documentElement.dataset.theme=t})(localStorage.getItem("wz-theme"))}catch(e){}</script>
 <style>.logo .logo-dark{display:none}:root[data-theme="dark"] .logo .logo-light{display:none}:root[data-theme="dark"] .logo .logo-dark{display:block}@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .logo .logo-light{display:none}:root:not([data-theme="light"]) .logo .logo-dark{display:block}}</style>
 <link rel="stylesheet" href="/assets/site.css?v=6">
-<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"SoftwareApplication","name":"JSON formatter","url":"https://wezzet.com/json","applicationCategory":"UtilitiesApplication","operatingSystem":"Any (web browser)","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"description":"Format, validate and minify JSON in your browser. Shows the line and column of any error. Nothing is uploaded."},{"@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Is my JSON sent to a server?","acceptedAnswer":{"@type":"Answer","text":"No. It's checked and formatted in your browser, so it's safe for private data."}},{"@type":"Question","name":"Can AI agents use it?","acceptedAnswer":{"@type":"Answer","text":"Yes, through wezzet.com/api/json?data=.... See tools.txt."}}]}]}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"SoftwareApplication","name":"JSON formatter","url":"https://wezzet.com/json","applicationCategory":"UtilitiesApplication","operatingSystem":"Any (web browser)","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"description":"Format, validate and minify JSON in your browser. Shows the line and column of any error. Nothing is uploaded."},{"@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Is my JSON sent to a server?","acceptedAnswer":{"@type":"Answer","text":"No. It's checked and formatted in your browser. Only Fix with AI sends it, to WezzetAI, when you click it."}},{"@type":"Question","name":"Can AI agents use it?","acceptedAnswer":{"@type":"Answer","text":"Yes, through wezzet.com/api/json?data=.... See tools.txt."}}]}]}</script>
 </head>
 <body>
 <header class="site-header">
@@ -44,12 +44,13 @@
       <button class="btn" type="button" id="fmt">Format</button>
       <button class="btn btn-quiet" type="button" id="min">Minify</button>
       <button class="btn btn-quiet" type="button" id="copy">Copy</button>
+      <button class="btn btn-quiet" type="button" data-askai="fixjson" data-src="#t" data-apply="#t">Fix with AI</button>
       <select id="indent" aria-label="Indent" style="width:auto"><option value="2">2 spaces</option><option value="4">4 spaces</option><option value="tab">Tabs</option></select>
     </div>
     <p class="note" id="msg" role="status" hidden></p>
     <section class="section faq" aria-labelledby="faq">
       <h2 id="faq">Questions</h2>
-      <details><summary>Is my JSON sent to a server?</summary><p>No. It&#x27;s checked and formatted in your browser, so it&#x27;s safe for private data.</p></details><details><summary>Can AI agents use it?</summary><p>Yes, through <code>wezzet.com/api/json?data=...</code>. See <a href="/tools.txt">tools.txt</a>.</p></details>
+      <details><summary>Is my JSON sent to a server?</summary><p>No. It&#x27;s checked and formatted in your browser. Only Fix with AI sends it, to WezzetAI, when you click it.</p></details><details><summary>Can AI agents use it?</summary><p>Yes, through <code>wezzet.com/api/json?data=...</code>. See <a href="/tools.txt">tools.txt</a>.</p></details>
     </section>
     <section class="section related" aria-labelledby="related">
       <h2 id="related">Related tools</h2>
@@ -64,6 +65,7 @@
   </div>
 </footer>
 <script src="/assets/json.js?v=3" defer></script>
+<script src="/assets/askai.js?v=1" defer></script>
 <script src="/assets/handoff.js?v=1" defer></script>
 <script src="/assets/theme.js?v=4" defer></script>
 </body>
