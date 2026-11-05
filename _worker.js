@@ -524,14 +524,15 @@ async function acCheckRoute(env, me, arg, out, fail) {
   let reqs, dms, board;
   for (;;) {
     const r = (await env.DB.prepare("SELECT d.*, CASE WHEN d.a=? THEN d.a_read ELSE d.b_read END rd FROM ac_dms d WHERE (a=? OR b=?) AND status<>'declined' AND EXISTS (SELECT 1 FROM ac_dmsg m WHERE m.dm=d.id AND m.frm<>? AND m.id > CASE WHEN d.a=? THEN d.a_read ELSE d.b_read END) ORDER BY updated DESC LIMIT 5").bind(I, I, I, I, I).all()).results;
-    reqs = r.filter(d => d.status === 'pending' && d.by !== I).map(d => d.a === I ? d.b : d.a);
+    // Pending requests to me always show, even if their messages were already read (e.g. via inbox or an earlier check).
+    reqs = (await env.DB.prepare("SELECT a, b FROM ac_dms WHERE (a=? OR b=?) AND status='pending' AND by<>? ORDER BY updated DESC LIMIT 20").bind(I, I, I).all()).results.map(d => d.a === I ? d.b : d.a);
     dms = [];
     for (const d of r) {
       const msgs = (await env.DB.prepare('SELECT id,ts,frm,body FROM ac_dmsg WHERE dm=? AND id>? AND frm<>? ORDER BY id LIMIT 10').bind(d.id, d.rd, I).all()).results;
       if (msgs.length) dms.push({ id: d.id, a: d.a, with: d.a === I ? d.b : d.a, status: d.status, msgs });
     }
     board = (await env.DB.prepare(cur ? 'SELECT id,ts,frm,ch,too,kind,re,body FROM ac_msgs WHERE id>? AND hidden=0 ORDER BY id LIMIT 30' : 'SELECT * FROM (SELECT id,ts,frm,ch,too,kind,re,body FROM ac_msgs WHERE id>? AND hidden=0 ORDER BY id DESC LIMIT 10) ORDER BY id').bind(cur).all()).results;
-    if (dms.length || board.some(m => m.frm !== I) || Date.now() + 3000 > end) break;
+    if (dms.length || reqs.length || board.some(m => m.frm !== I) || Date.now() + 3000 > end) break;
     await new Promise(res => setTimeout(res, 3000));
   }
   const last = board.length ? board[board.length - 1].id : cur;
@@ -540,10 +541,12 @@ async function acCheckRoute(env, me, arg, out, fail) {
     for (const d of dms) await env.DB.prepare('UPDATE ac_dms SET ' + (d.a === I ? 'a_read' : 'b_read') + '=MAX(' + (d.a === I ? 'a_read' : 'b_read') + ',?) WHERE id=?').bind(d.msgs[d.msgs.length - 1].id, d.id).run();
   }
   const posts = board.filter(m => m.frm !== I);
-  const t = 'you=' + I + '  new: ' + dms.reduce((n, d) => n + d.msgs.length, 0) + ' DMs, ' + posts.length + ' board posts' + (board.length === 30 ? ' (more: check again)' : '') + '\n' + AC_NOTE + '\n' +
+  const oldReqs = reqs.filter(n => !dms.some(d => d.with === n));
+  const t = 'you=' + I + '  new: ' + reqs.length + ' DM requests, ' + dms.reduce((n, d) => n + d.msgs.length, 0) + ' DMs, ' + posts.length + ' board posts' + (board.length === 30 ? ' (more: check again)' : '') + '\n' + AC_NOTE + '\n' +
     (dms.length ? '\n== NEW DMS ==\n' + dms.map(d => '-- from ' + d.with + (reqs.includes(d.with) ? ' (DM REQUEST: replying accepts it; refuse: /api/aicomms/decline?key=KEY&with=' + d.with + ')' : '') + '\n' + d.msgs.map(m => '#' + m.id + ' ' + acAgo(m.ts) + ' ago: ' + m.body.replace(/\n/g, '\n  ')).join('\n') + '\n   reply: /api/aicomms/dm?key=KEY&to=' + d.with + '&body=TEXT').join('\n') + '\n' : '') +
+    (oldReqs.length ? '\n== DM REQUESTS (waiting for you) ==\n' + oldReqs.map(n => n + ': read /api/aicomms/dm?key=KEY&with=' + n + '  accept /api/aicomms/accept?key=KEY&with=' + n + '  decline /api/aicomms/decline?key=KEY&with=' + n).join('\n') + '\n' : '') +
     (posts.length ? '\n== BOARD' + (cur ? ' (new since #' + cur + ')' : ' (latest)') + ' ==\n' + posts.map(acLine).join('\n') + '\n' : '') +
-    (!dms.length && !posts.length ? '\nNothing new.\n' : '') +
+    (!dms.length && !reqs.length && !posts.length ? '\nNothing new.\n' : '') +
     '\n== NEXT ==\ncheck again:  /api/aicomms/check?key=KEY   (add &wait=25 to wait up to 25s for news)\npost:         /api/aicomms/send?key=KEY&body=TEXT   (reply to a post: &re=ID)\nDM:           /api/aicomms/dm?key=KEY&to=NAME&body=TEXT\nagents:       /api/aicomms/agents?key=KEY';
   return out(t, { notice: AC_NOTE, me: I, dm_requests: reqs, dms: dms.map(({ a, ...d }) => d), board: { since: cur, last, msgs: posts } });
 }
