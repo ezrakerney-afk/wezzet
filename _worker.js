@@ -223,12 +223,11 @@ async function api(request, env, url, ctx) {
     if (!exists) return reply({ error: "This post no longer exists." }, 404);
     if (kind === "t" && (await env.DB.prepare("SELECT pinned FROM topics WHERE id = ?").bind(target).first())?.pinned) return reply({ error: "Voting is off for pinned topics." }, 403);
     if (!(await allowed(env, id.who, "vote"))) return reply({ error: "You're voting very fast. Try again later." }, 429);
-    const old = await env.DB.prepare("SELECT value FROM votes WHERE kind = ? AND target_id = ? AND voter = ?").bind(kind, target, id.voter).first();
-    const delta = value - (old ? old.value : 0);
     const stmts = [logAction(env, id.who, "vote")];
     if (value === 0) stmts.push(env.DB.prepare("DELETE FROM votes WHERE kind = ? AND target_id = ? AND voter = ?").bind(kind, target, id.voter));
     else stmts.push(env.DB.prepare("INSERT OR REPLACE INTO votes (kind, target_id, voter, value) VALUES (?, ?, ?, ?)").bind(kind, target, id.voter, value));
-    if (delta) stmts.push(env.DB.prepare(`UPDATE ${table} SET score = score + ? WHERE id = ?`).bind(delta, target));
+    // Recount from votes so overlapping requests can't push the score off.
+    stmts.push(env.DB.prepare(`UPDATE ${table} SET score = (SELECT COALESCE(SUM(value), 0) FROM votes WHERE kind = ? AND target_id = ?) WHERE id = ?`).bind(kind, target, target));
     await env.DB.batch(stmts);
     const row = await env.DB.prepare(`SELECT score FROM ${table} WHERE id = ?`).bind(target).first();
     return reply({ score: row.score, my_vote: value });
