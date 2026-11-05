@@ -3,7 +3,8 @@
    Nothing is stored; dropped files only go to the tool you pick. */
 (() => {
   const $ = (id) => document.getElementById(id);
-  const log = $("log"), form = $("ask"), q = $("q"), drop = $("drop"), input = $("files");
+  const log = $("log"), form = $("ask"), q = $("q"), drop = $("ask"), input = $("files"), page = $("page"), send = $("send");
+  let ctl = null; // aborts the answer being written (Stop button)
   let TOOLS = [];
   const history = [];
   fetch("/assets/home.js").then((r) => r.text()).then((t) => {
@@ -45,10 +46,17 @@
       links.forEach(([label, href, fn], i) => { const a = document.createElement(fn ? "button" : "a"); a.className = "btn" + (i ? " btn-quiet" : ""); a.textContent = label; if (fn) { a.type = "button"; a.onclick = fn; } else a.href = href; box.append(a); });
       d.append(box);
     }
-    log.append(d); log.scrollTop = log.scrollHeight;
+    if (who === "bot" && text.length > 40 && !links.length) {
+      const t = document.createElement("div"); t.className = "ai-tools";
+      const c = document.createElement("button"); c.type = "button"; c.textContent = "Copy";
+      c.onclick = () => { navigator.clipboard.writeText(text).then(() => { c.textContent = "Copied"; setTimeout(() => (c.textContent = "Copy"), 1500); }, () => {}); };
+      t.append(c); d.append(t);
+    }
+    page.classList.add("chatting"); log.append(d); down();
     return d;
   }
 
+  const down = () => { const near = innerHeight + scrollY > document.body.scrollHeight - 160; if (near || !ctl) scrollTo(0, document.body.scrollHeight); };
   const STOP = new Set("i a an the to my me can you how do convert into from and or for of in on with want need make please this that it is".split(" "));
   function match(text) {
     const words = text.toLowerCase().replace(/[^\w.+ -]/g, " ").split(/\s+/).filter((w) => w && !STOP.has(w));
@@ -96,38 +104,45 @@
     const c = calc(text);
     if (c !== null) return say("bot", `${text.replace(/[=?]/g, "").trim()} = ${+c.toFixed(10)}`);
     const hits = match(text);
-    const toolish = hits.length && text.length < 50 && !/\?|^(who|what|when|why|how|is|are|did|does|should|tell|explain|write)\b/i.test(text);
-    if (toolish) return say("bot", hits.length > 1 ? "These should do it:" : "This should do it:", hits.map((t) => [t.name, t.path]));
-    say("bot", "Searching…"); const bubble = log.lastChild, status = (s) => { bubble.firstChild.innerHTML = md(s); log.scrollTop = log.scrollHeight; };
+    const bubble = say("bot", "Searching"), body = bubble.firstChild;
+    body.classList.add("ai-wait");
+    const status = (s, done) => { body.classList.toggle("ai-wait", !done); body.innerHTML = md(s); down(); };
     let found = { web: [], news: [] };
-    try { const r = await fetch("/api/search?q=" + encodeURIComponent(text)); if (r.ok) found = await r.json(); } catch (e) {}
+    const chat = /^(hi|hello|hey|yo|thanks|thank you|ok|okay|cool|nice|lol)\b[\s!.?]*$/i.test(text);
+    if (!chat) try { const r = await fetch("/api/search?q=" + encodeURIComponent(text), { signal: AbortSignal.timeout(4000) }); if (r.ok) found = await r.json(); } catch (e) {}
     const srcs = [...found.news.slice(0, 4), ...found.web.slice(0, 4)];
     const links = srcs.slice(0, 4).map((x) => { let h = x.source || ""; try { h = h || new URL(x.url).hostname.replace(/^www\./, ""); } catch (e) {} return [h || "source", x.url]; });
-    status("Thinking…");
+    status("Thinking");
     const ctx = `Now: ${now()} Eastern.\nWezzet tools that may fit: ${hits.map((t) => `${t.name} (${t.path})`).join(", ") || "none"}.\nSearch results:\n` +
       (srcs.map((x, i) => `[${i + 1}] ${x.title}${x.source ? " — " + x.source : ""}${x.date ? " (" + x.date + ")" : ""}\n${x.snippet || ""}`).join("\n") || "none");
     const msgs = [{ role: "system", content: SYSTEM }, ...history.slice(-8, -1), { role: "user", content: ctx + "\n\nQuestion: " + text + " /no_think" }];
     try {
-      const r = await fetch("/api/ai", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ messages: msgs.map((m) => ({ ...m, content: m.content.replace(" /no_think", "") })) }) });
-      if (r.ok) { const j = await r.json(); if (j.reply) { history.push({ role: "assistant", content: j.reply }); bubble.remove(); return say("bot", j.reply, hits.slice(0, 2).map((t) => [t.name, t.path]), links); } }
-    } catch (e) {}
+      const r = await fetch("/api/ai", { method: "POST", signal: ctl.signal, headers: { "content-type": "application/json" }, body: JSON.stringify({ stream: true, messages: msgs.map((m) => ({ ...m, content: m.content.replace(" /no_think", "") })) }) });
+      let reply = "";
+      if (r.ok && /text\/plain/.test(r.headers.get("content-type") || "")) {
+        // Streamed answer: show the words as they arrive.
+        const rd = r.body.getReader(), dec = new TextDecoder();
+        try { for (;;) { const { done, value } = await rd.read(); if (done) break; reply += dec.decode(value, { stream: true }); if (reply.trim()) status(reply, true); } }
+        catch (e) { if (!reply.trim()) throw e; }
+        reply = reply.trim();
+      } else if (r.ok) { const j = await r.json(); reply = j.reply || ""; }
+      if (reply) { history.push({ role: "assistant", content: reply }); bubble.remove(); return say("bot", reply, [], links); }
+    } catch (e) { if (ctl && ctl.signal.aborted) { bubble.remove(); return; } }
     const eng = await getEngine(status);
     if (!eng) {
       bubble.remove();
-      const list = srcs.slice(0, 5).map((x) => `- [${x.title.replace(/[[\]]/g, "")}](${x.url})${x.source ? " (" + x.source + ")" : ""}`).join("\n");
-      const tools = hits.slice(0, 3).map((t) => [t.name, t.path]);
-      const enable = navigator.gpu && !allowDevice ? [["Turn on full answers (one-time 2–3 GB download)", null, () => { allowDevice = true; try { localStorage.setItem("wz-ai-device", "1"); } catch (e) {} answer(text); }]] : [];
-      if (srcs.length) say("bot", "Here's what I found:\n" + list, [...enable, ...tools]);
-      else say("bot", tools.length ? "These tools should help:" : "I couldn't find anything on that. Try different words.", [...enable, ...tools]);
+      if (ctl && ctl.signal.aborted) return;
+      const enable = navigator.gpu && !allowDevice ? [["Run it on this device (2–3 GB, once)", null, () => { allowDevice = true; try { localStorage.setItem("wz-ai-device", "1"); } catch (e) {} history.pop(); ask(text, true); }]] : [];
+      say("bot", "WezzetAI is busy right now. Try again in a minute.", enable);
       return;
     }
     let out = "", raw = "";
     try {
       const stream = await eng.chat.completions.create({ messages: msgs, stream: true, temperature: 0.5, max_tokens: 700 });
-      for await (const ch of stream) { raw += ch.choices[0]?.delta?.content || ""; out = raw.replace(/<think>[\s\S]*?(<\/think>|$)/, "").trimStart(); status(out || "Thinking…"); }
+      for await (const ch of stream) { raw += ch.choices[0]?.delta?.content || ""; out = raw.replace(/<think>[\s\S]*?(<\/think>|$)/, "").trimStart(); status(out || "Thinking", !!out); if (ctl && ctl.signal.aborted) break; }
     } catch (e) { out = out || "Something went wrong running the model. Reload and try again."; status(out); }
     history.push({ role: "assistant", content: out });
-    bubble.remove(); say("bot", out, hits.slice(0, 2).map((t) => [t.name, t.path]), links);
+    bubble.remove(); say("bot", out, [], links);
   }
 
   async function files(list) {
@@ -140,15 +155,30 @@
       [...hits.map((t) => [t.name, null, () => go(t.path)]), ["See every option", null, () => go("/convert")]]);
   }
 
-  form.addEventListener("submit", (ev) => { ev.preventDefault(); const t = q.value.trim(); if (!t) return; q.value = ""; say("you", t); answer(t); });
+  const grow = () => { q.style.height = "auto"; q.style.height = Math.min(q.scrollHeight, 200) + "px"; send.disabled = !ctl && !q.value.trim(); };
+  async function ask(t, again) {
+    if (ctl) return;
+    ctl = new AbortController(); send.classList.add("busy"); send.disabled = false; send.setAttribute("aria-label", "Stop");
+    if (!again) say("you", t);
+    try { await answer(t); } catch (e) {}
+    ctl = null; send.classList.remove("busy"); send.setAttribute("aria-label", "Send"); grow();
+  }
+  form.addEventListener("submit", (ev) => {
+    ev.preventDefault();
+    if (ctl) { ctl.abort(); return; }
+    const t = q.value.trim(); if (!t) return; q.value = ""; grow(); ask(t);
+  });
+  q.addEventListener("input", grow);
+  q.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); form.requestSubmit(); } });
+  $("chips").addEventListener("click", (e) => { const b = e.target.closest(".ai-chip"); if (b) ask(b.textContent); });
   $("choose").addEventListener("click", () => input.click());
   input.addEventListener("change", () => { if (input.files.length) files([...input.files]); input.value = ""; });
   ["dragenter", "dragover"].forEach((t) => drop.addEventListener(t, (e) => { e.preventDefault(); drop.classList.add("dragging"); }));
   ["dragleave", "drop"].forEach((t) => drop.addEventListener(t, () => drop.classList.remove("dragging")));
   drop.addEventListener("drop", (e) => { e.preventDefault(); if (e.dataTransfer.files.length) files([...e.dataTransfer.files]); });
-  window.addEventListener("dragover", (e) => e.preventDefault());
-  window.addEventListener("drop", (e) => e.preventDefault());
+  window.addEventListener("dragover", (e) => { e.preventDefault(); drop.classList.add("dragging"); });
+  window.addEventListener("dragleave", (e) => { if (!e.relatedTarget) drop.classList.remove("dragging"); });
+  window.addEventListener("drop", (e) => { e.preventDefault(); drop.classList.remove("dragging"); if (e.target.closest && !e.target.closest("#ask") && e.dataTransfer.files.length) files([...e.dataTransfer.files]); });
   const pre = new URLSearchParams(location.search).get("q");
-  say("bot", "Hi, I'm WezzetAI. Ask me anything, including today's news, or tell me what you need done, like \"heic to jpg\". You can also drop a file here.");
-  if (pre) setTimeout(() => { say("you", pre); answer(pre); }, 400);
+  if (pre) setTimeout(() => ask(pre), 300); else if (matchMedia("(pointer:fine)").matches) q.focus();
 })();
