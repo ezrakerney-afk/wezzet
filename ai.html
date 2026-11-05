@@ -78,6 +78,8 @@
     .ai-send:hover{background:var(--wz-grad);color:#fff;filter:brightness(1.12)}
     .ai-send .i-stop,.ai-send.busy .i-up{display:none}.ai-send.busy .i-stop{display:block}
     .ai-hint{margin:8px 0 0;text-align:center;font-size:12px;color:var(--ink-soft)}
+    .ai-newchat{font:inherit;color:var(--wz-ink);background:none;border:0;padding:0 0 0 6px;cursor:pointer}.ai-page:not(.chatting) .ai-newchat{display:none}
+    .ai-acct .wz-acct{justify-content:center;font-size:12px;margin:4px 0 0}.ai-acct .wz-acct .btn{padding:3px 10px;font-size:12px}
   </style>
   <div class="ai-page" id="page">
     <div class="ai-empty">
@@ -98,7 +100,8 @@
         <button class="ai-ic ai-send" type="submit" id="send" aria-label="Send"><svg class="i-up" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" d="M12 19V5M6 11l6-6 6 6"/></svg><svg class="i-stop" viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="7" width="10" height="10" rx="2" fill="currentColor"/></svg></button>
       </form>
       <input type="file" id="files" multiple hidden>
-      <p class="ai-hint">Files stay on your device. AI can make mistakes.</p>
+      <p class="ai-hint">Files stay on your device. AI can make mistakes. <button type="button" id="ai-new" class="ai-newchat">New chat</button></p>
+      <div id="wz-account" class="ai-acct" data-why="Sign in to keep your chats."></div>
     </div>
   </div>
 </main>
@@ -109,7 +112,8 @@
   </div>
 </footer>
 <script src="/assets/handoff.js?v=1" defer></script>
-<script src="/assets/ai.js?v=8" defer></script>
+<script src="/assets/account.js?v=1" defer></script>
+<script src="/assets/ai.js?v=9" defer></script>
 <script src="/assets/theme.js?v=4" defer></script>
 </body>
 </html>
