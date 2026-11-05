@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>URL Parser: Split a URL into Parts | Wezzet</title>
+<meta name="description" content="Paste a URL to split it into protocol, host, port, path, query parameters and fragment, all decoded.">
+<link rel="canonical" href="https://wezzet.com/url-parser">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Wezzet">
+<meta property="og:title" content="URL Parser: Split a URL into Parts | Wezzet">
+<meta property="og:url" content="https://wezzet.com/url-parser">
+<meta property="og:image" content="https://wezzet.com/assets/og/json.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://wezzet.com/assets/og/json.png">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#121212" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="icon" href="/assets/icon-32.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+<script>try{(function(t){if(t==="dark"||t==="light")document.documentElement.dataset.theme=t})(localStorage.getItem("wz-theme"))}catch(e){}</script>
+<style>.logo .logo-dark{display:none}:root[data-theme="dark"] .logo .logo-light{display:none}:root[data-theme="dark"] .logo .logo-dark{display:block}@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .logo .logo-light{display:none}:root:not([data-theme="light"]) .logo .logo-dark{display:block}}</style>
+<link rel="stylesheet" href="/assets/site.css?v=7">
+<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"SoftwareApplication","name": "URL parser","url":"https://wezzet.com/url-parser","applicationCategory":"UtilitiesApplication","operatingSystem":"Any (web browser)","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"description":"Paste a URL to split it into protocol, host, port, path, query parameters and fragment, all decoded."}]}</script>
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1814434432126124" crossorigin="anonymous"></script>
+<style>table.plain td.mono{overflow-wrap:anywhere}.up-wrap{overflow-x:auto;margin-top:12px}.btn.sm{padding:4px 10px;font-size:.85rem}</style>
+</head>
+<body>
+<header class="site-header">
+  <div class="wrap">
+    <a class="logo" href="/"><img class="logo-light" src="/assets/logo.png" alt="Wezzet" width="113" height="52"><img class="logo-dark" src="/assets/logo-dark.png" alt="Wezzet" width="113" height="52"></a>
+    <nav class="site-nav" aria-label="Main"><a href="/">All tools</a><button class="theme-toggle" type="button" aria-label="Switch between light and dark mode"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm0 2v16a8 8 0 0 1 0-16Z"/></svg></button></nav>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <div class="tool-head">
+      <h1>URL parser</h1>
+    </div>
+
+    <div class="field"><label for="u">URL</label><input type="text" id="u" class="mono" value="https://user@example.com:8080/path/page.html?q=hello%20world&amp;lang=en#top" spellcheck="false" autocomplete="off" style="width:100%"></div>
+    <p class="hint" id="sum" aria-live="polite"></p>
+    <div id="res" hidden>
+      <div class="up-wrap"><table class="plain"><tbody id="parts"></tbody></table></div>
+      <div id="qh"><h2 style="font-size:1.05rem;margin:22px 0 0">Query parameters</h2><div class="up-wrap"><table class="plain"><tbody id="query"></tbody></table></div></div>
+    </div>
+    <section class="section faq" aria-labelledby="faq">
+      <h2 id="faq">Questions</h2>
+      <details><summary>Is the URL sent anywhere?</summary><p>No. It is parsed in your browser.</p></details><details><summary>Are values decoded?</summary><p>Yes. %%20 becomes a space and + in the query becomes a space, so you can read the real values.</p></details><details><summary>What if I leave out https://?</summary><p>It is added for you, so example.com/page works.</p></details>
+    </section>
+    <section class="section related" aria-labelledby="related">
+      <h2 id="related">Related tools</h2>
+      <ul><li><a href="/url-encode">URL encode</a></li><li><a href="/dns">DNS lookup</a></li><li><a href="/status">HTTP status checker</a></li><li><a href="/extract-links">Extract links</a></li><li><a href="/json">JSON formatter</a></li><li><a href="/base64-encode">Base64 encode</a></li></ul>
+    </section>
+  </div>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <p><a href="/">Wezzet</a> · <a href="/about">About</a> · <a href="/contact">Contact</a> · <a href="/privacy">Privacy</a> · Follow <a href="https://x.com/WezzetX" rel="noopener">@WezzetX</a> on X.</p>
+  </div>
+</footer>
+<script src="/assets/url-parser.js?v=1" defer></script>
+<script src="/assets/theme.js?v=4" defer></script>
+</body>
+</html>

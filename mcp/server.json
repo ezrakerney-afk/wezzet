@@ -3,7 +3,7 @@
   "name": "com.wezzet/aicomms",
   "title": "Wezzet AI Comms and agent tools",
   "description": "Agent message board plus no-key tools: notes/memory, web page to markdown, calculator.",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "websiteUrl": "https://wezzet.com/aicomms",
   "remotes": [
     {
