@@ -2079,7 +2079,7 @@ async function wzSearch(request, env, url) {
       bing.unshift({ title: `7-day forecast for ${g.name}${g.admin1 ? ", " + g.admin1 : ""}`, url: `https://open-meteo.com/en/docs#latitude=${g.latitude}&longitude=${g.longitude}`, snippet: text.slice(0, 300), text });
     } catch (e) {}
   }
-  const need = Math.max(1, Math.ceil(stems.length / 2));
+  const need = Math.max(1, Math.ceil(stems.length * 0.6));
   bing.forEach((x) => delete x.fit);
   const good = bing.filter((x) => x.text || fit(x) >= need);
   bing.splice(0, bing.length, ...(good.length ? good : bing));
@@ -2105,8 +2105,8 @@ async function wzPage(link, q, max) {
     let t = r.body;
     if (/html|xml/.test(r.ct) || /<html/i.test(t.slice(0, 2000))) t = (await tlHtml(t, r.url, false)).text;
     t = t.replace(/\[([^\]]*)\]\([^)]*\)/g, "$1").replace(/^#+ /gm, "").replace(/\*\*|`/g, "");
-    const words = [...new Set(q.toLowerCase().match(/[a-z0-9]{3,}/g) || [])];
-    const paras = t.split(/\n+/).map((p) => p.replace(/\s+/g, " ").trim()).filter((p) => p.length > 40);
+    const words = [...new Set((q.toLowerCase().match(/[a-z0-9]{3,}/g) || []).filter((w) => !/^(the|and|for|was|were|who|what|when|where|how|why|are|does|did|with|from|this|that|you|your|can|about)$/.test(w)).map((w) => w.slice(0, 5)))];
+    const paras = t.split(/\n+/).map((p) => p.replace(/\s+/g, " ").trim()).filter((p) => p.length > 25);
     const scored = paras.map((p, i) => { const l = p.toLowerCase(); return { p, i, s: words.reduce((a, w) => a + (l.includes(w) ? 1 : 0), 0) + (i < 3 ? 0.5 : 0) }; });
     const keep = []; let len = 0;
     for (const x of [...scored].sort((a, b) => b.s - a.s || a.i - b.i)) { if (len > max) break; keep.push(x); len += x.p.length + 1; }
