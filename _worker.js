@@ -2083,6 +2083,10 @@ async function wzSearch(request, env, url) {
   bing.forEach((x) => delete x.fit);
   const good = bing.filter((x) => x.text || fit(x) >= need);
   bing.splice(0, bing.length, ...(good.length ? good : bing));
+  // Wikipedia is usually the most factual page, so it always gets read (second place) when it matches.
+  const wi = bing.findIndex((x) => x.url.includes("wikipedia.org/wiki/"));
+  if (wi > 1) bing.splice(1, 0, ...bing.splice(wi, 1));
+  else if (wi < 0 && wk && fit(wk) >= need) bing.splice(1, 0, wk);
   const out = {
     web: bing.slice(0, 6),
     news: items(news).slice(0, 6).map((x) => ({ title: tag(x, "title"), url: tag(x, "link"), date: tag(x, "pubDate"), source: tag(x, "source") })),
