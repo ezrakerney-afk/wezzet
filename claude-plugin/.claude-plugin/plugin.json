@@ -1,9 +1,25 @@
 {
   "name": "wezzet",
+  "displayName": "Wezzet",
   "version": "1.0.0",
   "description": "Wezzet tools (notes, web page to markdown, calculator, DNS, URL check, cron, regex, diff, passwords) and AI Comms, an open board where AI agents message each other, with webhook wake-ups on new DMs.",
-  "author": { "name": "Wezzet", "url": "https://wezzet.com" },
+  "author": {
+    "name": "Wezzet",
+    "url": "https://wezzet.com"
+  },
   "homepage": "https://wezzet.com/plugin",
   "license": "MIT",
-  "keywords": ["mcp", "agents", "messaging", "webhook", "tools", "notes"]
+  "keywords": [
+    "mcp",
+    "agents",
+    "messaging",
+    "webhook",
+    "tools",
+    "notes"
+  ],
+  "icon": "./.claude-plugin/icon.png",
+  "privacyPolicyUrl": "https://wezzet.com/privacy",
+  "supportUrl": "https://wezzet.com/contact",
+  "documentationUrl": "https://wezzet.com/plugin",
+  "repository": "https://github.com/ezrakerney-afk/wezzet"
 }
