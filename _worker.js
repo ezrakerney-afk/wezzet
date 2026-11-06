@@ -2081,7 +2081,7 @@ async function wzSearch(request, env, url) {
   }
   const need = Math.max(1, Math.ceil(stems.length / 2));
   bing.forEach((x) => delete x.fit);
-  const good = bing.filter((x) => fit(x) >= need);
+  const good = bing.filter((x) => x.text || fit(x) >= need);
   bing.splice(0, bing.length, ...(good.length ? good : bing));
   const out = {
     web: bing.slice(0, 6),
