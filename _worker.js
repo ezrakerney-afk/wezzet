@@ -2067,6 +2067,18 @@ async function wzSearch(request, env, url) {
   let wk = null; try { const h = JSON.parse(wiki).query.search[0]; if (h) wk = { title: h.title + " - Wikipedia", url: "https://en.wikipedia.org/wiki/" + encodeURIComponent(h.title.replace(/ /g, "_")), snippet: tag("<s>" + h.snippet + "</s>", "s") }; } catch (e) {}
   if (wk && !seen.has(wk.url)) { wk.fit = fit(wk) + 0.5; bing.push(wk); }
   bing.sort((a, b) => b.fit - a.fit);
+  // Weather questions: a real 7-day forecast from Open-Meteo (free, no key) goes first.
+  if (/\b(weather|forecast|temperature|rain|snow|sunny|cold|hot|degrees)\b/i.test(q)) {
+    const place = (q.match(/\b(?:in|for|at|near)\s+([A-Z][\w.'-]*(?:[ ,]+[A-Z][\w.'-]*)*)/) || [])[1];
+    if (place) try {
+      const g = JSON.parse(await get("https://geocoding-api.open-meteo.com/v1/search?count=1&name=" + encodeURIComponent(place.split(",")[0].trim()))).results[0];
+      const f = JSON.parse(await get("https://api.open-meteo.com/v1/forecast?daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&temperature_unit=fahrenheit&timezone=auto&forecast_days=7&latitude=" + g.latitude + "&longitude=" + g.longitude)).daily;
+      const WMO = { 0: "clear", 1: "mostly clear", 2: "partly cloudy", 3: "cloudy", 45: "fog", 48: "fog", 51: "drizzle", 53: "drizzle", 55: "drizzle", 61: "light rain", 63: "rain", 65: "heavy rain", 71: "light snow", 73: "snow", 75: "heavy snow", 80: "showers", 81: "showers", 82: "heavy showers", 85: "snow showers", 86: "snow showers", 95: "thunderstorms", 96: "thunderstorms", 99: "thunderstorms" };
+      const day = (d) => new Date(d + "T12:00:00Z").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" });
+      const text = f.time.map((d, i) => `${day(d)}: ${WMO[f.weather_code[i]] || "mixed"}, high ${Math.round(f.temperature_2m_max[i])}°F, low ${Math.round(f.temperature_2m_min[i])}°F, ${f.precipitation_probability_max[i]}% chance of rain or snow`).join("\n");
+      bing.unshift({ title: `7-day forecast for ${g.name}${g.admin1 ? ", " + g.admin1 : ""}`, url: `https://open-meteo.com/en/docs#latitude=${g.latitude}&longitude=${g.longitude}`, snippet: text.slice(0, 300), text });
+    } catch (e) {}
+  }
   const need = Math.max(1, Math.ceil(stems.length / 2));
   bing.forEach((x) => delete x.fit);
   const good = bing.filter((x) => fit(x) >= need);
@@ -2078,7 +2090,7 @@ async function wzSearch(request, env, url) {
   // read=N: also open the top N web results and keep the paragraphs that best match the question,
   // so the model reads real page text instead of one-line snippets. Page text is untrusted data.
   const n = Math.min(4, parseInt(url.searchParams.get("read")) || 0);
-  if (n) await Promise.all(out.web.slice(0, n).map(async (x) => { x.text = await wzPage(x.url, q, 1200); }));
+  if (n) await Promise.all(out.web.slice(0, n).map(async (x) => { if (!x.text) x.text = await wzPage(x.url, q, 1200); }));
   return json(out, 200, { "cache-control": "public, max-age=300" });
 }
 // Readable text of one page, trimmed to the parts that match the question best (kept in page order).
