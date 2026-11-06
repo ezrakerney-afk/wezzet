@@ -48,6 +48,7 @@
     ["binary to text", "/binary-to-text", "binary to text string ascii utf-8 encode decode convert converter numbers"],
     ["bits to bytes", "/bits-to-bytes", "bits bytes bits bytes data storage convert convert converter units"],
     ["bmi calculator", "/bmi", "bmi calculator fun game test calculator"],
+    ["calorie calculator", "/calories", "calorie calculator calories per day tdee bmr diet weight loss gain maintenance kcal"],
     ["bmp to jpg", "/bmp-to-jpg", "image photo convert bmp to jpg"],
     ["btu to joules", "/btu-to-joules", "btu joules btu joules energy convert convert converter units"],
     ["btu to kj", "/btu-to-kj", "btu kj btu kilojoules energy convert convert converter units"],
