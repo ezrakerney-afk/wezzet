@@ -131,21 +131,23 @@
     const needs = /\b(news|today|tonight|yesterday|tomorrow|latest|current|currently|now|recent|this (week|month|year)|20[2-3]\d|price|cost|weather|score|won|election|who is|who's|who was|when (is|did|was)|where is|stock|release|launch|update|happened|ceo|president)\b/i.test(text) || /[A-Z][a-z]+ [A-Z][a-z]+/.test(text.slice(1));
     if (needs) status("Searching");
     if (needs) try { const r = await fetch("/api/search?q=" + encodeURIComponent(text), { signal: AbortSignal.timeout(4000) }); if (r.ok) found = await r.json(); } catch (e) {}
-    const srcs = [...found.news.slice(0, 3), ...found.web.slice(0, 3)];
+    const srcs = [...found.news.slice(0, 4), ...found.web.slice(0, 4)].slice(0, 8);
     const links = srcs.slice(0, 4).map((x) => { let h = x.source || ""; try { h = h || new URL(x.url).hostname.replace(/^www\./, ""); } catch (e) {} return [h || "source", x.url]; });
     status("Thinking");
     const ctx = `Now: ${now()} Eastern.\nWezzet tools that may fit: ${hits.map((t) => `${t.name} (${t.path})`).join(", ") || "none"}.\nSearch results:\n` +
-      (!needs ? "not needed" : srcs.map((x, i) => `[${i + 1}] ${x.title}${x.source ? " — " + x.source : ""}${x.date ? " (" + x.date + ")" : ""}\n${(x.snippet || "").slice(0, 220)}`).join("\n") || "none");
-    const msgs = [{ role: "system", content: SYSTEM }, ...history.slice(-5, -1), { role: "user", content: ctx + "\n\nQuestion: " + text + " /no_think" }];
+      (!needs ? "not needed" : srcs.map((x, i) => `[${i + 1}] ${x.title}${x.source ? " — " + x.source : ""}${x.date ? " (" + x.date + ")" : ""}\n${(x.snippet || "").replace(/\s+/g, " ").slice(0, 200)}`).join("\n") || "none");
+    // Math, code and multi-step questions get the model's hidden reasoning (slower, much more accurate).
+    const think = /\d\s*[-+*\/^%x×÷]\s*\d|\b(solve|calculate|equation|integral|derivative|probability|percent|how many|how much|prove|step by step|code|function|script|bug|error|debug|regex|sql|python|javascript|java|c\+\+|html|css|algorithm|compare|plan|riddle|logic|why does|explain how)\b|```/i.test(text) || text.length > 400;
+    const msgs = [{ role: "system", content: SYSTEM }, ...history.slice(-9, -1), { role: "user", content: ctx + "\n\nQuestion: " + text + " /no_think" }];
     try {
-      const mine = ctl, dog = setTimeout(() => mine.abort("slow"), 75000);
-      const r = await fetch("/api/ai", { method: "POST", signal: ctl.signal, headers: { "content-type": "application/json" }, body: JSON.stringify({ stream: true, messages: msgs.map((m) => ({ ...m, content: m.content.replace(" /no_think", "") })) }) });
+      const mine = ctl, dog = setTimeout(() => mine.abort("slow"), think ? 100000 : 75000);
+      const r = await fetch("/api/ai", { method: "POST", signal: ctl.signal, headers: { "content-type": "application/json" }, body: JSON.stringify({ stream: true, think, messages: msgs.map((m) => ({ ...m, content: m.content.replace(" /no_think", "") })) }) });
       let reply = "";
       clearTimeout(dog);
       if (r.ok && /text\/plain/.test(r.headers.get("content-type") || "")) {
         // Streamed answer: show the words as they arrive.
         const rd = r.body.getReader(), dec = new TextDecoder();
-        try { for (;;) { const { done, value } = await rd.read(); if (done) break; reply += dec.decode(value, { stream: true }); if (reply.trim()) status(reply, true); } }
+        try { for (;;) { const { done, value } = await rd.read(); if (done) break; const t = dec.decode(value, { stream: true }); reply += t.replace(/\u2060/g, ""); if (reply.trim()) status(reply, true); else if (t.includes("\u2060")) status("Thinking it through"); } }
         catch (e) { if (!reply.trim()) throw e; }
         reply = reply.trim();
       } else if (r.ok) { const j = await r.json(); reply = j.reply || ""; }
