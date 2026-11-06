@@ -2047,17 +2047,30 @@ async function wzSearch(request, env, url) {
   const get = async (u) => { try { const r = await fetch(u, { headers: { "user-agent": "Mozilla/5.0 (compatible; WezzetAI)" }, cf: { cacheTtl: 300 } }); return r.ok ? await r.text() : ""; } catch (e) { return ""; } };
   const tag = (x, t) => { const m = x.match(new RegExp(`<${t}[^>]*>([\\s\\S]*?)</${t}>`)); return m ? m[1].replace(/<!\[CDATA\[|\]\]>/g, "").replace(/<[^>]+>/g, "").replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">").trim() : ""; };
   const items = (x) => x.split("<item>").slice(1);
-  // Bing's RSS gets confused by chatty questions ("How do I ..." returns dictionary pages for "do"), so search keywords.
-  const kw = q.replace(/[?!.]+\s*$/, "").replace(/^(hey |hi |please |can you |could you |tell me |do you know |i want to know |i need to know )+/i, "")
-    .replace(/^how (do|can|would|should|could) (i|you|we|one) /i, "how to ").replace(/^(what|who|which)('s| is| are| was| were) (the |a |an )?/i, "").replace(/\b(my|me|please)\b/gi, "").replace(/\s+/g, " ").trim() || q;
-  const [web, news, wiki] = await Promise.all([
-    get("https://www.bing.com/search?format=rss&q=" + encodeURIComponent(kw)),
+  // Bing's RSS leans hard on the first word and on stopwords ("How do I ..." returns dictionary pages for "do",
+  // "cheapest iPhone" returns cheap flights). So: search keywords only, once as typed and once with names and numbers first,
+  // then keep the results that share the most keywords with the question.
+  const STOP = new Set("a an the of in on at for to from by with about and or is are was were be been do does did i me my we you your it its this that what who whom which when where why how can could would should will tell please know want need much many some any there their".split(" "));
+  const words = (q.replace(/[?!.,"]+/g, " ").match(/\S+/g) || []).filter((w) => !STOP.has(w.toLowerCase()));
+  const kw = words.join(" ") || q;
+  const named = [...words.filter((w) => /[A-Z0-9]/.test(w)), ...words.filter((w) => !/[A-Z0-9]/.test(w))].join(" ");
+  const rss = (x) => get("https://www.bing.com/search?format=rss&q=" + encodeURIComponent(x));
+  const [web, web2, news, wiki] = await Promise.all([
+    rss(kw), named !== kw ? rss(named) : "",
     get("https://news.google.com/rss/search?hl=en-US&gl=US&ceid=US:en&q=" + encodeURIComponent(kw)),
     get("https://en.wikipedia.org/w/api.php?action=query&list=search&srlimit=1&format=json&srsearch=" + encodeURIComponent(kw)),
   ]);
+  const stems = [...new Set(words.map((w) => w.toLowerCase().slice(0, 5)).filter((w) => w.length > 1))];
+  const fit = (x) => { const l = (x.title + " " + x.snippet + " " + x.url).toLowerCase(); return stems.reduce((a, w) => a + (l.includes(w) ? 1 : 0), 0); };
+  const seen = new Set(), bing = [];
+  [...items(web), ...items(web2)].forEach((x, i) => { const r = { title: tag(x, "title"), url: tag(x, "link"), snippet: tag(x, "description").slice(0, 300) }; if (r.url && !seen.has(r.url)) { seen.add(r.url); r.fit = fit(r) - i * 0.01; bing.push(r); } });
   let wk = null; try { const h = JSON.parse(wiki).query.search[0]; if (h) wk = { title: h.title + " - Wikipedia", url: "https://en.wikipedia.org/wiki/" + encodeURIComponent(h.title.replace(/ /g, "_")), snippet: tag("<s>" + h.snippet + "</s>", "s") }; } catch (e) {}
-  const bing = items(web).slice(0, 6).map((x) => ({ title: tag(x, "title"), url: tag(x, "link"), snippet: tag(x, "description").slice(0, 300) }));
-  if (wk && !bing.some((x) => x.url.includes("wikipedia.org"))) bing.splice(2, 0, wk);
+  if (wk && !seen.has(wk.url)) { wk.fit = fit(wk) + 0.5; bing.push(wk); }
+  bing.sort((a, b) => b.fit - a.fit);
+  const need = Math.max(1, Math.ceil(stems.length / 2));
+  bing.forEach((x) => delete x.fit);
+  const good = bing.filter((x) => fit(x) >= need);
+  bing.splice(0, bing.length, ...(good.length ? good : bing));
   const out = {
     web: bing.slice(0, 6),
     news: items(news).slice(0, 6).map((x) => ({ title: tag(x, "title"), url: tag(x, "link"), date: tag(x, "pubDate"), source: tag(x, "source") })),
