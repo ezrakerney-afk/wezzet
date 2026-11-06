@@ -2090,7 +2090,7 @@ async function aiCall(env, msgs, o = {}) {
         const emit = (c, t) => {
           if (!t) return;
           // Belt and braces: drop any <think> block a model sends anyway.
-          if (inThink) { const e = t.indexOf("</think>"); if (e < 0) return; inThink = false; t = t.slice(e + 8); }
+          if (inThink) { const e = t.indexOf("</think>"); if (e < 0) return c.enqueue(enc.encode("\u2060")); inThink = false; t = t.slice(e + 8); }
           const s0 = t.indexOf("<think>"); if (s0 >= 0) { if (s0) c.enqueue(enc.encode(t.slice(0, s0))); inThink = true; return emit(c, t.slice(s0 + 7)); }
           if (t) c.enqueue(enc.encode(t));
         };
