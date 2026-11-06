@@ -2077,7 +2077,10 @@ async function aiCall(env, msgs, o = {}) {
     try {
       const r = await fetch(base + "/api/chat", {
         method: "POST", headers, signal: ctl.signal,
-        body: JSON.stringify({ model, messages: msgs, think: false, stream: !!o.stream, keep_alive: "24h", options: { num_predict: max, temperature: o.temp ?? 0.6 } }),
+        // num_ctx matches the PC's OLLAMA_CONTEXT_LENGTH (16384) so the model never reloads. Sampling follows Qwen3's advice:
+        // think:true (math, code, multi-step) gets 0.6/0.95 and room to reason; plain chat 0.7/0.8.
+        body: JSON.stringify({ model, messages: msgs, think: !!o.think, stream: !!o.stream, keep_alive: "24h",
+          options: { num_ctx: 16384, num_predict: o.think ? Math.max(max, 2500) : max, temperature: o.temp ?? (o.think ? 0.6 : 0.7), top_p: o.think ? 0.95 : 0.8, top_k: 20 } }),
       });
       const ct = r.headers.get("content-type") || "";
       if (r.ok && o.stream && ct.includes("ndjson")) {
@@ -2091,7 +2094,8 @@ async function aiCall(env, msgs, o = {}) {
           const s0 = t.indexOf("<think>"); if (s0 >= 0) { if (s0) c.enqueue(enc.encode(t.slice(0, s0))); inThink = true; return emit(c, t.slice(s0 + 7)); }
           if (t) c.enqueue(enc.encode(t));
         };
-        const line = (c, l) => { if (!l.trim()) return; try { const j = JSON.parse(l); emit(c, j.message && j.message.content); } catch (e) {} };
+        // Reasoning stays hidden: each thinking chunk becomes one U+2060 (invisible) so the page can show "Thinking" and the connection stays busy.
+        const line = (c, l) => { if (!l.trim()) return; try { const j = JSON.parse(l); if (j.message && j.message.thinking) c.enqueue(enc.encode("\u2060")); emit(c, j.message && j.message.content); } catch (e) {} };
         return { stream: r.body.pipeThrough(new TransformStream({
           transform(ch, c) { buf += dec.decode(ch, { stream: true }); const ls = buf.split("\n"); buf = ls.pop(); ls.forEach((l) => line(c, l)); },
           flush(c) { line(c, buf); },
@@ -2122,7 +2126,7 @@ async function wzAI(request, env) {
   const get = request.method !== "POST", txt = (s, st = 200) => tlOut(s, st);
   const fail = (e, st) => get ? txt("error: " + e, st) : json({ error: e }, st);
   if (url.pathname.replace(/\/+$/, "") === "/api/ai/triage") return aiTriage(request, env, txt);
-  let msgs, o = { stream: !!d.stream };
+  let msgs, o = { stream: !!d.stream, think: d.think === true || d.think === "1" };
   const task = AI_TASKS[d.task];
   if (task) {
     const t = String(d.text || d.q || "").trim();
@@ -2133,7 +2137,8 @@ async function wzAI(request, env) {
     msgs = [{ role: "system", content: "You are WezzetAI, a free assistant on wezzet.com. Answer briefly and plainly." }, { role: "user", content: String(d.q).slice(0, 4000) }];
     o.max = 500;
   } else {
-    msgs = (Array.isArray(d.messages) ? d.messages : []).slice(-10)
+    if (o.think) o.timeout = 90000;
+    msgs = (Array.isArray(d.messages) ? d.messages : []).slice(-12)
       .filter((m) => ["system", "user", "assistant"].includes(m.role) && typeof m.content === "string")
       .map((m) => ({ role: m.role, content: m.content.slice(0, 6000) }));
   }
