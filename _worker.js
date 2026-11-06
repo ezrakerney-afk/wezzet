@@ -986,17 +986,23 @@ async function tlFetch(request, env, raw, fail) {
   const who = await tlWho(request);
   if (!(await tlLimit(env, who, 'read'))) return { err: fail('too many fetches from you. Limit: 60 an hour', 429) };
   await tlLog(env, who, 'read');
+  return tlGet(raw, fail);
+}
+// Fetch with the private-address block and redirect checks (no rate limit: callers count their own).
+async function tlGet(raw, fail, ms = 10000, cap = 3e6) {
+  let u;
+  try { u = new URL(/^https?:\/\//i.test(raw) ? raw : 'https://' + raw); } catch { return { err: fail('bad url') }; }
   for (let hop = 0; hop < 5; hop++) {
     if (!/^https?:$/.test(u.protocol) || u.username || u.password || (u.port && !['80', '443', '8080', '8443'].includes(u.port)) || tlBlockedHost(u.hostname)) return { err: fail('that address is not allowed') };
-    const ac = new AbortController(), timer = setTimeout(() => ac.abort(), 10000);
+    const ac = new AbortController(), timer = setTimeout(() => ac.abort(), ms);
     let r;
     try { r = await fetch(u.toString(), { redirect: 'manual', signal: ac.signal, headers: { 'user-agent': 'Mozilla/5.0 (compatible; WezzetReader/1.0; +https://wezzet.com/read)', accept: 'text/html,application/xhtml+xml,text/plain,application/json,text/csv,application/xml;q=0.9,*/*;q=0.5' }, cf: { cacheTtl: 300 } }); }
-    catch (e) { clearTimeout(timer); return { err: fail('could not fetch: ' + (e.name === 'AbortError' ? 'timed out after 10s' : e.message), 502) }; }
+    catch (e) { clearTimeout(timer); return { err: fail('could not fetch: ' + (e.name === 'AbortError' ? 'timed out after ' + ms / 1000 + 's' : e.message), 502) }; }
     if (r.status >= 300 && r.status < 400 && r.headers.get('location')) { clearTimeout(timer); u = new URL(r.headers.get('location'), u); continue; }
     const ct = (r.headers.get('content-type') || '').toLowerCase();
     if (/^(image|video|audio|font)\//.test(ct) || /pdf|zip|octet-stream/.test(ct)) { clearTimeout(timer); return { err: fail('not a text page (' + ct.split(';')[0] + '). For PDFs use https://wezzet.com/pdf-to-text', 415) }; }
     const reader = r.body.getReader(), chunks = []; let size = 0;
-    try { while (size < 3e6) { const { done, value } = await reader.read(); if (done) break; chunks.push(value); size += value.length; } } catch {} finally { clearTimeout(timer); reader.cancel().catch(() => {}); }
+    try { while (size < cap) { const { done, value } = await reader.read(); if (done) break; chunks.push(value); size += value.length; } } catch {} finally { clearTimeout(timer); reader.cancel().catch(() => {}); }
     const buf = new Uint8Array(size); let o = 0; for (const c of chunks) { buf.set(c.subarray(0, Math.min(c.length, size - o)), o); o += c.length; if (o >= size) break; }
     const cs = (ct.match(/charset=([\w-]+)/) || [])[1];
     let body; try { body = new TextDecoder(cs || 'utf-8').decode(buf); } catch { body = new TextDecoder().decode(buf); }
@@ -2035,6 +2041,9 @@ async function wzSearch(request, env, url) {
     if ((r ? r.n : 0) >= 120) return json({ error: "too many searches, try again later" }, 429);
     await tlLog(env, who, "search");
   }
+  // page=URL: the visitor pasted a link, so read that page instead of searching.
+  const pg = (url.searchParams.get("page") || "").trim();
+  if (pg) return json({ web: [], news: [], page: { url: pg, text: await wzPage(pg, q, 3500) } }, 200, { "cache-control": "public, max-age=300" });
   const get = async (u) => { try { const r = await fetch(u, { headers: { "user-agent": "Mozilla/5.0 (compatible; WezzetAI)" }, cf: { cacheTtl: 300 } }); return r.ok ? await r.text() : ""; } catch (e) { return ""; } };
   const tag = (x, t) => { const m = x.match(new RegExp(`<${t}[^>]*>([\\s\\S]*?)</${t}>`)); return m ? m[1].replace(/<!\[CDATA\[|\]\]>/g, "").replace(/<[^>]+>/g, "").replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">").trim() : ""; };
   const items = (x) => x.split("<item>").slice(1);
@@ -2042,10 +2051,31 @@ async function wzSearch(request, env, url) {
     get("https://www.bing.com/search?format=rss&q=" + encodeURIComponent(q)),
     get("https://news.google.com/rss/search?hl=en-US&gl=US&ceid=US:en&q=" + encodeURIComponent(q)),
   ]);
-  return json({
+  const out = {
     web: items(web).slice(0, 6).map((x) => ({ title: tag(x, "title"), url: tag(x, "link"), snippet: tag(x, "description").slice(0, 300) })),
     news: items(news).slice(0, 6).map((x) => ({ title: tag(x, "title"), url: tag(x, "link"), date: tag(x, "pubDate"), source: tag(x, "source") })),
-  }, 200, { "cache-control": "public, max-age=300" });
+  };
+  // read=N: also open the top N web results and keep the paragraphs that best match the question,
+  // so the model reads real page text instead of one-line snippets. Page text is untrusted data.
+  const n = Math.min(4, parseInt(url.searchParams.get("read")) || 0);
+  if (n) await Promise.all(out.web.slice(0, n).map(async (x) => { x.text = await wzPage(x.url, q, 1200); }));
+  return json(out, 200, { "cache-control": "public, max-age=300" });
+}
+// Readable text of one page, trimmed to the parts that match the question best (kept in page order).
+async function wzPage(link, q, max) {
+  try {
+    const r = await tlGet(link, () => null, 4000, 1.5e6);
+    if (!r || r.err || r.status >= 400) return "";
+    let t = r.body;
+    if (/html|xml/.test(r.ct) || /<html/i.test(t.slice(0, 2000))) t = (await tlHtml(t, r.url, false)).text;
+    t = t.replace(/\[([^\]]*)\]\([^)]*\)/g, "$1").replace(/^#+ /gm, "").replace(/\*\*|`/g, "");
+    const words = [...new Set(q.toLowerCase().match(/[a-z0-9]{3,}/g) || [])];
+    const paras = t.split(/\n+/).map((p) => p.replace(/\s+/g, " ").trim()).filter((p) => p.length > 40);
+    const scored = paras.map((p, i) => { const l = p.toLowerCase(); return { p, i, s: words.reduce((a, w) => a + (l.includes(w) ? 1 : 0), 0) + (i < 3 ? 0.5 : 0) }; });
+    const keep = []; let len = 0;
+    for (const x of [...scored].sort((a, b) => b.s - a.s || a.i - b.i)) { if (len > max) break; keep.push(x); len += x.p.length + 1; }
+    return keep.sort((a, b) => a.i - b.i).map((x) => x.p).join("\n").slice(0, max);
+  } catch (e) { return ""; }
 }
 
 // ---- /api/ai : WezzetAI ----
