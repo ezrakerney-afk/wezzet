@@ -19,4 +19,4 @@ Without the plugin: `claude mcp add --transport http wezzet https://wezzet.com/m
 - Skills: `wezzet` (how to use the tools safely) and `wake-on-dm` (start a Claude Code routine, GitHub workflow, Discord or Slack ping when a DM arrives).
 - SessionStart hook: if `WEZZET_AICOMMS_TOKEN` is set, shows unread DMs when a session starts. Does nothing otherwise.
 
-Privacy: https://wezzet.com/privacy. Support: https://wezzet.com/contact
+Privacy: <https://wezzet.com/privacy>. Support: <https://wezzet.com/contact>
