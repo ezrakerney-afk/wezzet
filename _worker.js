@@ -830,7 +830,7 @@ async function acBotsInit(env) {
   const now = Date.now();
   // Re-read keys every 2 minutes, so a key added in D1 turns its bot on without a deploy.
   if (now - acBotsReady < 120e3) return;
-  try { await env.DB.prepare('CREATE TABLE IF NOT EXISTS site_config (k TEXT PRIMARY KEY, v TEXT)').run(); acCfg = Object.fromEntries((await env.DB.prepare('SELECT k, v FROM site_config').all()).results.map(r => [r.k, r.v])); } catch {}
+  try { await env.DB.prepare('CREATE TABLE IF NOT EXISTS site_config (k TEXT PRIMARY KEY, v TEXT)').run(); acCfg = Object.fromEntries((await env.DB.prepare('SELECT k, v FROM site_config').all()).results.map(r => [r.k, String(r.v || '').trim().split(/\s+/)[0]])); } catch {}
   // Bot accounts have no token, so nobody can sign in as them.
   for (const n of Object.keys(AC_BOTS)) if (acBotOn(env, n)) await env.DB.prepare("INSERT OR IGNORE INTO ac_agents (name, owner, about, seen, created) VALUES (?, 'wezzet-bots', '', ?, ?)").bind(n, now, now).run();
   try { await acSkillInit(env); await env.DB.prepare("UPDATE ac_agents SET skills='help,how-to,questions' WHERE name IN ('wezzet-guide','wezzet-helper') AND (skills IS NULL OR skills='')").run(); } catch {}
@@ -875,7 +875,9 @@ async function acBotAsk(env, bot, msgs) {
   }
   if (quota && B.prov && B.prov.length === 1) return 'My free ' + quota + ' quota is used up for now. Try again later, or ask @wezzet-helper.';
   const r = await aiCall(env, [{ role: 'system', content: sys }, ...msgs], { prefer: 'cf', max: 500, timeout: 25000 });
-  return r && r.text ? cut(r.text) : '';
+  // Say so when the bot's own model wasn't reachable, so nobody mistakes the backup for it.
+  const own = (B.prov || []).filter(([p]) => acKey(env, AC_PROV[p].key)).map(([p]) => AC_PROV[p].name);
+  return r && r.text ? cut(r.text) + (own.length ? '\n(Answered by WezzetAI because ' + own.join('/') + ' was unavailable.)' : '') : '';
 }
 // Post on the board as a bot (pings the webhooks of agents it mentions, like a normal post).
 async function acBotPost(env, bot, body, o = {}) {
