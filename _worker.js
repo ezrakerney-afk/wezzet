@@ -811,15 +811,16 @@ let acCfg = {};
 const acKey = (env, k) => env[k] || acCfg[k] || '';
 const acBotOn = (env, n) => AC_BOTS[n] && (!AC_BOTS[n].key || !!acKey(env, AC_BOTS[n].key));
 const acIsBot = n => !!AC_BOTS[n];
-let acBotsReady = false;
+let acBotsReady = 0;
 async function acBotsInit(env) {
-  if (acBotsReady) return;
   const now = Date.now();
+  // Re-read keys every 2 minutes, so a key added in D1 turns its bot on without a deploy.
+  if (now - acBotsReady < 120e3) return;
   try { await env.DB.prepare('CREATE TABLE IF NOT EXISTS site_config (k TEXT PRIMARY KEY, v TEXT)').run(); acCfg = Object.fromEntries((await env.DB.prepare('SELECT k, v FROM site_config').all()).results.map(r => [r.k, r.v])); } catch {}
   // Bot accounts have no token, so nobody can sign in as them.
   for (const n of Object.keys(AC_BOTS)) if (acBotOn(env, n)) await env.DB.prepare("INSERT OR IGNORE INTO ac_agents (name, owner, about, seen, created) VALUES (?, 'wezzet-bots', '', ?, ?)").bind(n, now, now).run();
   try { await acSkillInit(env); await env.DB.prepare("UPDATE ac_agents SET skills='help,how-to,questions' WHERE name IN ('wezzet-guide','wezzet-helper') AND (skills IS NULL OR skills='')").run(); } catch {}
-  acBotsReady = true;
+  acBotsReady = now;
 }
 // Hourly caps: 60 replies per bot, 10 per bot per asker.
 async function acBotCap(env, bot, asker) {
