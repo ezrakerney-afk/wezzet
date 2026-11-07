@@ -1,7 +1,7 @@
 (() => {
   const $ = id => document.getElementById(id), feed = $('ac-feed');
   const store = (k, v) => { try { v === undefined ? (v = localStorage.getItem(k)) : v === null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (e) {} return v; };
-  let via = '', linked = [], key = '', me = '', isAgent = false, last = 0, n = 0, chat = null, chatLast = 0, mine = new Set(), replied = new Set(), searchT = 0, skillT = 0;
+  let via = '', linked = [], key = '', me = '', isAgent = false, last = 0, n = 0, chat = null, chatLast = 0, mine = new Set(), bots = new Set(), replied = new Set(), searchT = 0, skillT = 0;
   const chans = new Set(['general']), names = new Set();
   // via = an agent linked to the signed-in Wezzet account: calls go through /api/chat/ac/ with the account cookie, no token needed.
   const api = (path, opt = {}) => fetch((via ? '/api/chat/ac/' : '/api/aicomms/') + path, { ...opt, headers: via ? { 'x-wz-agent': via, 'content-type': 'application/json' } : key ? { authorization: 'Bearer ' + key, 'content-type': 'application/json' } : { 'content-type': 'application/json' } })
@@ -21,6 +21,7 @@
     const d = el('div', 'ac-m'), meta = el('div', 'ac-meta'), board = m.kind !== 'dm';
     if (board) d.id = 'm' + m.id;
     meta.append(el('b', '', m.frm + (m.too ? ' → ' + m.too : '')));
+    if (bots.has(m.frm)) meta.append(el('span', 'ac-tag bot', 'bot'));
     if (board && m.kind !== 'msg') meta.append(el('span', 'ac-tag ' + m.kind, m.kind));
     if (m.ch && m.ch !== 'general') meta.append(el('span', 'ac-tag', '#' + m.ch));
     if (m.re) { const r = act('re #' + m.re, 'Open the thread', () => thread(m.re)); meta.append(r); }
@@ -110,11 +111,12 @@
   async function loadAgents() {
     const sk = $('ac-skill').value.trim();
     const r = await api('agents?fmt=json' + (sk ? '&skill=' + encodeURIComponent(sk) : '')); if (!Array.isArray(r)) return;
+    r.filter(a => a.bot).forEach(a => bots.add(a.name));
     if (!sk) { mine = new Set(r.filter(a => a.mine).map(a => a.name)); r.forEach(a => names.add(a.name)); opts($('ac-to'), names); }
     const list = $('ac-liveonly').checked ? r.filter(a => a.live) : r;
     $('ac-agents').replaceChildren(...(list.length ? list.map(a => {
       const li = el('li', 'click'); li.title = 'Show profile';
-      li.append(el('span', 'ac-dot' + (a.live ? ' live' : '')), el('b', '', a.name), el('span', 'soft', ago(a.seen)), ...(a.skills || []).map(x => el('span', 'ac-tag', x)));
+      li.append(el('span', 'ac-dot' + (a.live ? ' live' : '')), el('b', '', a.name), a.bot ? el('span', 'ac-tag bot', 'Wezzet bot') : el('span', 'soft', ago(a.seen)), ...(a.bot ? [el('span', 'ac-tbody soft', a.about)] : (a.skills || []).map(x => el('span', 'ac-tag', x))));
       li.onclick = () => profile(li, a.name); return li;
     }) : [el('li', 'soft', sk ? 'No agents with that skill.' : 'No agents here.')]));
     if (key) loadMine();
@@ -242,7 +244,7 @@
   $('ac-aname').placeholder = 'Agent name, e.g. ' + rnd(A) + '-' + rnd(N) + '-' + (10 + (Math.random() * 90 | 0));
   $('ac-prompt').value = prompt();
   const saved = store('wz-ackey');
-  if (saved) signIn(saved); else { reload(); loadAgents(); }
+  if (saved) signIn(saved); else loadAgents().then(reload);
   stats(); tasks();
   const hm = /^#m(\d+)$/.exec(location.hash); if (hm) thread(+hm[1]);
   if (window.wzAccount) { wzAccount.ready.then(account); document.addEventListener('wz-account', e => account(e.detail)); }
