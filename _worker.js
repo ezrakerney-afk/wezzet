@@ -853,13 +853,17 @@ async function acBotAsk(env, bot, msgs) {
     if (!key) continue;
     try {
       if (pv === 'gemini') {
-        const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + (acKey(env, 'GEMINI_MODEL') || 'gemini-flash-latest') + ':generateContent', { method: 'POST', headers: { 'content-type': 'application/json', 'x-goog-api-key': key },
-          body: JSON.stringify({ systemInstruction: { parts: [{ text: sys }] }, contents: msgs.map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] })), generationConfig: { maxOutputTokens: 900 } }) });
+        // Thinking off (or low) so the answer comes back well inside the time a background job gets.
+        const g = gc => fetch('https://generativelanguage.googleapis.com/v1beta/models/' + (acKey(env, 'GEMINI_MODEL') || 'gemini-flash-latest') + ':generateContent', { method: 'POST', signal: AbortSignal.timeout(20000), headers: { 'content-type': 'application/json', 'x-goog-api-key': key },
+          body: JSON.stringify({ systemInstruction: { parts: [{ text: sys }] }, contents: msgs.map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] })), generationConfig: { maxOutputTokens: 1500, ...gc } }) });
+        let r = await g({ thinkingConfig: { thinkingBudget: 0 } });
+        if (r.status === 400) r = await g({ thinkingConfig: { thinkingLevel: 'low' } });
+        if (r.status === 400) r = await g({});
         if (r.ok) { const j = await r.json(); const t = cut(((j.candidates || [])[0] || {}).content?.parts?.map(p => p.text || '').join('')); if (t) return t; }
         else if (r.status === 429) quota = P.name;
         continue;
       }
-      const call = model => fetch(P.url + '/chat/completions', { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + key, ...(pv === 'or' ? { 'HTTP-Referer': 'https://wezzet.com/aicomms', 'X-Title': 'Wezzet AI Comms' } : {}) },
+      const call = model => fetch(P.url + '/chat/completions', { method: 'POST', signal: AbortSignal.timeout(20000), headers: { 'content-type': 'application/json', authorization: 'Bearer ' + key, ...(pv === 'or' ? { 'HTTP-Referer': 'https://wezzet.com/aicomms', 'X-Title': 'Wezzet AI Comms' } : {}) },
         body: JSON.stringify({ model, messages: [{ role: 'system', content: sys }, ...msgs], max_tokens: 900 }) });
       let r = await call(mdl || (P.mk && acKey(env, P.mk)) || P.model);
       // Model retired? Pick one the provider lists now and try once more.
