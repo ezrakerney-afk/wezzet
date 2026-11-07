@@ -803,13 +803,27 @@ const AC_BOTS = {
   'wezzet-guide': { about: 'welcomes new agents and explains how AI Comms works', sys: 'You are wezzet-guide. You help AI agents use Wezzet AI Comms. Answer how-to questions with the exact link to use. ' + AC_BOT_PROTO + AC_BOT_RULES },
   'wezzet-helper': { about: 'answers questions on the board and in DMs', sys: 'You are wezzet-helper, a helpful assistant for AI agents on Wezzet AI Comms. Answer the question directly and correctly. If you are not sure, say so. For how-to questions about the board: ' + AC_BOT_PROTO + AC_BOT_RULES },
   'wezzet-matchmaker': { about: 'replies to new tasks with agents whose skills match' },
-  'gemini-bot': { about: 'Google Gemini (free tier), answers when mentioned or DMed', key: 'GEMINI_API_KEY', sys: 'You are gemini-bot, Google Gemini answering AI agents on Wezzet AI Comms. Be accurate and concise.' + AC_BOT_RULES },
-  'openrouter-bot': { about: 'a free open model via OpenRouter, answers when mentioned or DMed', key: 'OPENROUTER_API_KEY', sys: 'You are openrouter-bot, a free open model answering AI agents on Wezzet AI Comms. Be accurate and concise.' + AC_BOT_RULES },
+  'gemini-bot': { about: 'Google Gemini, free: answers when mentioned or DMed', prov: [['gemini']], sys: 'You are gemini-bot, Google Gemini answering AI agents on Wezzet AI Comms. Be accurate and concise.' + AC_BOT_RULES },
+  'openrouter-bot': { about: 'a free open model via OpenRouter: answers when mentioned or DMed', prov: [['or', 'openrouter/free']], sys: 'You are openrouter-bot, a free open model answering AI agents on Wezzet AI Comms. Be accurate and concise.' + AC_BOT_RULES },
+  'gemma-bot': { about: 'Google Gemma 4 (open model), free: answers when mentioned or DMed', prov: [['or', 'google/gemma-4-31b-it:free']], sys: 'You are gemma-bot, Google\'s open Gemma model answering AI agents on Wezzet AI Comms. Be accurate and concise.' + AC_BOT_RULES },
+  'nemotron-bot': { about: 'NVIDIA Nemotron (open model), free: answers when mentioned or DMed', prov: [['or', 'nvidia/nemotron-3-ultra-550b-a55b:free']], sys: 'You are nemotron-bot, NVIDIA\'s open Nemotron model answering AI agents on Wezzet AI Comms. Be accurate and concise.' + AC_BOT_RULES },
+  'coder-bot': { about: 'writes, explains and fixes code, free', prov: [['gemini'], ['groq'], ['or', 'openrouter/free']], sys: 'You are coder-bot. You write, review, explain and fix code for AI agents on Wezzet AI Comms. Give working code in plain text (no markdown fences needed), then one line on what it does. Keep it short.' + AC_BOT_RULES.replace('under 120 words', 'under 250 words') },
+  'writer-bot': { about: 'drafts, rewrites, shortens and proofreads text, free', prov: [['or', 'openrouter/free'], ['gemini']], sys: 'You are writer-bot. You draft, rewrite, shorten and proofread text for AI agents on Wezzet AI Comms. Return the finished text, plain and clear, then nothing else.' + AC_BOT_RULES.replace('under 120 words', 'under 250 words') },
+  'translator-bot': { about: 'translates text between languages, free', prov: [['gemini'], ['or', 'openrouter/free']], sys: 'You are translator-bot. Translate the text you are given. If no target language is named, translate to English (or from English to the language mentioned). Reply with the translation only.' + AC_BOT_RULES.replace('under 120 words', 'under 300 words') },
+  'groq-bot': { about: 'fast open model on Groq, free: answers when mentioned or DMed', prov: [['groq']], sys: 'You are groq-bot, a fast open model on Groq answering AI agents on Wezzet AI Comms. Be accurate and concise.' + AC_BOT_RULES },
+  'cerebras-bot': { about: 'fast open model on Cerebras, free: answers when mentioned or DMed', prov: [['cerebras']], sys: 'You are cerebras-bot, a fast open model on Cerebras answering AI agents on Wezzet AI Comms. Be accurate and concise.' + AC_BOT_RULES },
 };
 // Keys come from Pages secrets, or from the private site_config table in D1 (rows k, v) when a secret isn't set.
 let acCfg = {};
 const acKey = (env, k) => env[k] || acCfg[k] || '';
-const acBotOn = (env, n) => AC_BOTS[n] && (!AC_BOTS[n].key || !!acKey(env, AC_BOTS[n].key));
+// Free model providers. OpenAI-compatible ones share one call; Gemini has its own format. Models can be changed in site_config (e.g. GROQ_MODEL).
+const AC_PROV = {
+  gemini: { key: 'GEMINI_API_KEY', name: 'Gemini' },
+  or: { key: 'OPENROUTER_API_KEY', name: 'OpenRouter', url: 'https://openrouter.ai/api/v1', model: 'openrouter/free' },
+  groq: { key: 'GROQ_API_KEY', name: 'Groq', url: 'https://api.groq.com/openai/v1', model: 'llama-3.3-70b-versatile', mk: 'GROQ_MODEL' },
+  cerebras: { key: 'CEREBRAS_API_KEY', name: 'Cerebras', url: 'https://api.cerebras.ai/v1', model: 'llama-3.3-70b', mk: 'CEREBRAS_MODEL' },
+};
+const acBotOn = (env, n) => AC_BOTS[n] && (!AC_BOTS[n].prov || AC_BOTS[n].prov.some(([p]) => !!acKey(env, AC_PROV[p].key)));
 const acIsBot = n => !!AC_BOTS[n];
 let acBotsReady = 0;
 async function acBotsInit(env) {
@@ -832,22 +846,35 @@ async function acBotCap(env, bot, asker) {
 }
 // Ask the bot's model. Falls back to WezzetAI (Workers AI, then the PC) when a key is missing or its free quota is used up.
 async function acBotAsk(env, bot, msgs) {
-  const B = AC_BOTS[bot], sys = B.sys, cut = t => String(t || '').replace(/<think>[\s\S]*?<\/think>/g, '').trim().slice(0, 1500);
-  try {
-    if (bot === 'gemini-bot' && acKey(env, 'GEMINI_API_KEY')) {
-      const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + (acKey(env, 'GEMINI_MODEL') || 'gemini-flash-latest') + ':generateContent', { method: 'POST', headers: { 'content-type': 'application/json', 'x-goog-api-key': acKey(env, 'GEMINI_API_KEY') },
-        body: JSON.stringify({ systemInstruction: { parts: [{ text: sys }] }, contents: msgs.map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] })), generationConfig: { maxOutputTokens: 600 } }) });
-      if (r.ok) { const j = await r.json(); const t = cut(((j.candidates || [])[0] || {}).content?.parts?.map(p => p.text || '').join('')); if (t) return t; }
-      else if (r.status === 429) return 'My free Gemini quota is used up for now. Try again later, or ask @wezzet-helper.';
-    }
-    if (bot === 'openrouter-bot' && acKey(env, 'OPENROUTER_API_KEY')) {
-      const r = await fetch('https://openrouter.ai/api/v1/chat/completions', { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + acKey(env, 'OPENROUTER_API_KEY'), 'HTTP-Referer': 'https://wezzet.com/aicomms', 'X-Title': 'Wezzet AI Comms' },
-        body: JSON.stringify({ model: env.OPENROUTER_MODEL || 'openrouter/free', messages: [{ role: 'system', content: sys }, ...msgs], max_tokens: 600 }) });
+  const B = AC_BOTS[bot], sys = B.sys || AC_BOTS['wezzet-helper'].sys, cut = t => String(t || '').replace(/<think>[\s\S]*?<\/think>/g, '').trim().slice(0, 2500);
+  let quota = '';
+  for (const [pv, mdl] of B.prov || []) {
+    const P = AC_PROV[pv], key = acKey(env, P.key);
+    if (!key) continue;
+    try {
+      if (pv === 'gemini') {
+        const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + (acKey(env, 'GEMINI_MODEL') || 'gemini-flash-latest') + ':generateContent', { method: 'POST', headers: { 'content-type': 'application/json', 'x-goog-api-key': key },
+          body: JSON.stringify({ systemInstruction: { parts: [{ text: sys }] }, contents: msgs.map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] })), generationConfig: { maxOutputTokens: 900 } }) });
+        if (r.ok) { const j = await r.json(); const t = cut(((j.candidates || [])[0] || {}).content?.parts?.map(p => p.text || '').join('')); if (t) return t; }
+        else if (r.status === 429) quota = P.name;
+        continue;
+      }
+      const call = model => fetch(P.url + '/chat/completions', { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + key, ...(pv === 'or' ? { 'HTTP-Referer': 'https://wezzet.com/aicomms', 'X-Title': 'Wezzet AI Comms' } : {}) },
+        body: JSON.stringify({ model, messages: [{ role: 'system', content: sys }, ...msgs], max_tokens: 900 }) });
+      let r = await call(mdl || (P.mk && acKey(env, P.mk)) || P.model);
+      // Model retired? Pick one the provider lists now and try once more.
+      if (r.status === 404 || r.status === 400) {
+        const l = await fetch(P.url + '/models', { headers: { authorization: 'Bearer ' + key } }).then(x => x.json()).catch(() => ({}));
+        const ids = (l.data || []).map(m => m.id).filter(id => pv !== 'or' || id.endsWith(':free'));
+        const pick = ids.find(id => /llama|qwen|gpt-oss|gemma/i.test(id) && !/guard|whisper|tts|embed/i.test(id)) || ids[0];
+        if (pick) r = await call(pick);
+      }
       if (r.ok) { const j = await r.json(); const t = cut(j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content); if (t) return t; }
-      else if (r.status === 429 || r.status === 402) return 'My free OpenRouter quota is used up for now. Try again later, or ask @wezzet-helper.';
-    }
-  } catch {}
-  const r = await aiCall(env, [{ role: 'system', content: sys || AC_BOTS['wezzet-helper'].sys }, ...msgs], { prefer: 'cf', max: 400, timeout: 25000 });
+      else if (r.status === 429 || r.status === 402) quota = P.name;
+    } catch {}
+  }
+  if (quota && B.prov && B.prov.length === 1) return 'My free ' + quota + ' quota is used up for now. Try again later, or ask @wezzet-helper.';
+  const r = await aiCall(env, [{ role: 'system', content: sys }, ...msgs], { prefer: 'cf', max: 500, timeout: 25000 });
   return r && r.text ? cut(r.text) : '';
 }
 // Post on the board as a bot (pings the webhooks of agents it mentions, like a normal post).
