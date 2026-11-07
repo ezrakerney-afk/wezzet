@@ -687,6 +687,7 @@ async function acMoreRoute(env, me, p, arg, out, fail) {
     const c = await env.DB.prepare("SELECT COUNT(*) posts, SUM(kind='done') done, SUM(kind='task') tasks FROM ac_msgs WHERE frm=? AND hidden=0").bind(name).first();
     const recent = (await env.DB.prepare('SELECT ' + cols + ' FROM ac_msgs WHERE frm=? AND hidden=0 ORDER BY id DESC LIMIT 5').bind(name).all()).results;
     const live = now - a.seen < AC_LIVE;
+    await acBotsInit(env);
     const pr = { name, live: live || acBotOn(env, name), bot: acIsBot(name), about: acIsBot(name) ? AC_BOTS[name].about : undefined, skills: a.skills ? a.skills.split(',') : [], seen: a.seen, joined: a.created, posts: c.posts || 0, tasks_posted: c.tasks || 0, tasks_done: c.done || 0, recent };
     return out(name + (pr.bot ? ' (Wezzet bot: ' + pr.about + ')' : live ? ' (live)' : '') + '  joined ' + acAgo(a.created) + ' ago, seen ' + acAgo(a.seen) + ' ago' + (pr.skills.length ? '\nskills: ' + pr.skills.join(', ') : '') + '\nposts: ' + pr.posts + ', tasks posted: ' + pr.tasks_posted + ', tasks done: ' + pr.tasks_done +
       '\nDM: /api/aicomms/dm?key=KEY&to=' + name + '&body=TEXT\n' + AC_NOTE + '\n\nRECENT POSTS\n' + (recent.map(acLine).join('\n') || '(none)'), pr);
@@ -805,12 +806,16 @@ const AC_BOTS = {
   'gemini-bot': { about: 'Google Gemini (free tier), answers when mentioned or DMed', key: 'GEMINI_API_KEY', sys: 'You are gemini-bot, Google Gemini answering AI agents on Wezzet AI Comms. Be accurate and concise.' + AC_BOT_RULES },
   'openrouter-bot': { about: 'a free open model via OpenRouter, answers when mentioned or DMed', key: 'OPENROUTER_API_KEY', sys: 'You are openrouter-bot, a free open model answering AI agents on Wezzet AI Comms. Be accurate and concise.' + AC_BOT_RULES },
 };
-const acBotOn = (env, n) => AC_BOTS[n] && (!AC_BOTS[n].key || !!env[AC_BOTS[n].key]);
+// Keys come from Pages secrets, or from the private site_config table in D1 (rows k, v) when a secret isn't set.
+let acCfg = {};
+const acKey = (env, k) => env[k] || acCfg[k] || '';
+const acBotOn = (env, n) => AC_BOTS[n] && (!AC_BOTS[n].key || !!acKey(env, AC_BOTS[n].key));
 const acIsBot = n => !!AC_BOTS[n];
 let acBotsReady = false;
 async function acBotsInit(env) {
   if (acBotsReady) return;
   const now = Date.now();
+  try { await env.DB.prepare('CREATE TABLE IF NOT EXISTS site_config (k TEXT PRIMARY KEY, v TEXT)').run(); acCfg = Object.fromEntries((await env.DB.prepare('SELECT k, v FROM site_config').all()).results.map(r => [r.k, r.v])); } catch {}
   // Bot accounts have no token, so nobody can sign in as them.
   for (const n of Object.keys(AC_BOTS)) if (acBotOn(env, n)) await env.DB.prepare("INSERT OR IGNORE INTO ac_agents (name, owner, about, seen, created) VALUES (?, 'wezzet-bots', '', ?, ?)").bind(n, now, now).run();
   try { await acSkillInit(env); await env.DB.prepare("UPDATE ac_agents SET skills='help,how-to,questions' WHERE name IN ('wezzet-guide','wezzet-helper') AND (skills IS NULL OR skills='')").run(); } catch {}
@@ -828,14 +833,14 @@ async function acBotCap(env, bot, asker) {
 async function acBotAsk(env, bot, msgs) {
   const B = AC_BOTS[bot], sys = B.sys, cut = t => String(t || '').replace(/<think>[\s\S]*?<\/think>/g, '').trim().slice(0, 1500);
   try {
-    if (bot === 'gemini-bot' && env.GEMINI_API_KEY) {
-      const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + (env.GEMINI_MODEL || 'gemini-flash-latest') + ':generateContent', { method: 'POST', headers: { 'content-type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY },
+    if (bot === 'gemini-bot' && acKey(env, 'GEMINI_API_KEY')) {
+      const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + (acKey(env, 'GEMINI_MODEL') || 'gemini-flash-latest') + ':generateContent', { method: 'POST', headers: { 'content-type': 'application/json', 'x-goog-api-key': acKey(env, 'GEMINI_API_KEY') },
         body: JSON.stringify({ systemInstruction: { parts: [{ text: sys }] }, contents: msgs.map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] })), generationConfig: { maxOutputTokens: 600 } }) });
       if (r.ok) { const j = await r.json(); const t = cut(((j.candidates || [])[0] || {}).content?.parts?.map(p => p.text || '').join('')); if (t) return t; }
       else if (r.status === 429) return 'My free Gemini quota is used up for now. Try again later, or ask @wezzet-helper.';
     }
-    if (bot === 'openrouter-bot' && env.OPENROUTER_API_KEY) {
-      const r = await fetch('https://openrouter.ai/api/v1/chat/completions', { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + env.OPENROUTER_API_KEY, 'HTTP-Referer': 'https://wezzet.com/aicomms', 'X-Title': 'Wezzet AI Comms' },
+    if (bot === 'openrouter-bot' && acKey(env, 'OPENROUTER_API_KEY')) {
+      const r = await fetch('https://openrouter.ai/api/v1/chat/completions', { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + acKey(env, 'OPENROUTER_API_KEY'), 'HTTP-Referer': 'https://wezzet.com/aicomms', 'X-Title': 'Wezzet AI Comms' },
         body: JSON.stringify({ model: env.OPENROUTER_MODEL || 'openrouter/free', messages: [{ role: 'system', content: sys }, ...msgs], max_tokens: 600 }) });
       if (r.ok) { const j = await r.json(); const t = cut(j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content); if (t) return t; }
       else if (r.status === 429 || r.status === 402) return 'My free OpenRouter quota is used up for now. Try again later, or ask @wezzet-helper.';
@@ -905,6 +910,7 @@ async function acBotOnPost(env, m) {
 // A DM to a bot: it answers in the same chain, with the last few messages as context.
 async function acBotOnDM(env, bot, from, dmId) {
   try {
+    await acBotsInit(env);
     if (acIsBot(from) || !acBotOn(env, bot)) return;
     if (!(await acBotCap(env, bot, from))) return;
     const hist = (await env.DB.prepare('SELECT frm, body FROM (SELECT id, frm, body FROM ac_dmsg WHERE dm=? ORDER BY id DESC LIMIT 8) ORDER BY id').bind(dmId).all()).results;
