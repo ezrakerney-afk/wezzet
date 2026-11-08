@@ -845,6 +845,14 @@ async function acBotCap(env, bot, asker) {
   return (a.n || 0) + (d.n || 0) < 60 && (a.m || 0) + (dd.n || 0) < 10;
 }
 // Ask the bot's model. Falls back to WezzetAI (Workers AI, then the PC) when a key is missing or its free quota is used up.
+// Provider failures go to a small private log (ac_botlog, last 200 rows) so broken keys or retired models are easy to spot.
+async function acBotLog(env, bot, pv, msg) {
+  try {
+    await env.DB.prepare('CREATE TABLE IF NOT EXISTS ac_botlog (id INTEGER PRIMARY KEY AUTOINCREMENT, ts INTEGER, bot TEXT, prov TEXT, msg TEXT)').run();
+    await env.DB.prepare('INSERT INTO ac_botlog (ts, bot, prov, msg) VALUES (?,?,?,?)').bind(Date.now(), bot, pv, msg).run();
+    await env.DB.prepare('DELETE FROM ac_botlog WHERE id <= (SELECT MAX(id) - 200 FROM ac_botlog)').run();
+  } catch {}
+}
 async function acBotAsk(env, bot, msgs) {
   const B = AC_BOTS[bot], sys = B.sys || AC_BOTS['wezzet-helper'].sys, cut = t => String(t || '').replace(/<think>[\s\S]*?<\/think>/g, '').trim().slice(0, 2500);
   let quota = '';
@@ -859,8 +867,8 @@ async function acBotAsk(env, bot, msgs) {
         let r = await g({ thinkingConfig: { thinkingBudget: 0 } });
         if (r.status === 400) r = await g({ thinkingConfig: { thinkingLevel: 'low' } });
         if (r.status === 400) r = await g({});
-        if (r.ok) { const j = await r.json(); const t = cut(((j.candidates || [])[0] || {}).content?.parts?.map(p => p.text || '').join('')); if (t) return t; }
-        else if (r.status === 429) quota = P.name;
+        if (r.ok) { const j = await r.json(); const t = cut(((j.candidates || [])[0] || {}).content?.parts?.map(p => p.text || '').join('')); if (t) return t; await acBotLog(env, bot, pv, 'empty ' + JSON.stringify(j).slice(0, 300)); }
+        else { if (r.status === 429) quota = P.name; await acBotLog(env, bot, pv, r.status + ' ' + (await r.text()).slice(0, 300)); }
         continue;
       }
       const call = model => fetch(P.url + '/chat/completions', { method: 'POST', signal: AbortSignal.timeout(20000), headers: { 'content-type': 'application/json', authorization: 'Bearer ' + key, ...(pv === 'or' ? { 'HTTP-Referer': 'https://wezzet.com/aicomms', 'X-Title': 'Wezzet AI Comms' } : {}) },
@@ -873,9 +881,9 @@ async function acBotAsk(env, bot, msgs) {
         const pick = ids.find(id => /llama|qwen|gpt-oss|gemma/i.test(id) && !/guard|whisper|tts|embed/i.test(id)) || ids[0];
         if (pick) r = await call(pick);
       }
-      if (r.ok) { const j = await r.json(); const t = cut(j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content); if (t) return t; }
-      else if (r.status === 429 || r.status === 402) quota = P.name;
-    } catch {}
+      if (r.ok) { const j = await r.json(); const t = cut(j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content); if (t) return t; await acBotLog(env, bot, pv, 'empty ' + JSON.stringify(j).slice(0, 300)); }
+      else { if (r.status === 429 || r.status === 402) quota = P.name; await acBotLog(env, bot, pv, r.status + ' ' + (await r.text()).slice(0, 300)); }
+    } catch (e) { await acBotLog(env, bot, pv, 'error ' + String(e && e.message || e).slice(0, 200)); }
   }
   if (quota && B.prov && B.prov.length === 1) return 'My free ' + quota + ' quota is used up for now. Try again later, or ask @wezzet-helper.';
   const r = await aiCall(env, [{ role: 'system', content: sys }, ...msgs], { prefer: 'cf', max: 500, timeout: 25000 });
