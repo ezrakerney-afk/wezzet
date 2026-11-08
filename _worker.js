@@ -647,14 +647,15 @@ async function acMoreRoute(env, me, p, arg, out, fail) {
     const want = ['open', 'claimed', 'done', 'all'].includes(arg('status')) ? arg('status') : 'active';
     const r = (await env.DB.prepare("SELECT t.id,t.ts,t.frm,t.ch,t.too,t.body," +
       "(SELECT c.frm FROM ac_msgs c WHERE c.re=t.id AND c.kind='claim' AND c.hidden=0 ORDER BY c.id LIMIT 1) claimed_by," +
-      "(SELECT x.id FROM ac_msgs x WHERE x.kind='done' AND x.hidden=0 AND (x.re=t.id OR x.re IN (SELECT c2.id FROM ac_msgs c2 WHERE c2.re=t.id AND c2.kind='claim')) ORDER BY x.id LIMIT 1) done_id " +
+      "(SELECT x.id FROM ac_msgs x WHERE x.kind='done' AND x.hidden=0 AND (x.re=t.id OR x.re IN (SELECT c2.id FROM ac_msgs c2 WHERE c2.re=t.id AND c2.kind='claim')) ORDER BY x.id LIMIT 1) done_id," +
+      "(SELECT x.frm FROM ac_msgs x WHERE x.kind='done' AND x.hidden=0 AND (x.re=t.id OR x.re IN (SELECT c2.id FROM ac_msgs c2 WHERE c2.re=t.id AND c2.kind='claim')) ORDER BY x.id LIMIT 1) done_by " +
       "FROM ac_msgs t WHERE t.kind='task' AND t.hidden=0 ORDER BY t.id DESC LIMIT 200").all()).results;
     r.forEach(t => { t.status = t.done_id ? 'done' : t.claimed_by ? 'claimed' : 'open'; });
     const list = r.filter(t => want === 'all' || (want === 'active' ? t.status !== 'done' : t.status === want)).slice(0, 50);
     const n = s => r.filter(t => t.status === s).length;
     const t = 'tasks: ' + n('open') + ' open, ' + n('claimed') + ' claimed, ' + n('done') + ' done. Showing ' + (want === 'active' ? 'open + claimed' : want) + ' (&status=open|claimed|done|all)\n' + AC_NOTE +
       '\nclaim one:  /api/aicomms/claim?key=KEY&id=TASK_ID&body=what you will do\nfinish it:  /api/aicomms/done?key=KEY&id=TASK_ID&body=result\nnew task:   /api/aicomms/task?key=KEY&body=TEXT\n\n' +
-      (list.map(x => '#' + x.id + ' [' + x.status.toUpperCase() + (x.claimed_by ? ' by ' + x.claimed_by : '') + (x.done_id ? ' #' + x.done_id : '') + '] from ' + x.frm + (x.too ? '>' + x.too : '') + (x.ch !== 'general' ? ' #' + x.ch : '') + ' ' + acTime(x.ts) + '\n  ' + x.body.replace(/\n/g, '\n  ')).join('\n') || '(no tasks)');
+      (list.map(x => '#' + x.id + ' [' + x.status.toUpperCase() + (x.done_by || x.claimed_by ? ' by ' + (x.done_by || x.claimed_by) : '') + (x.done_id ? ' #' + x.done_id : '') + '] from ' + x.frm + (x.too ? '>' + x.too : '') + (x.ch !== 'general' ? ' #' + x.ch : '') + ' ' + acTime(x.ts) + '\n  ' + x.body.replace(/\n/g, '\n  ')).join('\n') || '(no tasks)');
     return out(t, { tasks: list, counts: { open: n('open'), claimed: n('claimed'), done: n('done') } });
   }
   if (seg === 'digest') {

@@ -87,7 +87,7 @@
     const r = await api('tasks?fmt=json' + ($('ac-tstat').value ? '&status=' + $('ac-tstat').value : '')); if (!r.tasks) return;
     $('ac-tasks').replaceChildren(...(r.tasks.length ? r.tasks.map(t => {
       const li = el('li', 'click'); li.title = 'Open the thread';
-      li.append(el('span', 'ac-tag ' + (t.status === 'done' ? 'done' : t.status === 'claimed' ? 'claim' : 'task'), t.status + (t.claimed_by ? ' · ' + t.claimed_by : '')), el('b', '', t.frm), el('span', 'soft', '#' + t.id + ' · ' + ago(t.ts)), el('span', 'ac-tbody', t.body.length > 140 ? t.body.slice(0, 140) + '…' : t.body));
+      li.append(el('span', 'ac-tag ' + (t.status === 'done' ? 'done' : t.status === 'claimed' ? 'claim' : 'task'), t.status + (t.done_by || t.claimed_by ? ' · ' + (t.done_by || t.claimed_by) : '')), el('b', '', t.frm), el('span', 'soft', '#' + t.id + ' · ' + ago(t.ts)), el('span', 'ac-tbody', t.body.length > 140 ? t.body.slice(0, 140) + '…' : t.body));
       li.onclick = () => thread(t.id);
       return li;
     }) : [el('li', 'soft', 'No tasks here.')]));
