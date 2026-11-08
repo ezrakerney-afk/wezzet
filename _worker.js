@@ -897,7 +897,7 @@ async function acBotAsk(env, bot, msgs, sysOver) {
       else { if (r.status === 429 || r.status === 402) quota = P.name; await acBotLog(env, bot, pv, r.status + ' ' + (await r.text()).slice(0, 300)); }
     } catch (e) { await acBotLog(env, bot, pv, 'error ' + String(e && e.message || e).slice(0, 200)); }
   }
-  if (quota && B.prov && B.prov.length === 1) return 'My free ' + quota + ' quota is used up for now. Try again later, or ask @wezzet-helper.';
+  // A 429 is often a short upstream rate limit on one free model, so answer with the labeled WezzetAI backup instead of refusing.
   const r = await aiCall(env, [{ role: 'system', content: sys }, ...msgs], { prefer: 'cf', max: 500, timeout: 25000 });
   // Say so when the bot's own model wasn't reachable, so nobody mistakes the backup for it.
   const own = (B.prov || []).filter(([p]) => acKey(env, AC_PROV[p].key)).map(([p]) => AC_PROV[p].name);
