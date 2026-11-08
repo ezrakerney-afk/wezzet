@@ -861,17 +861,22 @@ async function acBotAsk(env, bot, msgs) {
     if (!key) continue;
     try {
       if (pv === 'gemini') {
-        // Thinking off (or low) so the answer comes back well inside the time a background job gets.
-        const g = gc => fetch('https://generativelanguage.googleapis.com/v1beta/models/' + (acKey(env, 'GEMINI_MODEL') || 'gemini-flash-latest') + ':generateContent', { method: 'POST', signal: AbortSignal.timeout(20000), headers: { 'content-type': 'application/json', 'x-goog-api-key': key },
+        // Low thinking and short timeouts so the answer lands inside the time a background job gets. Some Gemini models hang
+        // on the free tier, so try a fast one, then the lite model (tested 2026-11-08: 3.6-flash ~2s, flash-lite ~1s, 3.8/3.7 hang).
+        const g = (model, gc, ms) => fetch('https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent', { method: 'POST', signal: AbortSignal.timeout(ms), headers: { 'content-type': 'application/json', 'x-goog-api-key': key },
           body: JSON.stringify({ systemInstruction: { parts: [{ text: sys }] }, contents: msgs.map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] })), generationConfig: { maxOutputTokens: 1500, ...gc } }) });
-        let r = await g({ thinkingConfig: { thinkingBudget: 0 } });
-        if (r.status === 400) r = await g({ thinkingConfig: { thinkingLevel: 'low' } });
-        if (r.status === 400) r = await g({});
+        let r = null;
+        for (const [model, ms] of [[acKey(env, 'GEMINI_MODEL') || 'gemini-3.6-flash', 12000], ['gemini-flash-lite-latest', 8000]]) {
+          try { r = await g(model, { thinkingConfig: { thinkingLevel: 'low' } }, ms); if (r.status === 400) r = await g(model, {}, ms); } catch (e) { await acBotLog(env, bot, pv, model + ' ' + String(e && e.message || e).slice(0, 100)); r = null; continue; }
+          if (r.ok) break;
+          await acBotLog(env, bot, pv, model + ' ' + r.status + ' ' + (await r.clone().text()).slice(0, 200));
+        }
+        if (!r) continue;
         if (r.ok) { const j = await r.json(); const t = cut(((j.candidates || [])[0] || {}).content?.parts?.map(p => p.text || '').join('')); if (t) return t; await acBotLog(env, bot, pv, 'empty ' + JSON.stringify(j).slice(0, 300)); }
         else { if (r.status === 429) quota = P.name; await acBotLog(env, bot, pv, r.status + ' ' + (await r.text()).slice(0, 300)); }
         continue;
       }
-      const call = model => fetch(P.url + '/chat/completions', { method: 'POST', signal: AbortSignal.timeout(20000), headers: { 'content-type': 'application/json', authorization: 'Bearer ' + key, ...(pv === 'or' ? { 'HTTP-Referer': 'https://wezzet.com/aicomms', 'X-Title': 'Wezzet AI Comms' } : {}) },
+      const call = model => fetch(P.url + '/chat/completions', { method: 'POST', signal: AbortSignal.timeout(15000), headers: { 'content-type': 'application/json', authorization: 'Bearer ' + key, ...(pv === 'or' ? { 'HTTP-Referer': 'https://wezzet.com/aicomms', 'X-Title': 'Wezzet AI Comms' } : {}) },
         body: JSON.stringify({ model, messages: [{ role: 'system', content: sys }, ...msgs], max_tokens: 900 }) });
       let r = await call(mdl || (P.mk && acKey(env, P.mk)) || P.model);
       // Model retired? Pick one the provider lists now and try once more.
