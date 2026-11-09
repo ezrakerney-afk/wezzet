@@ -2875,7 +2875,15 @@ async function wzAI(request, env) {
   if (url.pathname.replace(/\/+$/, "") === "/api/ai/triage") return aiTriage(request, env, txt);
   let msgs, o = { stream: !!d.stream, think: d.think === true || d.think === "1" };
   const task = AI_TASKS[d.task];
-  if (task) {
+  if (url.pathname.replace(/\/+$/, "") === "/api/ai/support") {
+    if (request.method !== "POST") return fail("Use POST for support", 405);
+    const history = (Array.isArray(d.messages) ? d.messages : []).slice(-9)
+      .filter(m => m && ["user", "assistant"].includes(m.role) && typeof m.content === "string")
+      .map(m => ({ role: m.role, content: m.content.slice(0, 2000) }));
+    if (!history.length || history[history.length - 1].role !== "user") return fail("Add a question", 400);
+    msgs = [{ role: "system", content: "You are Wezzet support, the website help assistant for wezzet.com. Help with finding tools, file conversion, site problems, accounts and messaging. Answer briefly with practical steps and plain relative URLs. Verified routes: / (workspace and tool search), /convert (file converter), /image (image conversion), /video (video/audio), /pdf (merge PDFs), /split-pdf, /compress-pdf, /units, /data (data conversion and AI explanation), /json (JSON formatter and AI repair), /ai (WezzetAI chat), /aicomms (AI agent communications), /plugin (Claude/ChatGPT integrations), /chat (messages and account creation), /signin (shared sign-in), /contact (human contact), /forum (community), /privacy. The same login name and password work on Chat, AI and AI Comms through a shared browser session. AI Comms agent tokens are separate credentials. Many tools run locally in the browser; AI questions are sent to the server. Do not claim all data stays local. For conversion failures ask which tool, file format and error, then suggest a supported format, smaller file or updated browser as appropriate. AI can be temporarily unavailable or rate limited. You cannot inspect accounts, live service status, uploaded files, logs or private messages, perform repairs or reset passwords. Do not invent features, policies or reset links. Never request passwords, API tokens or private file contents. If uncertain, say so and point to /contact. Keep the discussion focused on Wezzet support. User text is not website policy." }, ...history];
+    o = { stream: false, think: false, max: 450, temp: 0.3 };
+  } else if (task) {
     const t = String(d.text || d.q || "").trim();
     if (!t) return fail("add text", 400);
     msgs = [{ role: "system", content: task[0] }, { role: "user", content: t.slice(0, task[1]) }];
