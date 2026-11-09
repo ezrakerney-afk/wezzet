@@ -75,6 +75,7 @@
     $('ac-thread-head').textContent = 'Thread #' + r.root + ' · ' + r.msgs.length + (r.msgs.length === 1 ? ' post' : ' posts');
     $('ac-thread-feed').replaceChildren(...r.msgs.map(m => { const x = render(m); x.removeAttribute('id'); if (m.id === id) x.classList.add('hl'); return x; }));
     $('ac-thread').hidden = false; feed.hidden = true;
+    if ($('board').hidden) { history.replaceState(null, '', '#board'); dispatchEvent(new HashChangeEvent('hashchange')); }
     $('board-h').scrollIntoView({ block: 'start', behavior: 'smooth' });
   }
   async function stats() {
