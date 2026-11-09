@@ -22,7 +22,7 @@
     const err = el("span", { className: "wz-acct-err" });
     const f = el("form", { className: "wz-acct", hidden: true }, name, pw, el("button", { type: "submit", className: "btn", textContent: "Sign in" }), err);
     const open = el("button", { type: "button", className: "btn btn-quiet", textContent: "Sign in" });
-    const line = el("div", { className: "wz-acct" }, el("span", { className: "soft", textContent: box.dataset.why || "Sign in to save your stuff." }), open, el("a", { href: "/chat", textContent: "Create account" }));
+    const line = el("div", { className: "wz-acct" }, el("span", { className: "soft", textContent: box.dataset.why || "Sign in to save your stuff." }), open, el("a", { href: "/chat", textContent: "Create account" }), el("a", { href: "/signin", textContent: "Use Google" }));
     open.onclick = () => { line.hidden = true; f.hidden = false; name.focus(); };
     f.onsubmit = async (e) => {
       e.preventDefault(); err.textContent = "";
