@@ -2215,6 +2215,8 @@ async function evFire(env, agent, ev) {
    v1 uses short polling. Plan: move live delivery to Durable Objects + WebSockets (needs Workers Paid),
    and group voice to Cloudflare Calls (SFU). TURN relay turns on when CALLS_TURN_KEY_ID/_TOKEN secrets are set. */
 const CH_SCHEMA = [
+  "CREATE TABLE IF NOT EXISTS ch_google (sub TEXT PRIMARY KEY, uid INTEGER UNIQUE NOT NULL)",
+  "CREATE TABLE IF NOT EXISTS ch_google_nonces (nonce TEXT PRIMARY KEY, uid INTEGER, created INTEGER NOT NULL)",
   "CREATE TABLE IF NOT EXISTS ch_users (id INTEGER PRIMARY KEY, name TEXT UNIQUE COLLATE NOCASE, pass TEXT, salt TEXT, ip TEXT, role TEXT DEFAULT '', banned INTEGER DEFAULT 0, created INTEGER, seen INTEGER)",
   "CREATE TABLE IF NOT EXISTS ch_sessions (token TEXT PRIMARY KEY, uid INTEGER, created INTEGER)",
   "CREATE TABLE IF NOT EXISTS ch_channels (id INTEGER PRIMARY KEY, name TEXT UNIQUE, created INTEGER)",
@@ -2257,6 +2259,98 @@ async function chPass(pw, salt) {
   const k = await crypto.subtle.importKey("raw", new TextEncoder().encode(pw), "PBKDF2", false, ["deriveBits"]);
   const bits = await crypto.subtle.deriveBits({ name: "PBKDF2", hash: "SHA-256", salt: new TextEncoder().encode(salt), iterations: 100000 }, k, 256);
   return chB64(new Uint8Array(bits));
+}
+
+// Google identities are linked by the verified, immutable subject, never by email.
+const GOOGLE_CLIENT_ID = "659604026961-h7o5g8s98ns9enbhgesa4dpvse7hi7uh.apps.googleusercontent.com";
+let googleKeys = { expires: 0, keys: [] };
+async function googleIdentity(credential, nonce) {
+  if (typeof credential !== "string" || credential.length > 16000) throw new Error("Invalid credential");
+  const parts = credential.split(".");
+  if (parts.length !== 3) throw new Error("Invalid credential");
+  const bytes = value => Uint8Array.from(atob(value.replace(/-/g, "+").replace(/_/g, "/")), c => c.charCodeAt(0));
+  const header = JSON.parse(new TextDecoder().decode(bytes(parts[0])));
+  const claims = JSON.parse(new TextDecoder().decode(bytes(parts[1])));
+  if (header.alg !== "RS256" || typeof header.kid !== "string") throw new Error("Invalid algorithm");
+  if (Date.now() >= googleKeys.expires) {
+    const response = await fetch("https://www.googleapis.com/oauth2/v3/certs", { signal: AbortSignal.timeout(10000) });
+    if (!response.ok) throw new Error("Google keys unavailable");
+    const data = await response.json();
+    if (!Array.isArray(data.keys)) throw new Error("Invalid keys");
+    const maxAge = Number((response.headers.get("cache-control") || "").match(/max-age=(\d+)/)?.[1] || 300);
+    googleKeys = { keys: data.keys, expires: Date.now() + Math.min(maxAge, 86400) * 1000 };
+  }
+  const jwk = googleKeys.keys.find(k => k.kid === header.kid && k.kty === "RSA" && k.alg === "RS256");
+  if (!jwk) throw new Error("Unknown signing key. Try again later.");
+  const key = await crypto.subtle.importKey("jwk", jwk, { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" }, false, ["verify"]);
+  const valid = await crypto.subtle.verify("RSASSA-PKCS1-v1_5", key, bytes(parts[2]), new TextEncoder().encode(parts[0] + "." + parts[1]));
+  const now = Date.now() / 1000;
+  if (!valid || claims.aud !== GOOGLE_CLIENT_ID || (claims.azp && claims.azp !== GOOGLE_CLIENT_ID)
+      || !["https://accounts.google.com", "accounts.google.com"].includes(claims.iss)
+      || typeof claims.exp !== "number" || claims.exp <= now
+      || typeof claims.iat !== "number" || claims.iat > now + 60
+      || typeof claims.sub !== "string" || !claims.sub || claims.sub.length > 255
+      || claims.nonce !== nonce) throw new Error("Invalid Google identity");
+  return claims.sub;
+}
+const googleCookie = (value, age) => `wzg=${value}; Path=/api/chat; Max-Age=${age}; HttpOnly; Secure; SameSite=Strict`;
+async function googleLogin(request, env, p, d, sess, ip) {
+  const origin = new URL(request.url).origin;
+  if (request.method !== "POST" || request.headers.get("origin") !== origin) return chOut({ error: "Reload this page and try again." }, 403);
+  if (sess?.banned) return chOut({ error: "This account is suspended." }, 403);
+  if (!(await aiLimit(request, env, "google-login", 30))) return chOut({ error: "Too many attempts. Try again later." }, 429);
+  const DB = env.DB, now = Date.now();
+  if (p === "/google/start") {
+    const nonce = crypto.randomUUID() + crypto.randomUUID();
+    const linking = d.link === true;
+    if (linking && !sess) return chOut({ error: "Sign in to your existing account before linking Google." }, 401);
+    await DB.prepare("DELETE FROM ch_google_nonces WHERE created < ?").bind(now - 600000).run();
+    await DB.prepare("INSERT INTO ch_google_nonces (nonce, uid, created) VALUES (?, ?, ?)").bind(await acHash(nonce), linking ? sess.id : null, now).run();
+    return chOut({ clientId: GOOGLE_CLIENT_ID, nonce, linking }, 200, { "set-cookie": googleCookie(nonce, 600) });
+  }
+  const nonce = (request.headers.get("cookie") || "").match(/(?:^|;\s*)wzg=([a-f0-9-]{72})/)?.[1];
+  if (!nonce) return chOut({ error: "Your sign-in expired. Reload and try again." }, 401);
+  const challenge = await DB.prepare("SELECT uid, created FROM ch_google_nonces WHERE nonce = ? AND created > ?").bind(await acHash(nonce), now - 600000).first();
+  if (!challenge || (challenge.uid !== null && challenge.uid !== sess?.id)) return chOut({ error: "Your account session changed. Reload and try again." }, 401);
+  let subject;
+  try { subject = await googleIdentity(d.credential, nonce); }
+  catch { return chOut({ error: "Google sign-in could not be verified. Reload and try again." }, 401); }
+  let user = await DB.prepare("SELECT u.id, COALESCE(u.display, u.name) AS name, u.banned FROM ch_google g JOIN ch_users u ON u.id = g.uid WHERE g.sub = ?").bind(subject).first();
+  if (user?.banned) return chOut({ error: "This account is suspended." }, 403);
+  if (challenge.uid !== null) {
+    if (user && user.id !== challenge.uid) return chOut({ error: "This Google account is already linked to another Wezzet account." }, 409);
+    const existing = await DB.prepare("SELECT sub FROM ch_google WHERE uid = ?").bind(challenge.uid).first();
+    if (existing && existing.sub !== subject) return chOut({ error: "Your Wezzet account already has a different Google account linked." }, 409);
+    user = sess;
+  } else if (!user) {
+    if (d.age13 !== true) return chOut({ needsSignup: true });
+    const n = await DB.prepare("SELECT COUNT(*) n FROM ch_users WHERE ip = ? AND created > ?").bind(ip, now - 3600000).first();
+    if (n.n >= 3) return chOut({ error: "Too many new accounts. Try again later." }, 429);
+  }
+  // Consume the browser-bound challenge before changing identities or issuing a session.
+  const consumed = await DB.prepare("DELETE FROM ch_google_nonces WHERE nonce = ? RETURNING nonce").bind(await acHash(nonce)).first();
+  if (!consumed) return chOut({ error: "This sign-in was already used. Reload and try again." }, 409);
+  if (challenge.uid !== null) {
+    try { await DB.prepare("INSERT INTO ch_google (sub, uid) VALUES (?, ?) ON CONFLICT(sub) DO NOTHING").bind(subject, user.id).run(); }
+    catch { return chOut({ error: "An account link changed. Reload and try again." }, 409); }
+    const linked = await DB.prepare("SELECT uid FROM ch_google WHERE sub = ?").bind(subject).first();
+    if (linked?.uid !== user.id) return chOut({ error: "This Google account is already linked elsewhere." }, 409);
+  } else if (!user) {
+    const name = "google:" + subject;
+    const display = "user_" + crypto.randomUUID().replace(/-/g, "").slice(0, 12);
+    await DB.batch([
+      DB.prepare("INSERT INTO ch_users (name, display, ip, created, seen) SELECT ?, ?, ?, ?, ? WHERE NOT EXISTS (SELECT 1 FROM ch_google WHERE sub = ?) ON CONFLICT(name) DO NOTHING").bind(name, display, ip, now, now, subject),
+      DB.prepare("INSERT INTO ch_google (sub, uid) SELECT ?, id FROM ch_users WHERE name = ? ON CONFLICT(sub) DO NOTHING").bind(subject, name),
+    ]);
+    user = await DB.prepare("SELECT u.id, COALESCE(u.display, u.name) AS name, u.banned FROM ch_google g JOIN ch_users u ON u.id = g.uid WHERE g.sub = ?").bind(subject).first();
+  }
+  if (!user || user.banned) return chOut({ error: "This account is unavailable." }, 403);
+  const token = crypto.randomUUID() + crypto.randomUUID();
+  await DB.prepare("INSERT INTO ch_sessions (token, uid, created) VALUES (?, ?, ?)").bind(await acHash(token), user.id, now).run();
+  const response = chOut({ me: { id: user.id, name: user.name }, linked: challenge.uid !== null });
+  response.headers.append("set-cookie", chCookie(token, 2592000));
+  response.headers.append("set-cookie", googleCookie("", 0));
+  return response;
 }
 
 // ---- Web Push (VAPID, empty payload: the service worker fetches /api/chat/notes to see what to show) ----
@@ -2359,6 +2453,7 @@ async function chRoute(request, env, url, ctx) {
   const raw = (request.headers.get("cookie") || "").match(/(?:^|;\s*)wzc=([a-f0-9-]{64,80})/);
   const sess = raw && await DB.prepare(`SELECT u.id, ${CH_NAME} AS name, u.role, u.banned, s.token FROM ch_sessions s JOIN ch_users u ON u.id = s.uid WHERE s.token = ? AND s.created > ?`)
     .bind(await acHash(raw[1]), now - 30 * 86400e3).first();
+  if (p === "/google/start" || p === "/google") return googleLogin(request, env, p, d, sess, ip);
   if (!sess || sess.banned) return chOut({ me: null, error: sess ? "This account is suspended." : "Sign in to chat." }, p === "/me" ? 200 : 401);
   const me = sess.id;
 

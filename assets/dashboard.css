@@ -806,3 +806,61 @@ input:focus-visible {
     scroll-margin-top: 160px;
   }
 }
+
+.google-signin {
+  margin: 24px 0;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+}
+.google-signin .support-note {
+  padding: 0;
+  margin: 0 0 14px;
+}
+.google-signin [role="status"] {
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.google-signin form {
+  display: grid;
+  gap: 12px;
+}
+.google-signin label {
+  font-size: 14px;
+}
+.google-signin input[type="checkbox"] {
+  width: auto;
+}
+
+.home-connect {
+  margin-top: 40px;
+  padding: 24px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+.home-connect h2 {
+  margin: 0 0 5px;
+  font-size: 15px;
+}
+.home-connect p {
+  margin: 0;
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+.home-connect nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+  font-size: 12px;
+}
+.home-connect a {
+  overflow-wrap: anywhere;
+}
+.home-connect a:hover {
+  text-decoration: underline;
+}
