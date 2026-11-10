@@ -16,5 +16,8 @@ export const calculations=[
 ];
 calculations.forEach((c,i)=>$('calculator').add(new Option(c[0],i)));
 function choose(){const c=calculations[Number($('calculator').value)];$('fields').replaceChildren();$('answer').textContent='';$('formula').textContent=c[1];c[2].forEach(([name,value,min],i)=>{const l=document.createElement('label');l.textContent=name;const input=document.createElement('input');input.type='number';input.step='any';input.required=true;input.value=value;input.name='v'+i;if(min!==undefined)input.min=min;l.append(input);$('fields').append(l);});}
+const requestedCalculator = new URLSearchParams(location.search).get('calc');
+const requestedIndex = calculations.findIndex(([name]) => name === requestedCalculator);
+if (requestedIndex !== -1) $('calculator').value = String(requestedIndex);
 $('calculator').onchange=choose;choose();
 $('calc-form').onsubmit=e=>{e.preventDefault();try{const c=calculations[Number($('calculator').value)],v=[...$('fields').querySelectorAll('input')].map(n=>Number(n.value));if(v.some(n=>!Number.isFinite(n)))throw Error('Enter finite numbers.');const result=c[3](v);if(!Number.isFinite(result))throw Error('Result is too large. Try smaller numbers.');$('answer').textContent='Result: '+Number(result.toPrecision(12)).toLocaleString(undefined,{maximumSignificantDigits:12});}catch(err){$('answer').textContent=err.message;}};

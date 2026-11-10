@@ -33,8 +33,9 @@ vm.runInContext(fs.readFileSync(root+'assets/image-editor.js','utf8').replace(/^
  assert.equal(saved.name,'sample-edited.png');const image=await loadImage(Buffer.from(await saved.blob.arrayBuffer()));assert.equal(image.width,40);assert.equal(image.height,40);
  $('width').value=10000;$('height').value=10000;await $('save').onclick();assert.match($('status').textContent,/24 megapixels/);
  console.log('PASS image decode, rotate, flip pixels, reset, crop bounds, aspect ratio, PNG export and memory bounds');
- const calcContext=vm.createContext({document,console,Option:context.Option});
+ const calcContext=vm.createContext({document,console,Option:context.Option,URLSearchParams,location:{search:'?calc=Circle+area'}});
  vm.runInContext("const $=id=>document.getElementById(id);"+fs.readFileSync(root+'assets/calculators.js','utf8').replace(/^import .*\n/,'').replace('export const','const')+'\nthis.calcs=calculations;',calcContext);
+ assert.equal($("calculator").value,"2");
  const answers=[0,100,Math.PI,Math.PI,4/3*Math.PI,.5,5,10,5,.5,3,24];
  calcContext.calcs.forEach((c,i)=>assert.ok(Math.abs(c[3](c[2].map(x=>x[1]))-answers[i])<1e-9));
  assert.throws(()=>calcContext.calcs[0][3]([1,0]));assert.throws(()=>calcContext.calcs[7][3]([1,0]));
