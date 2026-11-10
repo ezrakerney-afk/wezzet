@@ -885,3 +885,52 @@ input:focus-visible {
 .popular-rank { color: var(--purple); font-size: 16px; font-variant-numeric: tabular-nums; }
 .popular-visits { margin-left: auto; white-space: nowrap; font-size: 12px; color: var(--muted); }
 @media(max-width: 760px) { .overview-stats { grid-template-columns: 1fr; } .feature-summary, .popular-summary { padding: 22px; } }
+
+.catalog-controls {
+  display: grid;
+  gap: 8px;
+  margin: 0 0 20px;
+}
+.catalog-controls label {
+  font-size: 13px;
+  font-weight: 650;
+}
+.catalog-controls input {
+  width: min(100%, 460px);
+  padding: 11px 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: 9px;
+  background: var(--surface);
+  color: var(--ink);
+}
+#catalog-status {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 13px;
+}
+.catalog-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(210px, 100%), 1fr));
+  gap: 8px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.catalog-list li {
+  min-width: 0;
+}
+.catalog-list a {
+  display: block;
+  height: 100%;
+  padding: 11px 13px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow-wrap: anywhere;
+}
+.catalog-list a::first-letter {
+  text-transform: uppercase;
+}
+.catalog-list a:hover {
+  border-color: var(--purple);
+  background: var(--purple-soft);
+}
