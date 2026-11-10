@@ -677,21 +677,6 @@
   const ai = document.getElementById("ai-btn");
   if (ai) ai.addEventListener("click", (e) => { const v = q.value.trim(); if (v) { e.preventDefault(); location.href = "/ai?q=" + encodeURIComponent(v); } });
 
-  // Recently used tools (saved by theme.js on each tool page)
-  try {
-    const rec = JSON.parse(localStorage.getItem("wz-recent") || "[]").filter((r) => r && /^\/[a-z0-9-]+$/.test(r.u)).slice(0, 4);
-    const box = document.getElementById("recent");
-    if (rec.length && box) {
-      box.append("Recent: ");
-      rec.forEach((r, i) => {
-        const a = document.createElement("a"); a.href = r.u; a.textContent = r.n;
-        if (i) box.append(" · ");
-        box.append(a);
-      });
-      box.hidden = false;
-    }
-  } catch (e) {}
-
   // Support links like wezzet.com/?q=pdf
   const pre = new URLSearchParams(location.search).get("q");
   if (pre) { q.value = pre; render(); }
