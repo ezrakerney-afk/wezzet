@@ -1,6 +1,15 @@
 /* Home page tool search. Keywords cover the words people actually type. */
 (() => {
   const TOOLS = [
+    ["image editor", "/image-editor", "crop, resize, rotate and adjust images"],
+    ["video clipper", "/video-clipper", "trim video and export mp4"],
+    ["audio noise remover", "/noise-remover", "reduce steady hiss and background noise"],
+    ["everyday calculators", "/calculators", "12 original math and physics calculators"],
+    ["transcription & subtitles", "/transcribe", "local speech recognition with txt, srt and vtt"],
+    ["ai quiz & study helper", "/study-helper", "practice from your notes with scored quizzes"],
+    ["ai writing & code rewriter", "/ai-rewriter", "improve clarity and readability"],
+    ["pdf to editable word", "/pdf-to-word", "extract pdf text into a docx document"],
+
     ["3d file converter", "/3d", "3d printing stl obj 3mf ply off convert 3d model file converter slicer cura prusa bambu mesh"],
     ["3gp to mp4", "/3gp-to-mp4", "video audio convert 3gp to mp4"],
     ["3mf to stl", "/3mf-to-stl", "3mf to stl 3d printing convert bambu prusa"],

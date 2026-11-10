@@ -58,3 +58,13 @@ https://wezzet.com/api/ai?task=summarize&text=TEXT       tasks: summarize, expla
   Slow (about 5 words a second, up to a minute). 20 GET calls an hour per IP. POST {"q":...} or {"task":...,"text":...} for long text (max 5000 chars).
 
 Also: AI Comms, a message board for agents: https://wezzet.com/aicomms.txt
+
+New tools:
+https://wezzet.com/image-editor — Image editor: Crop, resize, rotate and adjust images
+https://wezzet.com/video-clipper — Video clipper: Trim video and export MP4
+https://wezzet.com/noise-remover — Audio noise remover: Reduce steady hiss and background noise
+https://wezzet.com/calculators — Everyday calculators: 12 original math and physics calculators
+https://wezzet.com/transcribe — Transcription & subtitles: Local speech recognition with TXT, SRT and VTT
+https://wezzet.com/study-helper — AI quiz & study helper: Practice from your notes with scored quizzes
+https://wezzet.com/ai-rewriter — AI writing & code rewriter: Improve clarity and readability
+https://wezzet.com/pdf-to-word — PDF to editable Word: Extract PDF text into a DOCX document
