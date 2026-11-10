@@ -1,12 +1,12 @@
 /* Wezzet background remover. Runs an open-source cutout model in the browser
    with Transformers.js; the model downloads once, photos never leave the device.
-   Runs on the CPU (wasm) with small models, so it works on phones without crashing the tab. */
+   Runs on the CPU (wasm); full-resolution images can require substantial device memory. */
 const LIB = "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.3.3";
 const MODELS = {
   person: { id: "Xenova/modnet", dtype: "fp32", sigmoid: false, mb: 26 },
   any: { id: "onnx-community/ormbg-ONNX", dtype: "q8", sigmoid: false, mb: 44, clean: [90, 170] },
 };
-const MAX_SIDE = 2048; // bigger photos are scaled down first to keep memory low on phones
+const MAX_PIXELS = 24000000; // Explicit limit: never silently downscale the output.
 
 const $ = (id) => document.getElementById(id);
 const drop = $("drop"), input = $("files"), list = $("list"), msg = $("msg");
@@ -39,9 +39,12 @@ async function decode(file) {
   const extra = window.wzDecodeExtra && await wzDecodeExtra(file).catch(() => null);
   if (extra) file = extra;
   const bmp = await createImageBitmap(file);
-  const s = Math.min(1, MAX_SIDE / Math.max(bmp.width, bmp.height));
+  if (bmp.width * bmp.height > MAX_PIXELS || Math.max(bmp.width, bmp.height) > 12000) {
+    bmp.close();
+    throw new Error("Choose an image up to 24 megapixels and 12,000 pixels per side. This tool preserves the original dimensions.");
+  }
   const c = document.createElement("canvas");
-  c.width = Math.round(bmp.width * s); c.height = Math.round(bmp.height * s);
+  c.width = bmp.width; c.height = bmp.height;
   c.getContext("2d").drawImage(bmp, 0, 0, c.width, c.height);
   bmp.close();
   return c;
@@ -67,10 +70,12 @@ async function cutout(file, status) {
   const [lo, hi] = m.clean || [0, 255], gain = 255 / (hi - lo);
   for (let i = 0, n = c.width * c.height; i < n; i++) {
     const a = (md[i * ch] - lo) * gain;
-    px.data[4 * i + 3] = a < 0 ? 0 : a > 255 ? 255 : a;
+    px.data[4 * i + 3] = Math.round(px.data[4 * i + 3] * Math.max(0, Math.min(255, a)) / 255);
   }
   ctx.putImageData(px, 0, 0);
-  return await new Promise((r) => c.toBlob(r, "image/png"));
+  const blob = await new Promise((r) => c.toBlob(r, "image/png"));
+  if (!blob) throw new Error("Export failed. Your browser may need more memory; try a smaller image.");
+  return blob;
 }
 
 function show(href, outName) {
@@ -106,7 +111,7 @@ async function handle(files) {
     } catch (e) {
       console.error(e);
       li.classList.add("bad");
-      meta.textContent = "This didn't work. Check your connection, or try a smaller image.";
+      meta.textContent = e.message || "This didn't work. Check your connection, or try a smaller image.";
     }
   }
   busy = false;
