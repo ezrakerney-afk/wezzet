@@ -864,3 +864,24 @@ input:focus-visible {
 .home-connect a:hover {
   text-decoration: underline;
 }
+
+/* Compact overview: catalog total and real usage ranking. */
+.overview-stats { display: grid; grid-template-columns: .9fr 1.1fr; gap: 24px; margin: 28px 0; }
+.feature-summary, .popular-summary { border: 1px solid var(--line, #ddd); border-radius: 20px; padding: 28px; background: var(--bg); min-width: 0; }
+.feature-summary { background: var(--purple-soft); }
+#feature-count { display: block; font-size: clamp(64px, 7vw, 104px); line-height: 1.1; letter-spacing: -.07em; color: var(--purple); margin: 24px 0 6px; font-variant-numeric: tabular-nums; }
+.overview-stats h2 { margin: 0; font-size: 23px; }
+.feature-summary > p:not(.eyebrow), .ranking-note, #popular-status { color: var(--muted); font-size: 14px; }
+.catalog-search { background: var(--purple); color: white; border: 0; border-radius: 10px; padding: 12px 16px; margin: 12px 0 22px; }
+.catalog-search span { margin-left: 20px; }
+.feature-summary details { font-size: 12px; color: var(--muted); }
+.feature-summary summary { cursor: pointer; }
+.ranking-badge { color: var(--purple); background: var(--purple-soft); padding: 4px 9px; border-radius: 20px; font-size: 10px; letter-spacing: .08em; }
+.popular-tools { list-style: none; margin: 22px 0 0; padding: 0; }
+.popular-tools li + li { border-top: 1px solid var(--line, #ddd); }
+.popular-tools a { display: flex; align-items: center; gap: 14px; padding: 17px 0; }
+.popular-tools a:hover strong { color: var(--purple); }
+.popular-tools strong { font-size: 14px; text-transform: capitalize; overflow-wrap: anywhere; }
+.popular-rank { color: var(--purple); font-size: 16px; font-variant-numeric: tabular-nums; }
+.popular-visits { margin-left: auto; white-space: nowrap; font-size: 12px; color: var(--muted); }
+@media(max-width: 760px) { .overview-stats { grid-template-columns: 1fr; } .feature-summary, .popular-summary { padding: 22px; } }

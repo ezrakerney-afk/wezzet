@@ -73,7 +73,12 @@
     }
   });
   function selectSection() {
-    const id = location.hash.slice(1) || "overview";
+    const requested = location.hash.slice(1) || "overview";
+    const id = ["converters", "ai-tools", "agents", "utilities"].includes(requested) ? requested : "overview";
+    document.querySelectorAll(".tool-section").forEach(section => {
+      section.hidden = section.id !== id;
+    });
+    $("overview").hidden = id !== "overview";
     document.querySelectorAll("[data-section]").forEach((a) => {
       if (a.dataset.section === id) {
         a.setAttribute("aria-current", "page");

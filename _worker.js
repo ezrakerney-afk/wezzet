@@ -10,6 +10,7 @@ const SALT = "wezzet-forum-v1";
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
+    if (url.pathname === "/api/tool-stats") return toolStats(request, env);
     if (url.pathname.startsWith("/api/aicomms")) return aicomms(request, env, url, ctx);
     if (/^\/api\/(paste|read|calc|json|csv|hash|base64|uuid|dns|status|headers|cron|regex|diff|count|password|random)(\/|$)/.test(url.pathname) || url.pathname === "/api" || url.pathname === "/api/") return tools(request, env, url);
     if (url.pathname === "/api/search") return wzSearch(request, env, url);
@@ -28,6 +29,13 @@ export default {
       }
     }
     const res = await env.ASSETS.fetch(request);
+    // Count successful browser document visits only; never retain IPs, identities or content.
+    if (request.method === "GET" && res.ok && res.headers.get("content-type")?.includes("text/html") &&
+        request.headers.get("sec-fetch-dest") === "document" &&
+        !/bot|crawler|spider|headless/i.test(request.headers.get("user-agent") || "") &&
+        !/prefetch|prerender/i.test(request.headers.get("purpose") || request.headers.get("sec-purpose") || "")) {
+      ctx.waitUntil(recordToolVisit(request, env).catch(() => {}));
+    }
     // _headers doesn't apply when a _worker.js is present, so set the same headers here.
     const out = new Response(res.body, res);
     out.headers.set("X-Content-Type-Options", "nosniff");
@@ -3060,4 +3068,49 @@ async function wzVision(request, env) {
     }
     return json({ reply: (r && r.response || "").trim() });
   } catch (e) { return json({ error: "vision unavailable" }, 503); }
+}
+
+
+// Public aggregate tool popularity. No fabricated seed rankings or personal data.
+let toolCatalogPromise;
+let toolStatsReady;
+async function toolCatalog(request, env) {
+  if (!toolCatalogPromise) {
+    toolCatalogPromise = env.ASSETS.fetch(new Request(new URL('/assets/tool-catalog.json', request.url)))
+      .then(async response => {
+        if (!response.ok) throw new Error('Catalog unavailable');
+        const catalog = await response.json();
+        return { ...catalog, byPath: new Map(catalog.pages.map(tool => [tool.url, tool])) };
+      }).catch(error => { toolCatalogPromise = null; throw error; });
+  }
+  return toolCatalogPromise;
+}
+async function toolStatsDatabase(env) {
+  if (!env.DB) throw new Error('Database unavailable');
+  if (!toolStatsReady) {
+    toolStatsReady = env.DB.prepare('CREATE TABLE IF NOT EXISTS tool_visits (path TEXT PRIMARY KEY, visits INTEGER NOT NULL DEFAULT 0, first_visit INTEGER NOT NULL)').run()
+      .catch(error => { toolStatsReady = null; throw error; });
+  }
+  return toolStatsReady;
+}
+async function recordToolVisit(request, env) {
+  const path = new URL(request.url).pathname.replace(/\/$/, '').replace(/\.html$/, '');
+  const catalog = await toolCatalog(request, env);
+  if (!catalog.byPath.has(path)) return;
+  await toolStatsDatabase(env);
+  await env.DB.prepare('INSERT INTO tool_visits (path, visits, first_visit) VALUES (?, 1, ?) ON CONFLICT(path) DO UPDATE SET visits = visits + 1')
+    .bind(path, Date.now()).run();
+}
+async function toolStats(request, env) {
+  if (request.method !== 'GET') return json({error: 'Method not allowed'}, 405, {Allow: 'GET'});
+  try {
+    const catalog = await toolCatalog(request, env);
+    await toolStatsDatabase(env);
+    const { results } = await env.DB.prepare('SELECT path, visits FROM tool_visits WHERE visits > 0 ORDER BY visits DESC, path ASC').all();
+    const top = results.filter(row => catalog.byPath.has(row.path)).slice(0, 5)
+      .map(row => ({...catalog.byPath.get(row.path), visits: row.visits}));
+    return json({count: catalog.count, top, metric: 'tool page visits'}, 200, {'cache-control': 'public, max-age=60'});
+  } catch {
+    return json({error: 'Tool rankings temporarily unavailable'}, 503);
+  }
 }
