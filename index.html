@@ -87,7 +87,7 @@
       }
     </style>
     <link rel="stylesheet" href="/assets/site.css?v=7" />
-    <link rel="stylesheet" href="/assets/dashboard.css?v=4" />
+    <link rel="stylesheet" href="/assets/dashboard.css?v=5" />
   </head>
   <body class="dashboard">
     <a class="skip-link" href="#main">Skip to tools</a>
@@ -189,24 +189,38 @@
           </div>
           <a class="primary-link" href="/ai">✦ Open WezzetAI <span>→</span></a>
         </div>
-        <div class="welcome-grid">
-          <a class="spotlight" href="#tools"
-            ><span class="eyebrow">LESS FRICTION. MORE DONE.</span>
-            <h2>One place for all<br />your file conversions.</h2>
-            <p>Images, documents, audio and everything in between.</p>
-            <span class="spotlight-action"
-              >Browse all tools <span>→</span></span
-            ><span class="format-art" aria-hidden="true"
-              >JPG <b>⇄</b> PNG</span
-            ></a
-          ><a class="agent-spotlight" href="/aicomms"
-            ><span class="eyebrow">BUILT TO CONNECT</span>
-            <div class="orbit" aria-hidden="true">◎</div>
-            <h2>Meet your agents’<br />new workspace.</h2>
-            <p>Bring your AI conversations together.</p>
-            <span>Explore AI Comms →</span></a
-          >
-        </div>
+<section class="news-carousel" aria-roledescription="carousel" aria-label="Wezzet news" id="website-news">
+<article class="news-slide" data-news="extension" aria-roledescription="slide" aria-label="1 of 6">
+ <div class="news-copy"><p class="eyebrow">NEW CHROME EXTENSION</p><h2>Keep Wezzet within reach.</h2><p>Get the Wezzet extension from the Chrome Web Store.</p>
+ <a class="news-link" href="https://chromewebstore.google.com/detail/jfodhobmjhmnpifgceamblefmemildmp?utm_source=item-share-cb" target="_blank" rel="noopener noreferrer">Add to Chrome <span aria-hidden="true">→</span></a></div>
+ <div class="news-art" aria-hidden="true"><span>↗</span><small>WEZZET / EXTENSION</small></div>
+</article>
+<article class="news-slide" data-news="agents" aria-roledescription="slide" aria-label="2 of 6" hidden>
+ <div class="news-copy"><p class="eyebrow">BUILT TO CONNECT</p><h2>A workspace for your AI agents.</h2><p>Connect agents, share tasks, and bring conversations together.</p>
+ <a class="news-link" href="/aicomms">Explore AI Comms <span aria-hidden="true">→</span></a></div>
+ <div class="news-art" aria-hidden="true"><span>◎</span><small>WEZZET / AGENTS</small></div>
+</article>
+<article class="news-slide" data-news="tools" aria-roledescription="slide" aria-label="3 of 6" hidden>
+ <div class="news-copy"><p class="eyebrow">YOUR WHOLE TOOLKIT</p><h2>Every tool. One place.</h2><p>Browse converters, AI tools, and everyday utilities in one searchable catalog.</p>
+ <a class="news-link" href="#tools">Browse all tools <span aria-hidden="true">→</span></a></div>
+ <div class="news-art" aria-hidden="true"><span>⇄</span><small>WEZZET / TOOLS</small></div>
+</article>
+<article class="news-slide" data-news="create" aria-roledescription="slide" aria-label="4 of 6" hidden>
+ <div class="news-copy"><p class="eyebrow">CREATE & EDIT</p><h2>A few more ways to get things done.</h2><p>Try the image editor, video clipper, and transcription with subtitle downloads.</p>
+ <a class="news-link" href="#tools">Explore creative tools <span aria-hidden="true">→</span></a></div>
+ <div class="news-art" aria-hidden="true"><span>✦</span><small>WEZZET / CREATE</small></div>
+</article>
+<article class="news-slide" data-news="account" aria-roledescription="slide" aria-label="5 of 6" hidden>
+ <div class="news-copy"><p class="eyebrow">ONE WEZZET ACCOUNT</p><h2>Pick up across your workspace.</h2><p>Sign in with Google to use your Wezzet account across Chat, AI, and AI Comms.</p>
+ <a class="news-link" href="/signin">Sign in <span aria-hidden="true">→</span></a></div>
+ <div class="news-art" aria-hidden="true"><span>○</span><small>WEZZET / ACCOUNT</small></div>
+</article>
+<article class="news-slide" data-news="recent" aria-roledescription="slide" aria-label="6 of 6" hidden>
+ <div class="news-copy"><p class="eyebrow">RECENTLY USED</p><h2>Pick up where you left off.</h2><p>Your recently opened tools, ready for another round.</p><div id="news-recent" class="news-recent"></div><a class="news-link" href="#tools">Browse all tools <span aria-hidden="true">→</span></a></div>
+ <div class="news-art" aria-hidden="true"><span>↶</span><small>WEZZET / RECENT</small></div>
+</article>
+<div class="news-controls" hidden><span class="news-caption">WHAT’S NEW</span><div class="news-dots" aria-label="Choose announcement"></div><span id="news-position" class="sr-only" aria-live="off"></span><button type="button" id="news-prev" aria-label="Previous announcement">←</button><button type="button" id="news-next" aria-label="Next announcement">→</button><button type="button" id="news-pause" aria-label="Pause announcements">Ⅱ</button></div>
+</section>
         <div class="overview-stats" id="overview-stats">
           <section class="feature-summary" aria-labelledby="feature-heading">
             <p class="eyebrow">ONE WORKSPACE. SO MANY POSSIBILITIES.</p>
@@ -223,7 +237,6 @@
             <p id="popular-status" role="status">Loading the latest rankings…</p>
           </section>
         </div>
-        <p class="recent" id="recent" hidden></p>
       </section>
       <section class="tool-section" hidden id="tools" aria-labelledby="tools-heading">
         <div class="section-heading">
@@ -979,7 +992,9 @@
         /><button type="submit" aria-label="Send support message">↑</button>
       </form>
     </section>
-    <script src="/assets/home.js?v=tools-26" defer></script>
+    <script src="/assets/home-news.js?v=1" defer></script>
+    <script src="/assets/sidebar.js?v=1" defer></script>
+    <script src="/assets/home.js?v=tools-27" defer></script>
     <script src="/assets/account.js?v=2" defer></script>
     <script src="/assets/home-catalog.js?v=1" defer></script>
     <script src="/assets/home-stats.js?v=1" defer></script>
