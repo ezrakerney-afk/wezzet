@@ -154,14 +154,9 @@
       <nav aria-label="Workspace">
         <a href="#overview" data-section="overview" aria-current="page"
           ><span aria-hidden="true">▦</span>Overview</a
-        ><a href="#converters" data-section="converters"
-          ><span aria-hidden="true">⇄</span>Converters</a
-        ><a href="#ai-tools" data-section="ai-tools"
-          ><span aria-hidden="true">✦</span>AI tools</a
+        ><a href="#tools" data-section="tools"><span aria-hidden="true">⇄</span>Tools</a
         ><a href="#agents" data-section="agents"
           ><span aria-hidden="true">◎</span>AI agents</a
-        ><a href="#utilities" data-section="utilities"
-          ><span aria-hidden="true">▦</span>Everyday tools</a
         >
       </nav>
       <p class="nav-caption">CONNECT</p>
@@ -195,12 +190,12 @@
           <a class="primary-link" href="/ai">✦ Open WezzetAI <span>→</span></a>
         </div>
         <div class="welcome-grid">
-          <a class="spotlight" href="#converters"
+          <a class="spotlight" href="#tools"
             ><span class="eyebrow">LESS FRICTION. MORE DONE.</span>
             <h2>One place for all<br />your file conversions.</h2>
             <p>Images, documents, audio and everything in between.</p>
             <span class="spotlight-action"
-              >Explore converters <span>→</span></span
+              >Browse all tools <span>→</span></span
             ><span class="format-art" aria-hidden="true"
               >JPG <b>⇄</b> PNG</span
             ></a
@@ -218,7 +213,7 @@
             <strong id="feature-count">616</strong>
             <h2 id="feature-heading">tools &amp; features</h2>
             <p>From quick conversions to AI and agent collaboration. Your whole toolkit, counted.</p>
-            <button class="catalog-search" type="button" onclick="document.getElementById('q').focus()">Find your next tool <span aria-hidden="true">→</span></button>
+            <a class="catalog-search" href="#tools">Browse all tools <span aria-hidden="true">→</span></a>
             <details><summary>What’s included?</summary><p>Every public tool and feature destination, with the 12 everyday calculators counted individually. Repeated links, account and information pages are excluded.</p></details>
           </section>
           <section class="popular-summary" aria-labelledby="popular-heading">
@@ -230,101 +225,638 @@
         </div>
         <p class="recent" id="recent" hidden></p>
       </section>
-      <section class="tool-section" hidden id="converters">
+      <section class="tool-section" hidden id="tools" aria-labelledby="tools-heading">
         <div class="section-heading">
           <div>
-            <h2>Converters</h2>
-            <p>Every format, one place.</p>
+            <h2 id="tools-heading">All tools</h2>
+            <p>Converters, AI tools, calculators, and everyday utilities.</p>
           </div>
-          <span class="section-count">09 tools & collections</span>
         </div>
-        <div class="tool-grid"><a class="tool-card" href="/pdf-to-word"><span class="tool-icon">DOCX</span><span class="card-copy"><strong>PDF to editable Word</strong><span>Extract PDF text into a DOCX document</span></span><span class="card-arrow" aria-hidden="true">→</span></a>
-          <a class="tool-card" href="/convert"
-            ><span class="tool-icon">FILE</span
-            ><span class="card-copy"
-              ><strong>File converter</strong
-              ><span>Start with any file</span></span
-            ><span class="card-arrow" aria-hidden="true">→</span></a
-          ><a class="tool-card" href="/image"
-            ><span class="tool-icon">IMG</span
-            ><span class="card-copy"
-              ><strong>Images</strong
-              ><span>JPG, PNG, WebP, HEIC and more</span></span
-            ><span class="card-arrow" aria-hidden="true">→</span></a
-          ><a class="tool-card" href="/video"
-            ><span class="tool-icon">PLAY</span
-            ><span class="card-copy"
-              ><strong>Video & audio</strong
-              ><span>Convert your clips and recordings</span></span
-            ><span class="card-arrow" aria-hidden="true">→</span></a
-          ><a class="tool-card" href="/pdf"
-            ><span class="tool-icon">PDF</span
-            ><span class="card-copy"
-              ><strong>PDF tools</strong
-              ><span>Merge PDFs and turn images into PDFs</span></span
-            ><span class="card-arrow" aria-hidden="true">→</span></a
-          ><a class="tool-card" href="/units"
-            ><span class="tool-icon">UNIT</span
-            ><span class="card-copy"
-              ><strong>Units & measurements</strong
-              ><span>Length, weight, temperature and more</span></span
-            ><span class="card-arrow" aria-hidden="true">→</span></a
-          ><a class="tool-card" href="/data"
-            ><span class="tool-icon">DATA</span
-            ><span class="card-copy"
-              ><strong>Data converter</strong
-              ><span>CSV, JSON, Excel and YAML</span></span
-            ><span class="card-arrow" aria-hidden="true">→</span></a
-          ><a class="tool-card" href="/3d"
-            ><span class="tool-icon">3D</span
-            ><span class="card-copy"
-              ><strong>3D models</strong
-              ><span>STL, OBJ, 3MF and PLY</span></span
-            ><span class="card-arrow" aria-hidden="true">→</span></a
-          ><a class="tool-card" href="/embroidery"
-            ><span class="tool-icon">SEW</span
-            ><span class="card-copy"
-              ><strong>Embroidery</strong
-              ><span>Convert designs for your machine</span></span
-            ><span class="card-arrow" aria-hidden="true">→</span></a
-          >
+        <div class="catalog-controls" id="catalog-controls" hidden>
+          <label for="catalog-filter">Filter tools</label>
+          <input type="search" id="catalog-filter" placeholder="Try PDF, audio, or quiz" autocomplete="off">
+          <p id="catalog-status" role="status"></p>
         </div>
-      </section>
-      <section class="tool-section" hidden id="ai-tools">
-        <div class="section-heading">
-          <div>
-            <h2>AI tools</h2>
-            <p>A little help for your next big idea.</p>
-          </div>
-          <span class="section-count">07 tools & collections</span>
-        </div>
-        <div class="tool-grid"><a class="tool-card" href="/transcribe"><span class="tool-icon">TEXT</span><span class="card-copy"><strong>Transcription & subtitles</strong><span>Local speech recognition with TXT, SRT and VTT</span></span><span class="card-arrow" aria-hidden="true">→</span></a><a class="tool-card" href="/study-helper"><span class="tool-icon">QUIZ</span><span class="card-copy"><strong>AI quiz & study helper</strong><span>Practice from your notes with scored quizzes</span></span><span class="card-arrow" aria-hidden="true">→</span></a><a class="tool-card" href="/ai-rewriter"><span class="tool-icon">WRITE</span><span class="card-copy"><strong>AI writing & code rewriter</strong><span>Improve clarity and readability</span></span><span class="card-arrow" aria-hidden="true">→</span></a>
-          <a class="tool-card" href="/ai"
-            ><span class="tool-icon">AI</span
-            ><span class="card-copy"
-              ><strong>WezzetAI</strong
-              ><span>Ask questions, write, and explore with AI</span></span
-            ><span class="card-arrow" aria-hidden="true">→</span></a
-          ><a class="tool-card" href="/read"
-            ><span class="tool-icon">WEB</span
-            ><span class="card-copy"
-              ><strong>Read a webpage</strong
-              ><span>Extract a page to work with its text</span></span
-            ><span class="card-arrow" aria-hidden="true">→</span></a
-          ><a class="tool-card" href="/json"
-            ><span class="tool-icon">JSON</span
-            ><span class="card-copy"
-              ><strong>Fix JSON with AI</strong
-              ><span>Repair JSON in the formatter</span></span
-            ><span class="card-arrow" aria-hidden="true">→</span></a
-          ><a class="tool-card" href="/data"
-            ><span class="tool-icon">DATA</span
-            ><span class="card-copy"
-              ><strong>Explain your data</strong
-              ><span>Make sense of data with AI assistance</span></span
-            ><span class="card-arrow" aria-hidden="true">→</span></a
-          >
-        </div>
+        <ul class="catalog-list" id="catalog-list">
+          <!-- tool-catalog:start -->
+          <li><a href="/3d">3d file converter</a></li>
+          <li><a href="/3gp-to-mp4">3gp to mp4</a></li>
+          <li><a href="/3mf-to-stl">3mf to stl</a></li>
+          <li><a href="/ac3-to-mp3">ac3 to mp3</a></li>
+          <li><a href="/acceleration-converter">acceleration converter</a></li>
+          <li><a href="/acres-to-hectares">acres to hectares</a></li>
+          <li><a href="/acres-to-sq-ft">acres to sq ft</a></li>
+          <li><a href="/aes-encryption">aes encryption and decryption</a></li>
+          <li><a href="/affine-cipher">affine cipher</a></li>
+          <li><a href="/age">age calculator</a></li>
+          <li><a href="/aicomms">agent chat: board for ai agents</a></li>
+          <li><a href="/ah-to-coulombs">ah to coulombs</a></li>
+          <li><a href="/ah-to-mah">ah to mah</a></li>
+          <li><a href="/study-helper">ai quiz &amp; study helper</a></li>
+          <li><a href="/ai-rewriter">ai writing &amp; code rewriter</a></li>
+          <li><a href="/aiff-to-mp3">aiff to mp3</a></li>
+          <li><a href="/amps-to-kva">amps to kva calculator</a></li>
+          <li><a href="/amps-to-kw">amps to kw calculator</a></li>
+          <li><a href="/amps-to-ma">amps to ma</a></li>
+          <li><a href="/amps-to-volts">amps to volts calculator</a></li>
+          <li><a href="/amps-to-watts">amps to watts calculator</a></li>
+          <li><a href="/amr-to-mp3">amr to mp3</a></li>
+          <li><a href="/angle-converter">angle converter</a></li>
+          <li><a href="/angular-acceleration-converter">angular acceleration converter</a></li>
+          <li><a href="/angular-velocity-converter">angular velocity converter</a></li>
+          <li><a href="/shortcut-viewer">apple shortcut file viewer</a></li>
+          <li><a href="/area-converter">area converter</a></li>
+          <li><a href="/arw-to-jpg">arw to jpg</a></li>
+          <li><a href="/ascii-to-binary">ascii text to binary</a></li>
+          <li><a href="/ascii-to-hex">ascii text to hex</a></li>
+          <li><a href="/ascii-converter">ascii, hex, binary, decimal and base64 converter</a></li>
+          <li><a href="/atbash-cipher">atbash cipher</a></li>
+          <li><a href="/atm-to-psi">atm to psi</a></li>
+          <li><a href="/noise-remover">audio noise remover</a></li>
+          <li><a href="/calculators?calc=Average+speed">Average speed</a></li>
+          <li><a href="/avi-to-mp4">avi to mp4</a></li>
+          <li><a href="/avif-to-jpg">avif to jpg</a></li>
+          <li><a href="/avif-to-png">avif to png</a></li>
+          <li><a href="/bar-to-kpa">bar to kpa</a></li>
+          <li><a href="/bar-to-psi">bar to psi</a></li>
+          <li><a href="/base32">base32 encode and decode</a></li>
+          <li><a href="/base58">base58 encode and decode</a></li>
+          <li><a href="/base64-encode">base64 encode and decode</a></li>
+          <li><a href="/bcd-converter">bcd converter</a></li>
+          <li><a href="/bhp-to-kw">bhp to kw</a></li>
+          <li><a href="/binary-to-decimal">binary to decimal converter</a></li>
+          <li><a href="/binary-to-hex">binary to hex converter</a></li>
+          <li><a href="/binary-to-octal">binary to octal converter</a></li>
+          <li><a href="/binary-to-text">binary to text</a></li>
+          <li><a href="/bits-to-bytes">bits to bytes</a></li>
+          <li><a href="/bmi">bmi calculator</a></li>
+          <li><a href="/bmp-to-jpg">bmp to jpg</a></li>
+          <li><a href="/btu-to-joules">btu to joules</a></li>
+          <li><a href="/btu-to-kj">btu to kj</a></li>
+          <li><a href="/btu-to-kwh">btu to kwh</a></li>
+          <li><a href="/btu-hr-to-kw">btu/hr to kw</a></li>
+          <li><a href="/btu-hr-to-tons">btu/hr to tons</a></li>
+          <li><a href="/btu-hr-to-watts">btu/hr to watts</a></li>
+          <li><a href="/bytes-to-bits">bytes to bits</a></li>
+          <li><a href="/caesar-cipher">caesar cipher</a></li>
+          <li><a href="/calc">calculator</a></li>
+          <li><a href="/calories">calorie calculator</a></li>
+          <li><a href="/calories-to-joules">calories to joules</a></li>
+          <li><a href="/calories-to-kcal">calories to kcal</a></li>
+          <li><a href="/calories-to-kj">calories to kj</a></li>
+          <li><a href="/capacitance-converter">capacitance converter</a></li>
+          <li><a href="/case">case converter</a></li>
+          <li><a href="/celsius-to-fahrenheit">celsius to fahrenheit</a></li>
+          <li><a href="/celsius-to-kelvin">celsius to kelvin</a></li>
+          <li><a href="/celsius-to-rankine">celsius to rankine</a></li>
+          <li><a href="/calculators?calc=Circle+area">Circle area</a></li>
+          <li><a href="/cps">click speed test</a></li>
+          <li><a href="/cm-to-feet">cm to feet</a></li>
+          <li><a href="/cm-to-inches">cm to inches</a></li>
+          <li><a href="/cm-to-mm">cm to mm</a></li>
+          <li><a href="/cmyk-to-rgb">cmyk to rgb converter</a></li>
+          <li><a href="/contrast">color contrast checker</a></li>
+          <li><a href="/color-converter">color converter</a></li>
+          <li><a href="/color">color picker</a></li>
+          <li><a href="/compress">compress image to a size</a></li>
+          <li><a href="/compress-pdf">compress pdf</a></li>
+          <li><a href="/compress-video">compress video</a></li>
+          <li><a href="/concentration-molar-converter">concentration - molar converter</a></li>
+          <li><a href="/concentration-solution-converter">concentration - solution converter</a></li>
+          <li><a href="/concentration-converter">concentration converter</a></li>
+          <li><a href="/convert">convert any file</a></li>
+          <li><a href="/file-to-base64">convert to base64</a></li>
+          <li><a href="/coulombs-to-ah">coulombs to ah</a></li>
+          <li><a href="/coulombs-to-electron-charge">coulombs to electron charges</a></li>
+          <li><a href="/coulombs-to-mc">coulombs to mc</a></li>
+          <li><a href="/coulombs-to-nc">coulombs to nc</a></li>
+          <li><a href="/coulombs-to-pc">coulombs to pc</a></li>
+          <li><a href="/coulombs-to-uc">coulombs to μc</a></li>
+          <li><a href="/countdown">countdown</a></li>
+          <li><a href="/cr2-to-jpg">cr2 to jpg</a></li>
+          <li><a href="/cr3-to-jpg">cr3 to jpg</a></li>
+          <li><a href="/crc32">crc32 checksum</a></li>
+          <li><a href="/cron">cron expression explainer</a></li>
+          <li><a href="/crop">crop image</a></li>
+          <li><a href="/crypto">cryptography tools</a></li>
+          <li><a href="/csv-to-html-table">csv to html table</a></li>
+          <li><a href="/csv-to-json">csv to json</a></li>
+          <li><a href="/csv-to-markdown-table">csv to markdown table</a></li>
+          <li><a href="/csv-to-sql">csv to sql inserts</a></li>
+          <li><a href="/csv-to-tsv">csv to tsv</a></li>
+          <li><a href="/csv-to-vcf">csv to vcard contacts</a></li>
+          <li><a href="/csv-to-xml">csv to xml</a></li>
+          <li><a href="/csv-to-yaml">csv to yaml</a></li>
+          <li><a href="/data">csv, json, excel and yaml converter</a></li>
+          <li><a href="/cups-to-ml">cups to ml</a></li>
+          <li><a href="/currency">currency converter</a></li>
+          <li><a href="/current-converter">current converter</a></li>
+          <li><a href="/calculators?calc=Cylinder+volume">Cylinder volume</a></li>
+          <li><a href="/data-rate-converter">data rate converter</a></li>
+          <li><a href="/data-storage-converter">data storage converter</a></li>
+          <li><a href="/days-to-hours">days to hours</a></li>
+          <li><a href="/dbm-to-mw">dbm to mw</a></li>
+          <li><a href="/dbm-to-watts">dbm to watts</a></li>
+          <li><a href="/db-converter">decibel (db) converter</a></li>
+          <li><a href="/decimal-to-binary">decimal to binary converter</a></li>
+          <li><a href="/decimal-to-fraction">decimal to fraction converter</a></li>
+          <li><a href="/decimal-to-hex">decimal to hex converter</a></li>
+          <li><a href="/decimal-to-octal">decimal to octal converter</a></li>
+          <li><a href="/decimal-to-percent">decimal to percent converter</a></li>
+          <li><a href="/degrees-to-dms">degrees to degrees, minutes, seconds</a></li>
+          <li><a href="/degrees-to-radians">degrees to radians</a></li>
+          <li><a href="/dms-to-degrees">degrees, minutes, seconds to decimal degrees</a></li>
+          <li><a href="/calculators?calc=Density">Density</a></li>
+          <li><a href="/density-converter">density converter</a></li>
+          <li><a href="/diff">diff checker: compare text</a></li>
+          <li><a href="/dng-to-jpg">dng to jpg</a></li>
+          <li><a href="/dns">dns lookup</a></li>
+          <li><a href="/domains">domain name checker</a></li>
+          <li><a href="/dst-to-jef">dst to jef</a></li>
+          <li><a href="/dst-to-pes">dst to pes</a></li>
+          <li><a href="/electric-charge-converter">electric charge converter</a></li>
+          <li><a href="/electric-conductance-converter">electric conductance converter</a></li>
+          <li><a href="/electric-conductivity-converter">electric conductivity converter</a></li>
+          <li><a href="/electric-field-strength-converter">electric field strength converter</a></li>
+          <li><a href="/electric-resistance-converter">electric resistance converter</a></li>
+          <li><a href="/electric-resistivity-converter">electric resistivity converter</a></li>
+          <li><a href="/calculators?calc=Electrical+power+%28W%29">Electrical power (W)</a></li>
+          <li><a href="/electron-charge-to-coulombs">electron charges to coulombs</a></li>
+          <li><a href="/eml-to-text">email to plain text</a></li>
+          <li><a href="/embroidery">embroidery file converter</a></li>
+          <li><a href="/encryption-key-generator">encryption key generator</a></li>
+          <li><a href="/energy-converter">energy converter</a></li>
+          <li><a href="/ev-to-gev">ev to gev</a></li>
+          <li><a href="/ev-to-joules">ev to joules</a></li>
+          <li><a href="/ev-to-kev">ev to kev</a></li>
+          <li><a href="/ev-to-mev">ev to mev</a></li>
+          <li><a href="/fahrenheit-to-celsius">fahrenheit to celsius</a></li>
+          <li><a href="/fahrenheit-to-kelvin">fahrenheit to kelvin</a></li>
+          <li><a href="/fahrenheit-to-rankine">fahrenheit to rankine</a></li>
+          <li><a href="/favicon">favicon generator</a></li>
+          <li><a href="/rss-to-csv">feed to csv</a></li>
+          <li><a href="/feet-to-cm">feet to cm</a></li>
+          <li><a href="/feet-to-inches">feet to inches</a></li>
+          <li><a href="/feet-to-meters">feet to meters</a></li>
+          <li><a href="/feet-to-mm">feet to mm</a></li>
+          <li><a href="/file-checksum">file checksum (sha-256)</a></li>
+          <li><a href="/html-table-to-csv">first table to csv</a></li>
+          <li><a href="/oz-to-ml">fl oz to ml</a></li>
+          <li><a href="/flac-to-mp3">flac to mp3</a></li>
+          <li><a href="/flac-to-wav">flac to wav</a></li>
+          <li><a href="/flow-mass-converter">flow - mass converter</a></li>
+          <li><a href="/flow-molar-converter">flow - molar converter</a></li>
+          <li><a href="/flow-converter">flow converter</a></li>
+          <li><a href="/flv-to-mp4">flv to mp4</a></li>
+          <li><a href="/force-converter">force converter</a></li>
+          <li><a href="/forum">forum</a></li>
+          <li><a href="/fraction-to-decimal">fraction to decimal converter</a></li>
+          <li><a href="/fraction-to-percent">fraction to percent converter</a></li>
+          <li><a href="/frequency-and-wavelength-converter">frequency and wavelength converter</a></li>
+          <li><a href="/frequency-converter">frequency converter</a></li>
+          <li><a href="/fuel-economy-converter">fuel economy converter</a></li>
+          <li><a href="/fuel-efficiency-mass-converter">fuel efficiency - mass converter</a></li>
+          <li><a href="/fuel-efficiency-volume-converter">fuel efficiency - volume converter</a></li>
+          <li><a href="/gallons-to-liters">gallons to liters</a></li>
+          <li><a href="/gb-to-gib">gb to gib</a></li>
+          <li><a href="/gb-to-mb">gb to mb</a></li>
+          <li><a href="/gb-to-tb">gb to tb</a></li>
+          <li><a href="/gev-to-ev">gev to ev</a></li>
+          <li><a href="/ghz-to-hz">ghz to hz</a></li>
+          <li><a href="/ghz-to-khz">ghz to khz</a></li>
+          <li><a href="/ghz-to-mhz">ghz to mhz</a></li>
+          <li><a href="/gib-to-gb">gib to gb</a></li>
+          <li><a href="/gif-to-png">gif to png</a></li>
+          <li><a href="/gigavolts-to-volts">gigavolts to volts</a></li>
+          <li><a href="/gpx-to-geojson">gpx to geojson</a></li>
+          <li><a href="/gpx-to-kml">gpx to kml</a></li>
+          <li><a href="/grams-to-kg">grams to kg</a></li>
+          <li><a href="/grams-to-ounces">grams to ounces</a></li>
+          <li><a href="/grams-to-pounds">grams to pounds</a></li>
+          <li><a href="/gray-code">gray code and bcd converter</a></li>
+          <li><a href="/gw-to-watts">gw to watts</a></li>
+          <li><a href="/heat-density-converter">heat density converter</a></li>
+          <li><a href="/heat-flux-density-converter">heat flux density converter</a></li>
+          <li><a href="/heat-transfer-coefficient-converter">heat transfer coefficient converter</a></li>
+          <li><a href="/hectares-to-acres">hectares to acres</a></li>
+          <li><a href="/heic-to-jpg">heic to jpg</a></li>
+          <li><a href="/heic-to-png">heic to png</a></li>
+          <li><a href="/heic-to-webp">heic to webp</a></li>
+          <li><a href="/hex-viewer">hex dump</a></li>
+          <li><a href="/hex-to-binary">hex to binary converter</a></li>
+          <li><a href="/hex-to-cmyk">hex to cmyk converter</a></li>
+          <li><a href="/hex-to-decimal">hex to decimal converter</a></li>
+          <li><a href="/hex-to-octal">hex to octal converter</a></li>
+          <li><a href="/hex-to-rgb">hex to rgb converter</a></li>
+          <li><a href="/hex-to-text">hex to text</a></li>
+          <li><a href="/hmac-generator">hmac generator</a></li>
+          <li><a href="/hours-to-days">hours to days</a></li>
+          <li><a href="/hours-to-minutes">hours to minutes</a></li>
+          <li><a href="/hp-to-kw">hp to kw</a></li>
+          <li><a href="/hp-to-watts">hp to watts</a></li>
+          <li><a href="/hsl-to-rgb">hsl to rgb converter</a></li>
+          <li><a href="/hsv-to-rgb">hsv to rgb converter</a></li>
+          <li><a href="/html-entities">html entity encoder</a></li>
+          <li><a href="/html-to-markdown">html to markdown</a></li>
+          <li><a href="/html-to-pdf">html to pdf</a></li>
+          <li><a href="/html-to-text">html to text</a></li>
+          <li><a href="/status">http status checker</a></li>
+          <li><a href="/hz-to-ghz">hz to ghz</a></li>
+          <li><a href="/hz-to-khz">hz to khz</a></li>
+          <li><a href="/hz-to-mhz">hz to mhz</a></li>
+          <li><a href="/hz-to-rad-s">hz to rad/s</a></li>
+          <li><a href="/hz-to-rpm">hz to rpm</a></li>
+          <li><a href="/hz-to-thz">hz to thz</a></li>
+          <li><a href="/ics-to-csv">ics calendar to csv</a></li>
+          <li><a href="/illumination-converter">illumination converter</a></li>
+          <li><a href="/image">image converter</a></li>
+          <li><a href="/image-editor">image editor</a></li>
+          <li><a href="/image-resolution-converter">image resolution converter</a></li>
+          <li><a href="/image-to-ascii">image to ascii art</a></li>
+          <li><a href="/image-to-grayscale">image to grayscale png</a></li>
+          <li><a href="/inches-to-cm">inches to cm</a></li>
+          <li><a href="/inches-to-feet">inches to feet</a></li>
+          <li><a href="/inches-to-meters">inches to meters</a></li>
+          <li><a href="/inches-to-mm">inches to mm</a></li>
+          <li><a href="/inductance-converter">inductance converter</a></li>
+          <li><a href="/jef-to-pes">jef to pes</a></li>
+          <li><a href="/joules-to-btu">joules to btu</a></li>
+          <li><a href="/joules-to-calories">joules to calories</a></li>
+          <li><a href="/joules-to-ev">joules to ev</a></li>
+          <li><a href="/joules-to-kcal">joules to kcal</a></li>
+          <li><a href="/joules-to-kj">joules to kj</a></li>
+          <li><a href="/joules-to-kwh">joules to kwh</a></li>
+          <li><a href="/jpg-to-pdf">jpg to pdf</a></li>
+          <li><a href="/jpg-to-png">jpg to png</a></li>
+          <li><a href="/jpg-to-webp">jpg to webp</a></li>
+          <li><a href="/json">json formatter</a></li>
+          <li><a href="/jsonl-to-json">json lines to json</a></li>
+          <li><a href="/json-to-env">json to .env</a></li>
+          <li><a href="/json-to-csv">json to csv</a></li>
+          <li><a href="/json-to-typescript">json to typescript type</a></li>
+          <li><a href="/json-to-xml">json to xml</a></li>
+          <li><a href="/json-to-yaml">json to yaml</a></li>
+          <li><a href="/jwt-decoder">jwt decoder</a></li>
+          <li><a href="/kb-to-mb">kb to mb</a></li>
+          <li><a href="/kcal-to-calories">kcal to calories</a></li>
+          <li><a href="/kcal-to-joules">kcal to joules</a></li>
+          <li><a href="/kcal-to-kj">kcal to kj</a></li>
+          <li><a href="/kelvin-to-celsius">kelvin to celsius</a></li>
+          <li><a href="/kelvin-to-fahrenheit">kelvin to fahrenheit</a></li>
+          <li><a href="/kelvin-to-rankine">kelvin to rankine</a></li>
+          <li><a href="/kev-to-ev">kev to ev</a></li>
+          <li><a href="/keycode">key code finder</a></li>
+          <li><a href="/kg-to-grams">kg to grams</a></li>
+          <li><a href="/kg-to-lbs">kg to lbs</a></li>
+          <li><a href="/kg-to-pounds">kg to pounds</a></li>
+          <li><a href="/kg-to-stone">kg to stone</a></li>
+          <li><a href="/khz-to-ghz">khz to ghz</a></li>
+          <li><a href="/khz-to-hz">khz to hz</a></li>
+          <li><a href="/khz-to-mhz">khz to mhz</a></li>
+          <li><a href="/kilovolts-to-volts">kilovolts to volts</a></li>
+          <li><a href="/calculators?calc=Kinetic+energy+%28J%29">Kinetic energy (J)</a></li>
+          <li><a href="/kj-to-btu">kj to btu</a></li>
+          <li><a href="/kj-to-calories">kj to calories</a></li>
+          <li><a href="/kj-to-joules">kj to joules</a></li>
+          <li><a href="/kj-to-kcal">kj to kcal</a></li>
+          <li><a href="/km-to-miles">km to miles</a></li>
+          <li><a href="/kmh-to-m-s">km/h to m/s</a></li>
+          <li><a href="/kmh-to-mph">km/h to mph</a></li>
+          <li><a href="/kml-to-csv">kml to csv of points</a></li>
+          <li><a href="/kml-to-gpx">kml to gpx</a></li>
+          <li><a href="/knots-to-mph">knots to mph</a></li>
+          <li><a href="/kpa-to-psi">kpa to psi</a></li>
+          <li><a href="/kva-to-amps">kva to amps calculator</a></li>
+          <li><a href="/kva-to-kw">kva to kw calculator</a></li>
+          <li><a href="/kw-to-amps">kw to amps calculator</a></li>
+          <li><a href="/kw-to-bhp">kw to bhp</a></li>
+          <li><a href="/kw-to-btu-hr">kw to btu/hr</a></li>
+          <li><a href="/kw-to-hp">kw to hp</a></li>
+          <li><a href="/kw-to-kva">kw to kva calculator</a></li>
+          <li><a href="/kw-to-megawatts">kw to mw</a></li>
+          <li><a href="/kw-to-mw">kw to mw</a></li>
+          <li><a href="/kw-to-tons">kw to tons</a></li>
+          <li><a href="/kw-to-watts">kw to watts</a></li>
+          <li><a href="/kwh-to-btu">kwh to btu</a></li>
+          <li><a href="/kwh-to-joules">kwh to joules</a></li>
+          <li><a href="/kwh-to-wh">kwh to wh</a></li>
+          <li><a href="/l-100km-to-mpg">l/100 km to mpg</a></li>
+          <li><a href="/lbs-to-kg">lbs to kg</a></li>
+          <li><a href="/length-converter">length converter</a></li>
+          <li><a href="/linear-charge-density-converter">linear charge density converter</a></li>
+          <li><a href="/linear-current-density-converter">linear current density converter</a></li>
+          <li><a href="/extract-links">links/bookmarks to csv</a></li>
+          <li><a href="/liters-to-cubic-feet">liters to cubic feet</a></li>
+          <li><a href="/liters-to-gallons">liters to gallons</a></li>
+          <li><a href="/loan">loan calculator</a></li>
+          <li><a href="/lorem">lorem ipsum generator</a></li>
+          <li><a href="/lumens-to-watts">lumens to watts converter</a></li>
+          <li><a href="/luminance-converter">luminance converter</a></li>
+          <li><a href="/luminous-intensity-converter">luminous intensity converter</a></li>
+          <li><a href="/lux-to-lumens">lux to lumens converter</a></li>
+          <li><a href="/m-s-to-kmh">m/s to km/h</a></li>
+          <li><a href="/m2ts-to-mp4">m2ts to mp4</a></li>
+          <li><a href="/m4a-to-mp3">m4a to mp3</a></li>
+          <li><a href="/m4v-to-mp4">m4v to mp4</a></li>
+          <li><a href="/ma-to-amps">ma to amps</a></li>
+          <li><a href="/magnetic-field-strength-converter">magnetic field strength converter</a></li>
+          <li><a href="/magnetic-flux-converter">magnetic flux converter</a></li>
+          <li><a href="/magnetic-flux-density-converter">magnetic flux density converter</a></li>
+          <li><a href="/magnetomotive-force-converter">magnetomotive force converter</a></li>
+          <li><a href="/mah-to-ah">mah to ah</a></li>
+          <li><a href="/mah-to-wh">mah to wh converter</a></li>
+          <li><a href="/markdown-to-html">markdown to html</a></li>
+          <li><a href="/markdown-to-pdf">markdown to pdf</a></li>
+          <li><a href="/mass-flux-density-converter">mass flux density converter</a></li>
+          <li><a href="/mb-to-gb">mb to gb</a></li>
+          <li><a href="/mb-to-kb">mb to kb</a></li>
+          <li><a href="/mc-to-coulombs">mc to coulombs</a></li>
+          <li><a href="/md5-checksum">md5 file checksum</a></li>
+          <li><a href="/md5-generator">md5 hash generator</a></li>
+          <li><a href="/megavolts-to-volts">megavolts to volts</a></li>
+          <li><a href="/pdf">merge pdf and images to pdf</a></li>
+          <li><a href="/meters-to-feet">meters to feet</a></li>
+          <li><a href="/meters-to-inches">meters to inches</a></li>
+          <li><a href="/meters-to-yards">meters to yards</a></li>
+          <li><a href="/metronome">metronome</a></li>
+          <li><a href="/mev-to-ev">mev to ev</a></li>
+          <li><a href="/mg-to-grams">mg to grams</a></li>
+          <li><a href="/mhz-to-ghz">mhz to ghz</a></li>
+          <li><a href="/mhz-to-hz">mhz to hz</a></li>
+          <li><a href="/mhz-to-khz">mhz to khz</a></li>
+          <li><a href="/mic-test">microphone test</a></li>
+          <li><a href="/microvolts-to-volts">microvolts to volts</a></li>
+          <li><a href="/miles-to-km">miles to km</a></li>
+          <li><a href="/millivolts-to-volts">millivolts to volts</a></li>
+          <li><a href="/minify-css">minify css</a></li>
+          <li><a href="/minify-json">minify json</a></li>
+          <li><a href="/minutes-to-hours">minutes to hours</a></li>
+          <li><a href="/minutes-to-seconds">minutes to seconds</a></li>
+          <li><a href="/mkv-to-mp4">mkv to mp4</a></li>
+          <li><a href="/ml-to-cups">ml to cups</a></li>
+          <li><a href="/ml-to-oz">ml to fl oz</a></li>
+          <li><a href="/mm-to-cm">mm to cm</a></li>
+          <li><a href="/mm-to-feet">mm to feet</a></li>
+          <li><a href="/mm-to-inches">mm to inches</a></li>
+          <li><a href="/mmhg-to-kpa">mmhg to kpa</a></li>
+          <li><a href="/moment-of-force-converter">moment of force converter</a></li>
+          <li><a href="/moment-of-inertia-converter">moment of inertia converter</a></li>
+          <li><a href="/morse">morse code translator</a></li>
+          <li><a href="/mov-to-mp3">mov to mp3</a></li>
+          <li><a href="/mov-to-mp4">mov to mp4</a></li>
+          <li><a href="/mp3-to-aiff">mp3 to aiff</a></li>
+          <li><a href="/mp3-to-m4a">mp3 to m4a</a></li>
+          <li><a href="/mp3-to-m4r">mp3 to m4r</a></li>
+          <li><a href="/mp3-to-opus">mp3 to opus</a></li>
+          <li><a href="/mp3-to-wav">mp3 to wav</a></li>
+          <li><a href="/mp4-to-3gp">mp4 to 3gp</a></li>
+          <li><a href="/mp4-to-avi">mp4 to avi</a></li>
+          <li><a href="/mp4-to-flv">mp4 to flv</a></li>
+          <li><a href="/mp4-to-mkv">mp4 to mkv</a></li>
+          <li><a href="/mp4-to-mov">mp4 to mov</a></li>
+          <li><a href="/mp4-to-mp3">mp4 to mp3</a></li>
+          <li><a href="/mp4-to-mpg">mp4 to mpg</a></li>
+          <li><a href="/mp4-to-wav">mp4 to wav</a></li>
+          <li><a href="/mp4-to-webm">mp4 to webm</a></li>
+          <li><a href="/mp4-to-wmv">mp4 to wmv</a></li>
+          <li><a href="/mpg-to-km-l">mpg to km/l</a></li>
+          <li><a href="/mpg-to-l-100km">mpg to l/100 km</a></li>
+          <li><a href="/mph-to-kmh">mph to km/h</a></li>
+          <li><a href="/mph-to-knots">mph to knots</a></li>
+          <li><a href="/mts-to-mp4">mts to mp4</a></li>
+          <li><a href="/mw-to-dbm">mw to dbm</a></li>
+          <li><a href="/megawatts-to-kw">mw to kw</a></li>
+          <li><a href="/mw-to-kw">mw to kw</a></li>
+          <li><a href="/megawatts-to-watts">mw to watts</a></li>
+          <li><a href="/mw-to-watts">mw to watts</a></li>
+          <li><a href="/nc-to-coulombs">nc to coulombs</a></li>
+          <li><a href="/nef-to-jpg">nef to jpg</a></li>
+          <li><a href="/notepad">notepad</a></li>
+          <li><a href="/number">number base converter</a></li>
+          <li><a href="/obj-to-3mf">obj to 3mf</a></li>
+          <li><a href="/obj-to-stl">obj to stl</a></li>
+          <li><a href="/octal-to-binary">octal to binary converter</a></li>
+          <li><a href="/octal-to-decimal">octal to decimal converter</a></li>
+          <li><a href="/octal-to-hex">octal to hex converter</a></li>
+          <li><a href="/ogg-to-mp3">ogg to mp3</a></li>
+          <li><a href="/ohms-law">ohm&#x27;s law calculator</a></li>
+          <li><a href="/calculators?calc=Ohm%E2%80%99s+law%3A+current+%28A%29">Ohm’s law: current (A)</a></li>
+          <li><a href="/opml-to-csv">opml feeds to csv</a></li>
+          <li><a href="/opus-to-mp3">opus to mp3</a></li>
+          <li><a href="/orf-to-jpg">orf to jpg</a></li>
+          <li><a href="/ounces-to-grams">ounces to grams</a></li>
+          <li><a href="/ounces-to-pounds">ounces to pounds</a></li>
+          <li><a href="/password">password generator</a></li>
+          <li><a href="/paste">paste bin</a></li>
+          <li><a href="/pc-to-coulombs">pc to coulombs</a></li>
+          <li><a href="/pdf-to-word">pdf to editable word</a></li>
+          <li><a href="/pdf-to-jpg">pdf to jpg</a></li>
+          <li><a href="/pdf-to-text">pdf to text</a></li>
+          <li><a href="/pef-to-jpg">pef to jpg</a></li>
+          <li><a href="/chat">people chat</a></li>
+          <li><a href="/percent-to-decimal">percent to decimal converter</a></li>
+          <li><a href="/percent-to-fraction">percent to fraction converter</a></li>
+          <li><a href="/percent-to-ppm">percent to ppm converter</a></li>
+          <li><a href="/calculators?calc=Percentage">Percentage</a></li>
+          <li><a href="/percent">percentage calculator</a></li>
+          <li><a href="/calculators?calc=Percentage+change">Percentage change</a></li>
+          <li><a href="/permeability-converter">permeability converter</a></li>
+          <li><a href="/pes-to-dst">pes to dst</a></li>
+          <li><a href="/pes-to-jef">pes to jef</a></li>
+          <li><a href="/m3u-to-text">playlist to text list</a></li>
+          <li><a href="/ply-to-stl">ply to stl</a></li>
+          <li><a href="/png-to-ico">png to ico</a></li>
+          <li><a href="/png-to-jpg">png to jpg</a></li>
+          <li><a href="/png-to-webp">png to webp</a></li>
+          <li><a href="/pounds-to-grams">pounds to grams</a></li>
+          <li><a href="/pounds-to-kg">pounds to kg</a></li>
+          <li><a href="/pounds-to-ounces">pounds to ounces</a></li>
+          <li><a href="/power-converter">power converter</a></li>
+          <li><a href="/ppb-to-ppm">ppb to ppm converter</a></li>
+          <li><a href="/ppm-to-percent">ppm to percent converter</a></li>
+          <li><a href="/ppm-to-ppb">ppm to ppb converter</a></li>
+          <li><a href="/ppm-converter">ppm, ppb, ppt and percent converter</a></li>
+          <li><a href="/prefixes-converter">prefixes converter</a></li>
+          <li><a href="/pressure-converter">pressure converter</a></li>
+          <li><a href="/psd-to-jpg">psd to jpg</a></li>
+          <li><a href="/psd-to-png">psd to png</a></li>
+          <li><a href="/psi-to-atm">psi to atm</a></li>
+          <li><a href="/psi-to-bar">psi to bar</a></li>
+          <li><a href="/psi-to-kpa">psi to kpa</a></li>
+          <li><a href="/qr">qr code generator</a></li>
+          <li><a href="/quilt">quilt fabric calculator</a></li>
+          <li><a href="/rad-s-to-hz">rad/s to hz</a></li>
+          <li><a href="/radians-to-degrees">radians to degrees</a></li>
+          <li><a href="/radiation-absorbed-dose-converter">radiation absorbed dose converter</a></li>
+          <li><a href="/radiation-activity-converter">radiation activity converter</a></li>
+          <li><a href="/radiation-dose-equivalent-converter">radiation dose equivalent converter</a></li>
+          <li><a href="/radiation-exposure-converter">radiation exposure converter</a></li>
+          <li><a href="/raf-to-jpg">raf to jpg</a></li>
+          <li><a href="/rail-fence-cipher">rail fence cipher</a></li>
+          <li><a href="/random">random picker</a></li>
+          <li><a href="/rankine-to-celsius">rankine to celsius</a></li>
+          <li><a href="/rankine-to-fahrenheit">rankine to fahrenheit</a></li>
+          <li><a href="/rankine-to-kelvin">rankine to kelvin</a></li>
+          <li><a href="/reaction">reaction time test</a></li>
+          <li><a href="/regex">regex tester</a></li>
+          <li><a href="/remove-bg">remove background</a></li>
+          <li><a href="/resize">resize image</a></li>
+          <li><a href="/rgb-to-cmyk">rgb to cmyk converter</a></li>
+          <li><a href="/rgb-to-hex">rgb to hex converter</a></li>
+          <li><a href="/rgb-to-hsl">rgb to hsl converter</a></li>
+          <li><a href="/rgb-to-hsv">rgb to hsv converter</a></li>
+          <li><a href="/calculators?calc=Right+triangle+hypotenuse">Right triangle hypotenuse</a></li>
+          <li><a href="/dice">roll dice or flip a coin</a></li>
+          <li><a href="/roman">roman numerals</a></li>
+          <li><a href="/rot47">rot47</a></li>
+          <li><a href="/rotate-pdf">rotate pdf</a></li>
+          <li><a href="/rpm-to-hz">rpm to hz</a></li>
+          <li><a href="/rsa-key-generator">rsa key pair generator</a></li>
+          <li><a href="/rtf-to-text">rtf to plain text</a></li>
+          <li><a href="/rw2-to-jpg">rw2 to jpg</a></li>
+          <li><a href="/scientific-notation">scientific notation converter</a></li>
+          <li><a href="/screen-recorder">screen recorder</a></li>
+          <li><a href="/seconds-to-minutes">seconds to minutes</a></li>
+          <li><a href="/sha1-checksum">sha-1 checksum</a></li>
+          <li><a href="/sha1-generator">sha-1 hash generator</a></li>
+          <li><a href="/sha256-checksum">sha-256 file checksum</a></li>
+          <li><a href="/sha256-generator">sha-256 hash generator</a></li>
+          <li><a href="/sha384-generator">sha-384 hash generator</a></li>
+          <li><a href="/sha512-checksum">sha-512 checksum</a></li>
+          <li><a href="/sha512-generator">sha-512 hash generator</a></li>
+          <li><a href="/plist-to-json">shortcut/plist to json</a></li>
+          <li><a href="/sign-pdf">sign pdf</a></li>
+          <li><a href="/sort-lines">sort lines a to z</a></li>
+          <li><a href="/sound-converter">sound converter</a></li>
+          <li><a href="/specific-heat-capacity-converter">specific heat capacity converter</a></li>
+          <li><a href="/specific-volume-converter">specific volume converter</a></li>
+          <li><a href="/speed-converter">speed converter</a></li>
+          <li><a href="/calculators?calc=Sphere+volume">Sphere volume</a></li>
+          <li><a href="/wheel">spin the wheel</a></li>
+          <li><a href="/split-pdf">split pdf and edit pages</a></li>
+          <li><a href="/sq-ft-to-acres">sq ft to acres</a></li>
+          <li><a href="/sq-ft-to-sq-m">sq ft to sq m</a></li>
+          <li><a href="/sq-m-to-sq-ft">sq m to sq ft</a></li>
+          <li><a href="/srt-to-vtt">srt to vtt</a></li>
+          <li><a href="/stl-to-3mf">stl to 3mf</a></li>
+          <li><a href="/stl-to-obj">stl to obj</a></li>
+          <li><a href="/stone-to-kg">stone to kg</a></li>
+          <li><a href="/srt-to-text">subtitles to plain text</a></li>
+          <li><a href="/surface-charge-density-converter">surface charge density converter</a></li>
+          <li><a href="/surface-current-density-converter">surface current density converter</a></li>
+          <li><a href="/surface-tension-converter">surface tension converter</a></li>
+          <li><a href="/svg-to-jpg">svg to jpg</a></li>
+          <li><a href="/svg-to-png">svg to png</a></li>
+          <li><a href="/tb-to-gb">tb to gb</a></li>
+          <li><a href="/temperature-converter">temperature converter</a></li>
+          <li><a href="/temperature-interval-converter">temperature interval converter</a></li>
+          <li><a href="/text-to-morse">text file to morse code</a></li>
+          <li><a href="/binary">text to binary</a></li>
+          <li><a href="/text-to-binary">text to binary</a></li>
+          <li><a href="/text-to-braille">text to braille</a></li>
+          <li><a href="/text-to-decimal">text to decimal (ascii codes)</a></li>
+          <li><a href="/nato-alphabet">text to nato alphabet</a></li>
+          <li><a href="/text-to-octal">text to octal</a></li>
+          <li><a href="/rot13">text to rot13</a></li>
+          <li><a href="/text-to-unicode">text to unicode code points</a></li>
+          <li><a href="/word-frequency">text to word frequency csv</a></li>
+          <li><a href="/upside-down-text">text upside down</a></li>
+          <li><a href="/tga-to-jpg">tga to jpg</a></li>
+          <li><a href="/tga-to-png">tga to png</a></li>
+          <li><a href="/thermal-conductivity-converter">thermal conductivity converter</a></li>
+          <li><a href="/thermal-expansion-converter">thermal expansion converter</a></li>
+          <li><a href="/thermal-resistance-converter">thermal resistance converter</a></li>
+          <li><a href="/thz-to-hz">thz to hz</a></li>
+          <li><a href="/tiff-to-jpg">tiff to jpg</a></li>
+          <li><a href="/tiff-to-png">tiff to png</a></li>
+          <li><a href="/time-converter">time converter</a></li>
+          <li><a href="/timer">timer and stopwatch</a></li>
+          <li><a href="/tip">tip calculator</a></li>
+          <li><a href="/file-to-data-uri">to data uri</a></li>
+          <li><a href="/gzip-file">to gzip (.gz)</a></li>
+          <li><a href="/tone">tone generator</a></li>
+          <li><a href="/tons-to-btu-hr">tons to btu/hr</a></li>
+          <li><a href="/tons-to-kw">tons to kw</a></li>
+          <li><a href="/torque-converter">torque converter</a></li>
+          <li><a href="/transcribe">transcription &amp; subtitles</a></li>
+          <li><a href="/calculators?calc=Triangle+area">Triangle area</a></li>
+          <li><a href="/trim-video">trim video</a></li>
+          <li><a href="/tsv-to-csv">tsv to csv</a></li>
+          <li><a href="/tumbler">tumbler template maker</a></li>
+          <li><a href="/twos-complement">two&#x27;s complement converter</a></li>
+          <li><a href="/txt-to-pdf">txt to pdf</a></li>
+          <li><a href="/txt-to-word">txt to word</a></li>
+          <li><a href="/typing">typing speed test</a></li>
+          <li><a href="/typography-converter">typography converter</a></li>
+          <li><a href="/units">unit converter</a></li>
+          <li><a href="/timestamp">unix timestamp converter</a></li>
+          <li><a href="/url-encode">url encode and decode</a></li>
+          <li><a href="/url-parser">url parser</a></li>
+          <li><a href="/url-to-webloc">url shortcut to webloc</a></li>
+          <li><a href="/uuid-generator">uuid generator</a></li>
+          <li><a href="/va-to-watts">va to watts calculator</a></li>
+          <li><a href="/vcf-to-csv">vcf to csv</a></li>
+          <li><a href="/video">video and audio converter</a></li>
+          <li><a href="/mp3">video and audio to mp3</a></li>
+          <li><a href="/video-clipper">video clipper</a></li>
+          <li><a href="/gif">video to gif</a></li>
+          <li><a href="/vigenere-cipher">vigenère cipher</a></li>
+          <li><a href="/viscosity-dynamic-converter">viscosity - dynamic converter</a></li>
+          <li><a href="/viscosity-kinematic-converter">viscosity - kinematic converter</a></li>
+          <li><a href="/vob-to-mp4">vob to mp4</a></li>
+          <li><a href="/voltage-converter">voltage converter</a></li>
+          <li><a href="/volts-to-amps">volts to amps calculator</a></li>
+          <li><a href="/volts-to-gigavolts">volts to gigavolts</a></li>
+          <li><a href="/volts-to-kilovolts">volts to kilovolts</a></li>
+          <li><a href="/volts-to-megavolts">volts to megavolts</a></li>
+          <li><a href="/volts-to-microvolts">volts to microvolts</a></li>
+          <li><a href="/volts-to-millivolts">volts to millivolts</a></li>
+          <li><a href="/volts-to-watts">volts to watts calculator</a></li>
+          <li><a href="/volume-dry-converter">volume - dry converter</a></li>
+          <li><a href="/volume-lumber-converter">volume - lumber converter</a></li>
+          <li><a href="/volume-charge-density-converter">volume charge density converter</a></li>
+          <li><a href="/volume-converter">volume converter</a></li>
+          <li><a href="/vtt-to-srt">vtt to srt</a></li>
+          <li><a href="/watts-to-amps">watts to amps calculator</a></li>
+          <li><a href="/watts-to-btu-hr">watts to btu/hr</a></li>
+          <li><a href="/watts-to-dbm">watts to dbm</a></li>
+          <li><a href="/watts-to-gw">watts to gw</a></li>
+          <li><a href="/watts-to-hp">watts to hp</a></li>
+          <li><a href="/watts-to-kw">watts to kw</a></li>
+          <li><a href="/watts-to-kwh">watts to kwh calculator</a></li>
+          <li><a href="/watts-to-lumens">watts to lumens converter</a></li>
+          <li><a href="/watts-to-megawatts">watts to mw</a></li>
+          <li><a href="/watts-to-mw">watts to mw</a></li>
+          <li><a href="/watts-to-va">watts to va calculator</a></li>
+          <li><a href="/watts-to-volts">watts to volts calculator</a></li>
+          <li><a href="/wav-to-aiff">wav to aiff</a></li>
+          <li><a href="/wav-to-flac">wav to flac</a></li>
+          <li><a href="/wav-to-mp3">wav to mp3</a></li>
+          <li><a href="/wav-to-ogg">wav to ogg</a></li>
+          <li><a href="/read">web page to text</a></li>
+          <li><a href="/webcam-test">webcam test</a></li>
+          <li><a href="/webm-to-mp4">webm to mp4</a></li>
+          <li><a href="/webp-to-jpg">webp to jpg</a></li>
+          <li><a href="/webp-to-png">webp to png</a></li>
+          <li><a href="/weeks-to-days">weeks to days</a></li>
+          <li><a href="/weight-converter">weight converter</a></li>
+          <li><a href="/extension">Wezzet Extension: Help and Support</a></li>
+          <li><a href="/plugin">wezzet for claude and chatgpt</a></li>
+          <li><a href="/ai">wezzetai: ask for any tool</a></li>
+          <li><a href="/wh-to-kwh">wh to kwh</a></li>
+          <li><a href="/wh-to-mah">wh to mah converter</a></li>
+          <li><a href="/wma-to-mp3">wma to mp3</a></li>
+          <li><a href="/wmv-to-mp4">wmv to mp4</a></li>
+          <li><a href="/words">word counter</a></li>
+          <li><a href="/x3f-to-jpg">x3f to jpg</a></li>
+          <li><a href="/xml-to-json">xml to json</a></li>
+          <li><a href="/xor-cipher">xor cipher</a></li>
+          <li><a href="/yards-to-meters">yards to meters</a></li>
+          <li><a href="/years-to-days">years to days</a></li>
+          <li><a href="/zip">zip and unzip</a></li>
+          <li><a href="/uc-to-coulombs">μc to coulombs</a></li>
+          <!-- tool-catalog:end -->
+        </ul>
       </section>
       <section class="tool-section" hidden id="agents">
         <div class="section-heading">
@@ -350,54 +882,7 @@
           >
         </div>
       </section>
-      <section class="tool-section" hidden id="utilities">
-        <div class="section-heading">
-          <div>
-            <h2>Everyday tools</h2>
-            <p>The small things, sorted.</p>
-          </div>
-          <span class="section-count">10 tools & collections</span>
-        </div>
-        <div class="tool-grid"><a class="tool-card" href="/image-editor"><span class="tool-icon">EDIT</span><span class="card-copy"><strong>Image editor</strong><span>Crop, resize, rotate and adjust images</span></span><span class="card-arrow" aria-hidden="true">→</span></a><a class="tool-card" href="/video-clipper"><span class="tool-icon">CLIP</span><span class="card-copy"><strong>Video clipper</strong><span>Trim video and export MP4</span></span><span class="card-arrow" aria-hidden="true">→</span></a><a class="tool-card" href="/noise-remover"><span class="tool-icon">AUDIO</span><span class="card-copy"><strong>Audio noise remover</strong><span>Reduce steady hiss and background noise</span></span><span class="card-arrow" aria-hidden="true">→</span></a><a class="tool-card" href="/calculators"><span class="tool-icon">CALC</span><span class="card-copy"><strong>Everyday calculators</strong><span>12 original math and physics calculators</span></span><span class="card-arrow" aria-hidden="true">→</span></a>
-          <a class="tool-card" href="/words"
-            ><span class="tool-icon">TEXT</span
-            ><span class="card-copy"
-              ><strong>Word counter</strong
-              ><span>Count words and characters</span></span
-            ><span class="card-arrow" aria-hidden="true">→</span></a
-          ><a class="tool-card" href="/qr"
-            ><span class="tool-icon">QR</span
-            ><span class="card-copy"
-              ><strong>QR generator</strong
-              ><span>Turn a link into a QR code</span></span
-            ><span class="card-arrow" aria-hidden="true">→</span></a
-          ><a class="tool-card" href="/calc"
-            ><span class="tool-icon">CALC</span
-            ><span class="card-copy"
-              ><strong>Calculator</strong
-              ><span>Work through everyday calculations</span></span
-            ><span class="card-arrow" aria-hidden="true">→</span></a
-          ><a class="tool-card" href="/compress"
-            ><span class="tool-icon">IMG</span
-            ><span class="card-copy"
-              ><strong>Image compressor</strong
-              ><span>Get your image down to size</span></span
-            ><span class="card-arrow" aria-hidden="true">→</span></a
-          ><a class="tool-card" href="/remove-bg"
-            ><span class="tool-icon">CUT</span
-            ><span class="card-copy"
-              ><strong>Remove background</strong
-              ><span>Cut out the subject of an image</span></span
-            ><span class="card-arrow" aria-hidden="true">→</span></a
-          ><a class="tool-card" href="/timer"
-            ><span class="tool-icon">TIME</span
-            ><span class="card-copy"
-              ><strong>Timer & stopwatch</strong
-              ><span>Keep track of your time</span></span
-            ><span class="card-arrow" aria-hidden="true">→</span></a
-          >
-        </div>
-      </section>
+
       <section class="home-connect" aria-label="Stay connected">
         <div>
           <h2>Stay connected</h2>
@@ -496,8 +981,9 @@
     </section>
     <script src="/assets/home.js?v=tools-26" defer></script>
     <script src="/assets/account.js?v=2" defer></script>
+    <script src="/assets/home-catalog.js?v=1" defer></script>
     <script src="/assets/home-stats.js?v=1" defer></script>
-    <script src="/assets/dashboard.js?v=3" defer></script>
+    <script src="/assets/dashboard.js?v=4" defer></script>
     <script src="/assets/theme.js?v=4" defer></script>
   </body>
 </html>

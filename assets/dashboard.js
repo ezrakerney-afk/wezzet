@@ -74,7 +74,9 @@
   });
   function selectSection() {
     const requested = location.hash.slice(1) || "overview";
-    const id = ["converters", "ai-tools", "agents", "utilities"].includes(requested) ? requested : "overview";
+    const legacyToolTabs = ["converters", "ai-tools", "utilities"];
+    const id = legacyToolTabs.includes(requested) ? "tools"
+      : ["tools", "agents"].includes(requested) ? requested : "overview";
     document.querySelectorAll(".tool-section").forEach(section => {
       section.hidden = section.id !== id;
     });

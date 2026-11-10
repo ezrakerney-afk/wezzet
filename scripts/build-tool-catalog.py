@@ -1,5 +1,7 @@
 """Rebuild the homepage inventory from search, public tool pages and calculators."""
 import json, re
+from html import escape
+from urllib.parse import urlencode
 from pathlib import Path
 root = Path(__file__).resolve().parents[1]
 source = (root / 'assets/home.js').read_text()
@@ -19,5 +21,18 @@ catalog = {'count': count, 'pages': list(entries.values()), 'calculatorFeatures'
            'countingNote': 'Every public tool and feature destination, with the 12 everyday calculators counted individually. Repeated links, account and information pages are excluded.'}
 (root / 'assets/tool-catalog.json').write_text(json.dumps(catalog, ensure_ascii=False, indent=2) + '\n')
 index = root / 'index.html'
-index.write_text(re.sub(r'(<strong id="feature-count">).*?(</strong>)', lambda m: m[1] + str(count) + m[2], index.read_text()))
+html = re.sub(r'(<strong id="feature-count">).*?(</strong>)', lambda m: m[1] + str(count) + m[2], index.read_text())
+links = [(entry['name'], entry['url']) for entry in entries.values() if entry['url'] != '/calculators']
+links.extend((name, '/calculators?' + urlencode({'calc': name})) for name in calculators)
+items = '\n'.join(
+    f'          <li><a href="{escape(url, quote=True)}">{escape(name)}</a></li>'
+    for name, url in sorted(links, key=lambda link: (link[0].casefold(), link[1]))
+)
+html = re.sub(
+    r'(<!-- tool-catalog:start -->).*?(<!-- tool-catalog:end -->)',
+    lambda match: match[1] + '\n' + items + '\n          ' + match[2],
+    html,
+    flags=re.S,
+)
+index.write_text(html)
 print(f'{count} tools and features across {len(entries)} destinations')
