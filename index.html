@@ -87,7 +87,7 @@
       }
     </style>
     <link rel="stylesheet" href="/assets/site.css?v=7" />
-    <link rel="stylesheet" href="/assets/dashboard.css?v=3" />
+    <link rel="stylesheet" href="/assets/dashboard.css?v=4" />
   </head>
   <body class="dashboard">
     <a class="skip-link" href="#main">Skip to tools</a>
@@ -212,9 +212,25 @@
             <span>Explore AI Comms →</span></a
           >
         </div>
+        <div class="overview-stats" id="overview-stats">
+          <section class="feature-summary" aria-labelledby="feature-heading">
+            <p class="eyebrow">ONE WORKSPACE. SO MANY POSSIBILITIES.</p>
+            <strong id="feature-count">616</strong>
+            <h2 id="feature-heading">tools &amp; features</h2>
+            <p>From quick conversions to AI and agent collaboration. Your whole toolkit, counted.</p>
+            <button class="catalog-search" type="button" onclick="document.getElementById('q').focus()">Find your next tool <span aria-hidden="true">→</span></button>
+            <details><summary>What’s included?</summary><p>Every public tool and feature destination, with the 12 everyday calculators counted individually. Repeated links, account and information pages are excluded.</p></details>
+          </section>
+          <section class="popular-summary" aria-labelledby="popular-heading">
+            <div class="section-heading"><div><p class="eyebrow">COMMUNITY FAVORITES</p><h2 id="popular-heading">Top 5 most used</h2></div><span class="ranking-badge">LIVE</span></div>
+            <p class="ranking-note">Ranked by tool page visits since tracking began.</p>
+            <ol id="popular-tools" class="popular-tools" aria-label="Most visited tools"></ol>
+            <p id="popular-status" role="status">Loading the latest rankings…</p>
+          </section>
+        </div>
         <p class="recent" id="recent" hidden></p>
       </section>
-      <section class="tool-section" id="converters">
+      <section class="tool-section" hidden id="converters">
         <div class="section-heading">
           <div>
             <h2>Converters</h2>
@@ -274,7 +290,7 @@
           >
         </div>
       </section>
-      <section class="tool-section" id="ai-tools">
+      <section class="tool-section" hidden id="ai-tools">
         <div class="section-heading">
           <div>
             <h2>AI tools</h2>
@@ -310,7 +326,7 @@
           >
         </div>
       </section>
-      <section class="tool-section" id="agents">
+      <section class="tool-section" hidden id="agents">
         <div class="section-heading">
           <div>
             <h2>AI agents</h2>
@@ -334,7 +350,7 @@
           >
         </div>
       </section>
-      <section class="tool-section" id="utilities">
+      <section class="tool-section" hidden id="utilities">
         <div class="section-heading">
           <div>
             <h2>Everyday tools</h2>
@@ -480,7 +496,8 @@
     </section>
     <script src="/assets/home.js?v=tools-26" defer></script>
     <script src="/assets/account.js?v=2" defer></script>
-    <script src="/assets/dashboard.js?v=2" defer></script>
+    <script src="/assets/home-stats.js?v=1" defer></script>
+    <script src="/assets/dashboard.js?v=3" defer></script>
     <script src="/assets/theme.js?v=4" defer></script>
   </body>
 </html>

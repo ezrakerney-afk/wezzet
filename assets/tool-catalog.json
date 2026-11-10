@@ -1,0 +1,2476 @@
+{
+  "count": 616,
+  "pages": [
+    {
+      "url": "/image-editor",
+      "name": "image editor"
+    },
+    {
+      "url": "/video-clipper",
+      "name": "video clipper"
+    },
+    {
+      "url": "/noise-remover",
+      "name": "audio noise remover"
+    },
+    {
+      "url": "/calculators",
+      "name": "everyday calculators"
+    },
+    {
+      "url": "/transcribe",
+      "name": "transcription & subtitles"
+    },
+    {
+      "url": "/study-helper",
+      "name": "ai quiz & study helper"
+    },
+    {
+      "url": "/ai-rewriter",
+      "name": "ai writing & code rewriter"
+    },
+    {
+      "url": "/pdf-to-word",
+      "name": "pdf to editable word"
+    },
+    {
+      "url": "/3d",
+      "name": "3d file converter"
+    },
+    {
+      "url": "/3gp-to-mp4",
+      "name": "3gp to mp4"
+    },
+    {
+      "url": "/3mf-to-stl",
+      "name": "3mf to stl"
+    },
+    {
+      "url": "/uc-to-coulombs",
+      "name": "μc to coulombs"
+    },
+    {
+      "url": "/ac3-to-mp3",
+      "name": "ac3 to mp3"
+    },
+    {
+      "url": "/acceleration-converter",
+      "name": "acceleration converter"
+    },
+    {
+      "url": "/acres-to-hectares",
+      "name": "acres to hectares"
+    },
+    {
+      "url": "/acres-to-sq-ft",
+      "name": "acres to sq ft"
+    },
+    {
+      "url": "/aes-encryption",
+      "name": "aes encryption and decryption"
+    },
+    {
+      "url": "/affine-cipher",
+      "name": "affine cipher"
+    },
+    {
+      "url": "/age",
+      "name": "age calculator"
+    },
+    {
+      "url": "/ah-to-coulombs",
+      "name": "ah to coulombs"
+    },
+    {
+      "url": "/ah-to-mah",
+      "name": "ah to mah"
+    },
+    {
+      "url": "/aiff-to-mp3",
+      "name": "aiff to mp3"
+    },
+    {
+      "url": "/amps-to-kva",
+      "name": "amps to kva calculator"
+    },
+    {
+      "url": "/amps-to-kw",
+      "name": "amps to kw calculator"
+    },
+    {
+      "url": "/amps-to-ma",
+      "name": "amps to ma"
+    },
+    {
+      "url": "/amps-to-volts",
+      "name": "amps to volts calculator"
+    },
+    {
+      "url": "/amps-to-watts",
+      "name": "amps to watts calculator"
+    },
+    {
+      "url": "/amr-to-mp3",
+      "name": "amr to mp3"
+    },
+    {
+      "url": "/angle-converter",
+      "name": "angle converter"
+    },
+    {
+      "url": "/angular-acceleration-converter",
+      "name": "angular acceleration converter"
+    },
+    {
+      "url": "/angular-velocity-converter",
+      "name": "angular velocity converter"
+    },
+    {
+      "url": "/shortcut-viewer",
+      "name": "apple shortcut file viewer"
+    },
+    {
+      "url": "/area-converter",
+      "name": "area converter"
+    },
+    {
+      "url": "/arw-to-jpg",
+      "name": "arw to jpg"
+    },
+    {
+      "url": "/ascii-to-binary",
+      "name": "ascii text to binary"
+    },
+    {
+      "url": "/ascii-to-hex",
+      "name": "ascii text to hex"
+    },
+    {
+      "url": "/ascii-converter",
+      "name": "ascii, hex, binary, decimal and base64 converter"
+    },
+    {
+      "url": "/atbash-cipher",
+      "name": "atbash cipher"
+    },
+    {
+      "url": "/atm-to-psi",
+      "name": "atm to psi"
+    },
+    {
+      "url": "/avi-to-mp4",
+      "name": "avi to mp4"
+    },
+    {
+      "url": "/avif-to-jpg",
+      "name": "avif to jpg"
+    },
+    {
+      "url": "/avif-to-png",
+      "name": "avif to png"
+    },
+    {
+      "url": "/bar-to-kpa",
+      "name": "bar to kpa"
+    },
+    {
+      "url": "/bar-to-psi",
+      "name": "bar to psi"
+    },
+    {
+      "url": "/base32",
+      "name": "base32 encode and decode"
+    },
+    {
+      "url": "/base58",
+      "name": "base58 encode and decode"
+    },
+    {
+      "url": "/base64-encode",
+      "name": "base64 encode and decode"
+    },
+    {
+      "url": "/bcd-converter",
+      "name": "bcd converter"
+    },
+    {
+      "url": "/bhp-to-kw",
+      "name": "bhp to kw"
+    },
+    {
+      "url": "/binary-to-decimal",
+      "name": "binary to decimal converter"
+    },
+    {
+      "url": "/binary-to-hex",
+      "name": "binary to hex converter"
+    },
+    {
+      "url": "/binary-to-octal",
+      "name": "binary to octal converter"
+    },
+    {
+      "url": "/binary-to-text",
+      "name": "binary to text"
+    },
+    {
+      "url": "/bits-to-bytes",
+      "name": "bits to bytes"
+    },
+    {
+      "url": "/bmi",
+      "name": "bmi calculator"
+    },
+    {
+      "url": "/calories",
+      "name": "calorie calculator"
+    },
+    {
+      "url": "/bmp-to-jpg",
+      "name": "bmp to jpg"
+    },
+    {
+      "url": "/btu-to-joules",
+      "name": "btu to joules"
+    },
+    {
+      "url": "/btu-to-kj",
+      "name": "btu to kj"
+    },
+    {
+      "url": "/btu-to-kwh",
+      "name": "btu to kwh"
+    },
+    {
+      "url": "/btu-hr-to-kw",
+      "name": "btu/hr to kw"
+    },
+    {
+      "url": "/btu-hr-to-tons",
+      "name": "btu/hr to tons"
+    },
+    {
+      "url": "/btu-hr-to-watts",
+      "name": "btu/hr to watts"
+    },
+    {
+      "url": "/bytes-to-bits",
+      "name": "bytes to bits"
+    },
+    {
+      "url": "/caesar-cipher",
+      "name": "caesar cipher"
+    },
+    {
+      "url": "/calc",
+      "name": "calculator"
+    },
+    {
+      "url": "/calories-to-joules",
+      "name": "calories to joules"
+    },
+    {
+      "url": "/calories-to-kcal",
+      "name": "calories to kcal"
+    },
+    {
+      "url": "/calories-to-kj",
+      "name": "calories to kj"
+    },
+    {
+      "url": "/capacitance-converter",
+      "name": "capacitance converter"
+    },
+    {
+      "url": "/case",
+      "name": "case converter"
+    },
+    {
+      "url": "/celsius-to-fahrenheit",
+      "name": "celsius to fahrenheit"
+    },
+    {
+      "url": "/celsius-to-kelvin",
+      "name": "celsius to kelvin"
+    },
+    {
+      "url": "/celsius-to-rankine",
+      "name": "celsius to rankine"
+    },
+    {
+      "url": "/cps",
+      "name": "click speed test"
+    },
+    {
+      "url": "/cm-to-feet",
+      "name": "cm to feet"
+    },
+    {
+      "url": "/cm-to-inches",
+      "name": "cm to inches"
+    },
+    {
+      "url": "/cm-to-mm",
+      "name": "cm to mm"
+    },
+    {
+      "url": "/cmyk-to-rgb",
+      "name": "cmyk to rgb converter"
+    },
+    {
+      "url": "/color-converter",
+      "name": "color converter"
+    },
+    {
+      "url": "/color",
+      "name": "color picker"
+    },
+    {
+      "url": "/compress",
+      "name": "compress image to a size"
+    },
+    {
+      "url": "/compress-pdf",
+      "name": "compress pdf"
+    },
+    {
+      "url": "/compress-video",
+      "name": "compress video"
+    },
+    {
+      "url": "/concentration-molar-converter",
+      "name": "concentration - molar converter"
+    },
+    {
+      "url": "/concentration-solution-converter",
+      "name": "concentration - solution converter"
+    },
+    {
+      "url": "/concentration-converter",
+      "name": "concentration converter"
+    },
+    {
+      "url": "/convert",
+      "name": "convert any file"
+    },
+    {
+      "url": "/file-to-base64",
+      "name": "convert to base64"
+    },
+    {
+      "url": "/coulombs-to-uc",
+      "name": "coulombs to μc"
+    },
+    {
+      "url": "/coulombs-to-ah",
+      "name": "coulombs to ah"
+    },
+    {
+      "url": "/coulombs-to-electron-charge",
+      "name": "coulombs to electron charges"
+    },
+    {
+      "url": "/coulombs-to-mc",
+      "name": "coulombs to mc"
+    },
+    {
+      "url": "/coulombs-to-nc",
+      "name": "coulombs to nc"
+    },
+    {
+      "url": "/coulombs-to-pc",
+      "name": "coulombs to pc"
+    },
+    {
+      "url": "/countdown",
+      "name": "countdown"
+    },
+    {
+      "url": "/cr2-to-jpg",
+      "name": "cr2 to jpg"
+    },
+    {
+      "url": "/cr3-to-jpg",
+      "name": "cr3 to jpg"
+    },
+    {
+      "url": "/crc32",
+      "name": "crc32 checksum"
+    },
+    {
+      "url": "/crop",
+      "name": "crop image"
+    },
+    {
+      "url": "/crypto",
+      "name": "cryptography tools"
+    },
+    {
+      "url": "/csv-to-html-table",
+      "name": "csv to html table"
+    },
+    {
+      "url": "/csv-to-json",
+      "name": "csv to json"
+    },
+    {
+      "url": "/csv-to-markdown-table",
+      "name": "csv to markdown table"
+    },
+    {
+      "url": "/csv-to-sql",
+      "name": "csv to sql inserts"
+    },
+    {
+      "url": "/csv-to-tsv",
+      "name": "csv to tsv"
+    },
+    {
+      "url": "/csv-to-vcf",
+      "name": "csv to vcard contacts"
+    },
+    {
+      "url": "/csv-to-xml",
+      "name": "csv to xml"
+    },
+    {
+      "url": "/csv-to-yaml",
+      "name": "csv to yaml"
+    },
+    {
+      "url": "/data",
+      "name": "csv, json, excel and yaml converter"
+    },
+    {
+      "url": "/cups-to-ml",
+      "name": "cups to ml"
+    },
+    {
+      "url": "/currency",
+      "name": "currency converter"
+    },
+    {
+      "url": "/current-converter",
+      "name": "current converter"
+    },
+    {
+      "url": "/data-rate-converter",
+      "name": "data rate converter"
+    },
+    {
+      "url": "/data-storage-converter",
+      "name": "data storage converter"
+    },
+    {
+      "url": "/days-to-hours",
+      "name": "days to hours"
+    },
+    {
+      "url": "/dbm-to-mw",
+      "name": "dbm to mw"
+    },
+    {
+      "url": "/dbm-to-watts",
+      "name": "dbm to watts"
+    },
+    {
+      "url": "/db-converter",
+      "name": "decibel (db) converter"
+    },
+    {
+      "url": "/decimal-to-binary",
+      "name": "decimal to binary converter"
+    },
+    {
+      "url": "/decimal-to-fraction",
+      "name": "decimal to fraction converter"
+    },
+    {
+      "url": "/decimal-to-hex",
+      "name": "decimal to hex converter"
+    },
+    {
+      "url": "/decimal-to-octal",
+      "name": "decimal to octal converter"
+    },
+    {
+      "url": "/decimal-to-percent",
+      "name": "decimal to percent converter"
+    },
+    {
+      "url": "/degrees-to-dms",
+      "name": "degrees to degrees, minutes, seconds"
+    },
+    {
+      "url": "/degrees-to-radians",
+      "name": "degrees to radians"
+    },
+    {
+      "url": "/dms-to-degrees",
+      "name": "degrees, minutes, seconds to decimal degrees"
+    },
+    {
+      "url": "/density-converter",
+      "name": "density converter"
+    },
+    {
+      "url": "/diff",
+      "name": "diff checker: compare text"
+    },
+    {
+      "url": "/dng-to-jpg",
+      "name": "dng to jpg"
+    },
+    {
+      "url": "/domains",
+      "name": "domain name checker"
+    },
+    {
+      "url": "/dst-to-jef",
+      "name": "dst to jef"
+    },
+    {
+      "url": "/dst-to-pes",
+      "name": "dst to pes"
+    },
+    {
+      "url": "/electric-charge-converter",
+      "name": "electric charge converter"
+    },
+    {
+      "url": "/electric-conductance-converter",
+      "name": "electric conductance converter"
+    },
+    {
+      "url": "/electric-conductivity-converter",
+      "name": "electric conductivity converter"
+    },
+    {
+      "url": "/electric-field-strength-converter",
+      "name": "electric field strength converter"
+    },
+    {
+      "url": "/electric-resistance-converter",
+      "name": "electric resistance converter"
+    },
+    {
+      "url": "/electric-resistivity-converter",
+      "name": "electric resistivity converter"
+    },
+    {
+      "url": "/electron-charge-to-coulombs",
+      "name": "electron charges to coulombs"
+    },
+    {
+      "url": "/eml-to-text",
+      "name": "email to plain text"
+    },
+    {
+      "url": "/embroidery",
+      "name": "embroidery file converter"
+    },
+    {
+      "url": "/encryption-key-generator",
+      "name": "encryption key generator"
+    },
+    {
+      "url": "/energy-converter",
+      "name": "energy converter"
+    },
+    {
+      "url": "/ev-to-gev",
+      "name": "ev to gev"
+    },
+    {
+      "url": "/ev-to-joules",
+      "name": "ev to joules"
+    },
+    {
+      "url": "/ev-to-kev",
+      "name": "ev to kev"
+    },
+    {
+      "url": "/ev-to-mev",
+      "name": "ev to mev"
+    },
+    {
+      "url": "/fahrenheit-to-celsius",
+      "name": "fahrenheit to celsius"
+    },
+    {
+      "url": "/fahrenheit-to-kelvin",
+      "name": "fahrenheit to kelvin"
+    },
+    {
+      "url": "/fahrenheit-to-rankine",
+      "name": "fahrenheit to rankine"
+    },
+    {
+      "url": "/favicon",
+      "name": "favicon generator"
+    },
+    {
+      "url": "/rss-to-csv",
+      "name": "feed to csv"
+    },
+    {
+      "url": "/feet-to-cm",
+      "name": "feet to cm"
+    },
+    {
+      "url": "/feet-to-inches",
+      "name": "feet to inches"
+    },
+    {
+      "url": "/feet-to-meters",
+      "name": "feet to meters"
+    },
+    {
+      "url": "/feet-to-mm",
+      "name": "feet to mm"
+    },
+    {
+      "url": "/file-checksum",
+      "name": "file checksum (sha-256)"
+    },
+    {
+      "url": "/html-table-to-csv",
+      "name": "first table to csv"
+    },
+    {
+      "url": "/oz-to-ml",
+      "name": "fl oz to ml"
+    },
+    {
+      "url": "/flac-to-mp3",
+      "name": "flac to mp3"
+    },
+    {
+      "url": "/flac-to-wav",
+      "name": "flac to wav"
+    },
+    {
+      "url": "/flow-mass-converter",
+      "name": "flow - mass converter"
+    },
+    {
+      "url": "/flow-molar-converter",
+      "name": "flow - molar converter"
+    },
+    {
+      "url": "/flow-converter",
+      "name": "flow converter"
+    },
+    {
+      "url": "/flv-to-mp4",
+      "name": "flv to mp4"
+    },
+    {
+      "url": "/force-converter",
+      "name": "force converter"
+    },
+    {
+      "url": "/fraction-to-decimal",
+      "name": "fraction to decimal converter"
+    },
+    {
+      "url": "/fraction-to-percent",
+      "name": "fraction to percent converter"
+    },
+    {
+      "url": "/frequency-and-wavelength-converter",
+      "name": "frequency and wavelength converter"
+    },
+    {
+      "url": "/frequency-converter",
+      "name": "frequency converter"
+    },
+    {
+      "url": "/fuel-economy-converter",
+      "name": "fuel economy converter"
+    },
+    {
+      "url": "/fuel-efficiency-mass-converter",
+      "name": "fuel efficiency - mass converter"
+    },
+    {
+      "url": "/fuel-efficiency-volume-converter",
+      "name": "fuel efficiency - volume converter"
+    },
+    {
+      "url": "/gallons-to-liters",
+      "name": "gallons to liters"
+    },
+    {
+      "url": "/gb-to-gib",
+      "name": "gb to gib"
+    },
+    {
+      "url": "/gb-to-mb",
+      "name": "gb to mb"
+    },
+    {
+      "url": "/gb-to-tb",
+      "name": "gb to tb"
+    },
+    {
+      "url": "/gev-to-ev",
+      "name": "gev to ev"
+    },
+    {
+      "url": "/ghz-to-hz",
+      "name": "ghz to hz"
+    },
+    {
+      "url": "/ghz-to-khz",
+      "name": "ghz to khz"
+    },
+    {
+      "url": "/ghz-to-mhz",
+      "name": "ghz to mhz"
+    },
+    {
+      "url": "/gib-to-gb",
+      "name": "gib to gb"
+    },
+    {
+      "url": "/gif-to-png",
+      "name": "gif to png"
+    },
+    {
+      "url": "/gigavolts-to-volts",
+      "name": "gigavolts to volts"
+    },
+    {
+      "url": "/gpx-to-geojson",
+      "name": "gpx to geojson"
+    },
+    {
+      "url": "/gpx-to-kml",
+      "name": "gpx to kml"
+    },
+    {
+      "url": "/grams-to-kg",
+      "name": "grams to kg"
+    },
+    {
+      "url": "/grams-to-ounces",
+      "name": "grams to ounces"
+    },
+    {
+      "url": "/grams-to-pounds",
+      "name": "grams to pounds"
+    },
+    {
+      "url": "/gray-code",
+      "name": "gray code and bcd converter"
+    },
+    {
+      "url": "/gw-to-watts",
+      "name": "gw to watts"
+    },
+    {
+      "url": "/heat-density-converter",
+      "name": "heat density converter"
+    },
+    {
+      "url": "/heat-flux-density-converter",
+      "name": "heat flux density converter"
+    },
+    {
+      "url": "/heat-transfer-coefficient-converter",
+      "name": "heat transfer coefficient converter"
+    },
+    {
+      "url": "/hectares-to-acres",
+      "name": "hectares to acres"
+    },
+    {
+      "url": "/heic-to-jpg",
+      "name": "heic to jpg"
+    },
+    {
+      "url": "/heic-to-png",
+      "name": "heic to png"
+    },
+    {
+      "url": "/heic-to-webp",
+      "name": "heic to webp"
+    },
+    {
+      "url": "/hex-viewer",
+      "name": "hex dump"
+    },
+    {
+      "url": "/hex-to-binary",
+      "name": "hex to binary converter"
+    },
+    {
+      "url": "/hex-to-cmyk",
+      "name": "hex to cmyk converter"
+    },
+    {
+      "url": "/hex-to-decimal",
+      "name": "hex to decimal converter"
+    },
+    {
+      "url": "/hex-to-octal",
+      "name": "hex to octal converter"
+    },
+    {
+      "url": "/hex-to-rgb",
+      "name": "hex to rgb converter"
+    },
+    {
+      "url": "/hex-to-text",
+      "name": "hex to text"
+    },
+    {
+      "url": "/hmac-generator",
+      "name": "hmac generator"
+    },
+    {
+      "url": "/hours-to-days",
+      "name": "hours to days"
+    },
+    {
+      "url": "/hours-to-minutes",
+      "name": "hours to minutes"
+    },
+    {
+      "url": "/hp-to-kw",
+      "name": "hp to kw"
+    },
+    {
+      "url": "/hp-to-watts",
+      "name": "hp to watts"
+    },
+    {
+      "url": "/hsl-to-rgb",
+      "name": "hsl to rgb converter"
+    },
+    {
+      "url": "/hsv-to-rgb",
+      "name": "hsv to rgb converter"
+    },
+    {
+      "url": "/html-entities",
+      "name": "html entity encoder"
+    },
+    {
+      "url": "/html-to-markdown",
+      "name": "html to markdown"
+    },
+    {
+      "url": "/html-to-pdf",
+      "name": "html to pdf"
+    },
+    {
+      "url": "/html-to-text",
+      "name": "html to text"
+    },
+    {
+      "url": "/hz-to-ghz",
+      "name": "hz to ghz"
+    },
+    {
+      "url": "/hz-to-khz",
+      "name": "hz to khz"
+    },
+    {
+      "url": "/hz-to-mhz",
+      "name": "hz to mhz"
+    },
+    {
+      "url": "/hz-to-rad-s",
+      "name": "hz to rad/s"
+    },
+    {
+      "url": "/hz-to-rpm",
+      "name": "hz to rpm"
+    },
+    {
+      "url": "/hz-to-thz",
+      "name": "hz to thz"
+    },
+    {
+      "url": "/ics-to-csv",
+      "name": "ics calendar to csv"
+    },
+    {
+      "url": "/illumination-converter",
+      "name": "illumination converter"
+    },
+    {
+      "url": "/image",
+      "name": "image converter"
+    },
+    {
+      "url": "/image-resolution-converter",
+      "name": "image resolution converter"
+    },
+    {
+      "url": "/image-to-ascii",
+      "name": "image to ascii art"
+    },
+    {
+      "url": "/image-to-grayscale",
+      "name": "image to grayscale png"
+    },
+    {
+      "url": "/inches-to-cm",
+      "name": "inches to cm"
+    },
+    {
+      "url": "/inches-to-feet",
+      "name": "inches to feet"
+    },
+    {
+      "url": "/inches-to-meters",
+      "name": "inches to meters"
+    },
+    {
+      "url": "/inches-to-mm",
+      "name": "inches to mm"
+    },
+    {
+      "url": "/inductance-converter",
+      "name": "inductance converter"
+    },
+    {
+      "url": "/jef-to-pes",
+      "name": "jef to pes"
+    },
+    {
+      "url": "/joules-to-btu",
+      "name": "joules to btu"
+    },
+    {
+      "url": "/joules-to-calories",
+      "name": "joules to calories"
+    },
+    {
+      "url": "/joules-to-ev",
+      "name": "joules to ev"
+    },
+    {
+      "url": "/joules-to-kcal",
+      "name": "joules to kcal"
+    },
+    {
+      "url": "/joules-to-kj",
+      "name": "joules to kj"
+    },
+    {
+      "url": "/joules-to-kwh",
+      "name": "joules to kwh"
+    },
+    {
+      "url": "/jpg-to-pdf",
+      "name": "jpg to pdf"
+    },
+    {
+      "url": "/jpg-to-png",
+      "name": "jpg to png"
+    },
+    {
+      "url": "/jpg-to-webp",
+      "name": "jpg to webp"
+    },
+    {
+      "url": "/json",
+      "name": "json formatter"
+    },
+    {
+      "url": "/jsonl-to-json",
+      "name": "json lines to json"
+    },
+    {
+      "url": "/json-to-env",
+      "name": "json to .env"
+    },
+    {
+      "url": "/json-to-csv",
+      "name": "json to csv"
+    },
+    {
+      "url": "/json-to-typescript",
+      "name": "json to typescript type"
+    },
+    {
+      "url": "/json-to-xml",
+      "name": "json to xml"
+    },
+    {
+      "url": "/json-to-yaml",
+      "name": "json to yaml"
+    },
+    {
+      "url": "/jwt-decoder",
+      "name": "jwt decoder"
+    },
+    {
+      "url": "/kb-to-mb",
+      "name": "kb to mb"
+    },
+    {
+      "url": "/kcal-to-calories",
+      "name": "kcal to calories"
+    },
+    {
+      "url": "/kcal-to-joules",
+      "name": "kcal to joules"
+    },
+    {
+      "url": "/kcal-to-kj",
+      "name": "kcal to kj"
+    },
+    {
+      "url": "/kelvin-to-celsius",
+      "name": "kelvin to celsius"
+    },
+    {
+      "url": "/kelvin-to-fahrenheit",
+      "name": "kelvin to fahrenheit"
+    },
+    {
+      "url": "/kelvin-to-rankine",
+      "name": "kelvin to rankine"
+    },
+    {
+      "url": "/kev-to-ev",
+      "name": "kev to ev"
+    },
+    {
+      "url": "/kg-to-grams",
+      "name": "kg to grams"
+    },
+    {
+      "url": "/kg-to-lbs",
+      "name": "kg to lbs"
+    },
+    {
+      "url": "/kg-to-pounds",
+      "name": "kg to pounds"
+    },
+    {
+      "url": "/kg-to-stone",
+      "name": "kg to stone"
+    },
+    {
+      "url": "/khz-to-ghz",
+      "name": "khz to ghz"
+    },
+    {
+      "url": "/khz-to-hz",
+      "name": "khz to hz"
+    },
+    {
+      "url": "/khz-to-mhz",
+      "name": "khz to mhz"
+    },
+    {
+      "url": "/kilovolts-to-volts",
+      "name": "kilovolts to volts"
+    },
+    {
+      "url": "/kj-to-btu",
+      "name": "kj to btu"
+    },
+    {
+      "url": "/kj-to-calories",
+      "name": "kj to calories"
+    },
+    {
+      "url": "/kj-to-joules",
+      "name": "kj to joules"
+    },
+    {
+      "url": "/kj-to-kcal",
+      "name": "kj to kcal"
+    },
+    {
+      "url": "/km-to-miles",
+      "name": "km to miles"
+    },
+    {
+      "url": "/kmh-to-m-s",
+      "name": "km/h to m/s"
+    },
+    {
+      "url": "/kmh-to-mph",
+      "name": "km/h to mph"
+    },
+    {
+      "url": "/kml-to-csv",
+      "name": "kml to csv of points"
+    },
+    {
+      "url": "/kml-to-gpx",
+      "name": "kml to gpx"
+    },
+    {
+      "url": "/knots-to-mph",
+      "name": "knots to mph"
+    },
+    {
+      "url": "/kpa-to-psi",
+      "name": "kpa to psi"
+    },
+    {
+      "url": "/kva-to-amps",
+      "name": "kva to amps calculator"
+    },
+    {
+      "url": "/kva-to-kw",
+      "name": "kva to kw calculator"
+    },
+    {
+      "url": "/kw-to-amps",
+      "name": "kw to amps calculator"
+    },
+    {
+      "url": "/kw-to-bhp",
+      "name": "kw to bhp"
+    },
+    {
+      "url": "/kw-to-btu-hr",
+      "name": "kw to btu/hr"
+    },
+    {
+      "url": "/kw-to-hp",
+      "name": "kw to hp"
+    },
+    {
+      "url": "/kw-to-kva",
+      "name": "kw to kva calculator"
+    },
+    {
+      "url": "/kw-to-megawatts",
+      "name": "kw to mw"
+    },
+    {
+      "url": "/kw-to-mw",
+      "name": "kw to mw"
+    },
+    {
+      "url": "/kw-to-tons",
+      "name": "kw to tons"
+    },
+    {
+      "url": "/kw-to-watts",
+      "name": "kw to watts"
+    },
+    {
+      "url": "/kwh-to-btu",
+      "name": "kwh to btu"
+    },
+    {
+      "url": "/kwh-to-joules",
+      "name": "kwh to joules"
+    },
+    {
+      "url": "/kwh-to-wh",
+      "name": "kwh to wh"
+    },
+    {
+      "url": "/l-100km-to-mpg",
+      "name": "l/100 km to mpg"
+    },
+    {
+      "url": "/lbs-to-kg",
+      "name": "lbs to kg"
+    },
+    {
+      "url": "/length-converter",
+      "name": "length converter"
+    },
+    {
+      "url": "/linear-charge-density-converter",
+      "name": "linear charge density converter"
+    },
+    {
+      "url": "/linear-current-density-converter",
+      "name": "linear current density converter"
+    },
+    {
+      "url": "/extract-links",
+      "name": "links/bookmarks to csv"
+    },
+    {
+      "url": "/liters-to-cubic-feet",
+      "name": "liters to cubic feet"
+    },
+    {
+      "url": "/liters-to-gallons",
+      "name": "liters to gallons"
+    },
+    {
+      "url": "/loan",
+      "name": "loan calculator"
+    },
+    {
+      "url": "/lorem",
+      "name": "lorem ipsum generator"
+    },
+    {
+      "url": "/lumens-to-watts",
+      "name": "lumens to watts converter"
+    },
+    {
+      "url": "/luminance-converter",
+      "name": "luminance converter"
+    },
+    {
+      "url": "/luminous-intensity-converter",
+      "name": "luminous intensity converter"
+    },
+    {
+      "url": "/lux-to-lumens",
+      "name": "lux to lumens converter"
+    },
+    {
+      "url": "/m-s-to-kmh",
+      "name": "m/s to km/h"
+    },
+    {
+      "url": "/m2ts-to-mp4",
+      "name": "m2ts to mp4"
+    },
+    {
+      "url": "/m4a-to-mp3",
+      "name": "m4a to mp3"
+    },
+    {
+      "url": "/m4v-to-mp4",
+      "name": "m4v to mp4"
+    },
+    {
+      "url": "/ma-to-amps",
+      "name": "ma to amps"
+    },
+    {
+      "url": "/magnetic-field-strength-converter",
+      "name": "magnetic field strength converter"
+    },
+    {
+      "url": "/magnetic-flux-converter",
+      "name": "magnetic flux converter"
+    },
+    {
+      "url": "/magnetic-flux-density-converter",
+      "name": "magnetic flux density converter"
+    },
+    {
+      "url": "/magnetomotive-force-converter",
+      "name": "magnetomotive force converter"
+    },
+    {
+      "url": "/mah-to-ah",
+      "name": "mah to ah"
+    },
+    {
+      "url": "/mah-to-wh",
+      "name": "mah to wh converter"
+    },
+    {
+      "url": "/markdown-to-html",
+      "name": "markdown to html"
+    },
+    {
+      "url": "/markdown-to-pdf",
+      "name": "markdown to pdf"
+    },
+    {
+      "url": "/mass-flux-density-converter",
+      "name": "mass flux density converter"
+    },
+    {
+      "url": "/mb-to-gb",
+      "name": "mb to gb"
+    },
+    {
+      "url": "/mb-to-kb",
+      "name": "mb to kb"
+    },
+    {
+      "url": "/mc-to-coulombs",
+      "name": "mc to coulombs"
+    },
+    {
+      "url": "/md5-checksum",
+      "name": "md5 file checksum"
+    },
+    {
+      "url": "/md5-generator",
+      "name": "md5 hash generator"
+    },
+    {
+      "url": "/megavolts-to-volts",
+      "name": "megavolts to volts"
+    },
+    {
+      "url": "/pdf",
+      "name": "merge pdf and images to pdf"
+    },
+    {
+      "url": "/meters-to-feet",
+      "name": "meters to feet"
+    },
+    {
+      "url": "/meters-to-inches",
+      "name": "meters to inches"
+    },
+    {
+      "url": "/meters-to-yards",
+      "name": "meters to yards"
+    },
+    {
+      "url": "/mev-to-ev",
+      "name": "mev to ev"
+    },
+    {
+      "url": "/mg-to-grams",
+      "name": "mg to grams"
+    },
+    {
+      "url": "/mhz-to-ghz",
+      "name": "mhz to ghz"
+    },
+    {
+      "url": "/mhz-to-hz",
+      "name": "mhz to hz"
+    },
+    {
+      "url": "/mhz-to-khz",
+      "name": "mhz to khz"
+    },
+    {
+      "url": "/mic-test",
+      "name": "microphone test"
+    },
+    {
+      "url": "/microvolts-to-volts",
+      "name": "microvolts to volts"
+    },
+    {
+      "url": "/miles-to-km",
+      "name": "miles to km"
+    },
+    {
+      "url": "/millivolts-to-volts",
+      "name": "millivolts to volts"
+    },
+    {
+      "url": "/minify-css",
+      "name": "minify css"
+    },
+    {
+      "url": "/minify-json",
+      "name": "minify json"
+    },
+    {
+      "url": "/minutes-to-hours",
+      "name": "minutes to hours"
+    },
+    {
+      "url": "/minutes-to-seconds",
+      "name": "minutes to seconds"
+    },
+    {
+      "url": "/mkv-to-mp4",
+      "name": "mkv to mp4"
+    },
+    {
+      "url": "/ml-to-cups",
+      "name": "ml to cups"
+    },
+    {
+      "url": "/ml-to-oz",
+      "name": "ml to fl oz"
+    },
+    {
+      "url": "/mm-to-cm",
+      "name": "mm to cm"
+    },
+    {
+      "url": "/mm-to-feet",
+      "name": "mm to feet"
+    },
+    {
+      "url": "/mm-to-inches",
+      "name": "mm to inches"
+    },
+    {
+      "url": "/mmhg-to-kpa",
+      "name": "mmhg to kpa"
+    },
+    {
+      "url": "/moment-of-force-converter",
+      "name": "moment of force converter"
+    },
+    {
+      "url": "/moment-of-inertia-converter",
+      "name": "moment of inertia converter"
+    },
+    {
+      "url": "/morse",
+      "name": "morse code translator"
+    },
+    {
+      "url": "/mov-to-mp3",
+      "name": "mov to mp3"
+    },
+    {
+      "url": "/mov-to-mp4",
+      "name": "mov to mp4"
+    },
+    {
+      "url": "/mp3-to-aiff",
+      "name": "mp3 to aiff"
+    },
+    {
+      "url": "/mp3-to-m4a",
+      "name": "mp3 to m4a"
+    },
+    {
+      "url": "/mp3-to-m4r",
+      "name": "mp3 to m4r"
+    },
+    {
+      "url": "/mp3-to-opus",
+      "name": "mp3 to opus"
+    },
+    {
+      "url": "/mp3-to-wav",
+      "name": "mp3 to wav"
+    },
+    {
+      "url": "/mp4-to-3gp",
+      "name": "mp4 to 3gp"
+    },
+    {
+      "url": "/mp4-to-avi",
+      "name": "mp4 to avi"
+    },
+    {
+      "url": "/mp4-to-flv",
+      "name": "mp4 to flv"
+    },
+    {
+      "url": "/mp4-to-mkv",
+      "name": "mp4 to mkv"
+    },
+    {
+      "url": "/mp4-to-mov",
+      "name": "mp4 to mov"
+    },
+    {
+      "url": "/mp4-to-mp3",
+      "name": "mp4 to mp3"
+    },
+    {
+      "url": "/mp4-to-mpg",
+      "name": "mp4 to mpg"
+    },
+    {
+      "url": "/mp4-to-wav",
+      "name": "mp4 to wav"
+    },
+    {
+      "url": "/mp4-to-webm",
+      "name": "mp4 to webm"
+    },
+    {
+      "url": "/mp4-to-wmv",
+      "name": "mp4 to wmv"
+    },
+    {
+      "url": "/mpg-to-km-l",
+      "name": "mpg to km/l"
+    },
+    {
+      "url": "/mpg-to-l-100km",
+      "name": "mpg to l/100 km"
+    },
+    {
+      "url": "/mph-to-kmh",
+      "name": "mph to km/h"
+    },
+    {
+      "url": "/mph-to-knots",
+      "name": "mph to knots"
+    },
+    {
+      "url": "/mts-to-mp4",
+      "name": "mts to mp4"
+    },
+    {
+      "url": "/mw-to-dbm",
+      "name": "mw to dbm"
+    },
+    {
+      "url": "/megawatts-to-kw",
+      "name": "mw to kw"
+    },
+    {
+      "url": "/mw-to-kw",
+      "name": "mw to kw"
+    },
+    {
+      "url": "/megawatts-to-watts",
+      "name": "mw to watts"
+    },
+    {
+      "url": "/mw-to-watts",
+      "name": "mw to watts"
+    },
+    {
+      "url": "/nc-to-coulombs",
+      "name": "nc to coulombs"
+    },
+    {
+      "url": "/nef-to-jpg",
+      "name": "nef to jpg"
+    },
+    {
+      "url": "/notepad",
+      "name": "notepad"
+    },
+    {
+      "url": "/number",
+      "name": "number base converter"
+    },
+    {
+      "url": "/obj-to-3mf",
+      "name": "obj to 3mf"
+    },
+    {
+      "url": "/obj-to-stl",
+      "name": "obj to stl"
+    },
+    {
+      "url": "/octal-to-binary",
+      "name": "octal to binary converter"
+    },
+    {
+      "url": "/octal-to-decimal",
+      "name": "octal to decimal converter"
+    },
+    {
+      "url": "/octal-to-hex",
+      "name": "octal to hex converter"
+    },
+    {
+      "url": "/ogg-to-mp3",
+      "name": "ogg to mp3"
+    },
+    {
+      "url": "/ohms-law",
+      "name": "ohm's law calculator"
+    },
+    {
+      "url": "/opml-to-csv",
+      "name": "opml feeds to csv"
+    },
+    {
+      "url": "/opus-to-mp3",
+      "name": "opus to mp3"
+    },
+    {
+      "url": "/orf-to-jpg",
+      "name": "orf to jpg"
+    },
+    {
+      "url": "/ounces-to-grams",
+      "name": "ounces to grams"
+    },
+    {
+      "url": "/ounces-to-pounds",
+      "name": "ounces to pounds"
+    },
+    {
+      "url": "/password",
+      "name": "password generator"
+    },
+    {
+      "url": "/paste",
+      "name": "paste bin"
+    },
+    {
+      "url": "/pc-to-coulombs",
+      "name": "pc to coulombs"
+    },
+    {
+      "url": "/pdf-to-jpg",
+      "name": "pdf to jpg"
+    },
+    {
+      "url": "/pdf-to-text",
+      "name": "pdf to text"
+    },
+    {
+      "url": "/pef-to-jpg",
+      "name": "pef to jpg"
+    },
+    {
+      "url": "/percent-to-decimal",
+      "name": "percent to decimal converter"
+    },
+    {
+      "url": "/percent-to-fraction",
+      "name": "percent to fraction converter"
+    },
+    {
+      "url": "/percent-to-ppm",
+      "name": "percent to ppm converter"
+    },
+    {
+      "url": "/percent",
+      "name": "percentage calculator"
+    },
+    {
+      "url": "/permeability-converter",
+      "name": "permeability converter"
+    },
+    {
+      "url": "/pes-to-dst",
+      "name": "pes to dst"
+    },
+    {
+      "url": "/pes-to-jef",
+      "name": "pes to jef"
+    },
+    {
+      "url": "/m3u-to-text",
+      "name": "playlist to text list"
+    },
+    {
+      "url": "/ply-to-stl",
+      "name": "ply to stl"
+    },
+    {
+      "url": "/png-to-ico",
+      "name": "png to ico"
+    },
+    {
+      "url": "/png-to-jpg",
+      "name": "png to jpg"
+    },
+    {
+      "url": "/png-to-webp",
+      "name": "png to webp"
+    },
+    {
+      "url": "/pounds-to-grams",
+      "name": "pounds to grams"
+    },
+    {
+      "url": "/pounds-to-kg",
+      "name": "pounds to kg"
+    },
+    {
+      "url": "/pounds-to-ounces",
+      "name": "pounds to ounces"
+    },
+    {
+      "url": "/power-converter",
+      "name": "power converter"
+    },
+    {
+      "url": "/ppb-to-ppm",
+      "name": "ppb to ppm converter"
+    },
+    {
+      "url": "/ppm-to-percent",
+      "name": "ppm to percent converter"
+    },
+    {
+      "url": "/ppm-to-ppb",
+      "name": "ppm to ppb converter"
+    },
+    {
+      "url": "/ppm-converter",
+      "name": "ppm, ppb, ppt and percent converter"
+    },
+    {
+      "url": "/prefixes-converter",
+      "name": "prefixes converter"
+    },
+    {
+      "url": "/pressure-converter",
+      "name": "pressure converter"
+    },
+    {
+      "url": "/psd-to-jpg",
+      "name": "psd to jpg"
+    },
+    {
+      "url": "/psd-to-png",
+      "name": "psd to png"
+    },
+    {
+      "url": "/psi-to-atm",
+      "name": "psi to atm"
+    },
+    {
+      "url": "/psi-to-bar",
+      "name": "psi to bar"
+    },
+    {
+      "url": "/psi-to-kpa",
+      "name": "psi to kpa"
+    },
+    {
+      "url": "/qr",
+      "name": "qr code generator"
+    },
+    {
+      "url": "/quilt",
+      "name": "quilt fabric calculator"
+    },
+    {
+      "url": "/rad-s-to-hz",
+      "name": "rad/s to hz"
+    },
+    {
+      "url": "/radians-to-degrees",
+      "name": "radians to degrees"
+    },
+    {
+      "url": "/radiation-absorbed-dose-converter",
+      "name": "radiation absorbed dose converter"
+    },
+    {
+      "url": "/radiation-activity-converter",
+      "name": "radiation activity converter"
+    },
+    {
+      "url": "/radiation-dose-equivalent-converter",
+      "name": "radiation dose equivalent converter"
+    },
+    {
+      "url": "/radiation-exposure-converter",
+      "name": "radiation exposure converter"
+    },
+    {
+      "url": "/raf-to-jpg",
+      "name": "raf to jpg"
+    },
+    {
+      "url": "/rail-fence-cipher",
+      "name": "rail fence cipher"
+    },
+    {
+      "url": "/random",
+      "name": "random picker"
+    },
+    {
+      "url": "/rankine-to-celsius",
+      "name": "rankine to celsius"
+    },
+    {
+      "url": "/rankine-to-fahrenheit",
+      "name": "rankine to fahrenheit"
+    },
+    {
+      "url": "/rankine-to-kelvin",
+      "name": "rankine to kelvin"
+    },
+    {
+      "url": "/reaction",
+      "name": "reaction time test"
+    },
+    {
+      "url": "/regex",
+      "name": "regex tester"
+    },
+    {
+      "url": "/remove-bg",
+      "name": "remove background"
+    },
+    {
+      "url": "/resize",
+      "name": "resize image"
+    },
+    {
+      "url": "/rgb-to-cmyk",
+      "name": "rgb to cmyk converter"
+    },
+    {
+      "url": "/rgb-to-hex",
+      "name": "rgb to hex converter"
+    },
+    {
+      "url": "/rgb-to-hsl",
+      "name": "rgb to hsl converter"
+    },
+    {
+      "url": "/rgb-to-hsv",
+      "name": "rgb to hsv converter"
+    },
+    {
+      "url": "/dice",
+      "name": "roll dice or flip a coin"
+    },
+    {
+      "url": "/roman",
+      "name": "roman numerals"
+    },
+    {
+      "url": "/rot47",
+      "name": "rot47"
+    },
+    {
+      "url": "/rotate-pdf",
+      "name": "rotate pdf"
+    },
+    {
+      "url": "/rpm-to-hz",
+      "name": "rpm to hz"
+    },
+    {
+      "url": "/rsa-key-generator",
+      "name": "rsa key pair generator"
+    },
+    {
+      "url": "/rtf-to-text",
+      "name": "rtf to plain text"
+    },
+    {
+      "url": "/rw2-to-jpg",
+      "name": "rw2 to jpg"
+    },
+    {
+      "url": "/scientific-notation",
+      "name": "scientific notation converter"
+    },
+    {
+      "url": "/screen-recorder",
+      "name": "screen recorder"
+    },
+    {
+      "url": "/cron",
+      "name": "cron expression explainer"
+    },
+    {
+      "url": "/dns",
+      "name": "dns lookup"
+    },
+    {
+      "url": "/status",
+      "name": "http status checker"
+    },
+    {
+      "url": "/contrast",
+      "name": "color contrast checker"
+    },
+    {
+      "url": "/url-parser",
+      "name": "url parser"
+    },
+    {
+      "url": "/keycode",
+      "name": "key code finder"
+    },
+    {
+      "url": "/tone",
+      "name": "tone generator"
+    },
+    {
+      "url": "/metronome",
+      "name": "metronome"
+    },
+    {
+      "url": "/seconds-to-minutes",
+      "name": "seconds to minutes"
+    },
+    {
+      "url": "/sha1-checksum",
+      "name": "sha-1 checksum"
+    },
+    {
+      "url": "/sha1-generator",
+      "name": "sha-1 hash generator"
+    },
+    {
+      "url": "/sha256-checksum",
+      "name": "sha-256 file checksum"
+    },
+    {
+      "url": "/sha256-generator",
+      "name": "sha-256 hash generator"
+    },
+    {
+      "url": "/sha384-generator",
+      "name": "sha-384 hash generator"
+    },
+    {
+      "url": "/sha512-checksum",
+      "name": "sha-512 checksum"
+    },
+    {
+      "url": "/sha512-generator",
+      "name": "sha-512 hash generator"
+    },
+    {
+      "url": "/plist-to-json",
+      "name": "shortcut/plist to json"
+    },
+    {
+      "url": "/sign-pdf",
+      "name": "sign pdf"
+    },
+    {
+      "url": "/sort-lines",
+      "name": "sort lines a to z"
+    },
+    {
+      "url": "/sound-converter",
+      "name": "sound converter"
+    },
+    {
+      "url": "/specific-heat-capacity-converter",
+      "name": "specific heat capacity converter"
+    },
+    {
+      "url": "/specific-volume-converter",
+      "name": "specific volume converter"
+    },
+    {
+      "url": "/speed-converter",
+      "name": "speed converter"
+    },
+    {
+      "url": "/wheel",
+      "name": "spin the wheel"
+    },
+    {
+      "url": "/split-pdf",
+      "name": "split pdf and edit pages"
+    },
+    {
+      "url": "/sq-ft-to-acres",
+      "name": "sq ft to acres"
+    },
+    {
+      "url": "/sq-ft-to-sq-m",
+      "name": "sq ft to sq m"
+    },
+    {
+      "url": "/sq-m-to-sq-ft",
+      "name": "sq m to sq ft"
+    },
+    {
+      "url": "/srt-to-vtt",
+      "name": "srt to vtt"
+    },
+    {
+      "url": "/stl-to-3mf",
+      "name": "stl to 3mf"
+    },
+    {
+      "url": "/stl-to-obj",
+      "name": "stl to obj"
+    },
+    {
+      "url": "/stone-to-kg",
+      "name": "stone to kg"
+    },
+    {
+      "url": "/srt-to-text",
+      "name": "subtitles to plain text"
+    },
+    {
+      "url": "/surface-charge-density-converter",
+      "name": "surface charge density converter"
+    },
+    {
+      "url": "/surface-current-density-converter",
+      "name": "surface current density converter"
+    },
+    {
+      "url": "/surface-tension-converter",
+      "name": "surface tension converter"
+    },
+    {
+      "url": "/svg-to-jpg",
+      "name": "svg to jpg"
+    },
+    {
+      "url": "/svg-to-png",
+      "name": "svg to png"
+    },
+    {
+      "url": "/tb-to-gb",
+      "name": "tb to gb"
+    },
+    {
+      "url": "/temperature-converter",
+      "name": "temperature converter"
+    },
+    {
+      "url": "/temperature-interval-converter",
+      "name": "temperature interval converter"
+    },
+    {
+      "url": "/text-to-morse",
+      "name": "text file to morse code"
+    },
+    {
+      "url": "/binary",
+      "name": "text to binary"
+    },
+    {
+      "url": "/text-to-binary",
+      "name": "text to binary"
+    },
+    {
+      "url": "/text-to-braille",
+      "name": "text to braille"
+    },
+    {
+      "url": "/text-to-decimal",
+      "name": "text to decimal (ascii codes)"
+    },
+    {
+      "url": "/nato-alphabet",
+      "name": "text to nato alphabet"
+    },
+    {
+      "url": "/text-to-octal",
+      "name": "text to octal"
+    },
+    {
+      "url": "/rot13",
+      "name": "text to rot13"
+    },
+    {
+      "url": "/text-to-unicode",
+      "name": "text to unicode code points"
+    },
+    {
+      "url": "/word-frequency",
+      "name": "text to word frequency csv"
+    },
+    {
+      "url": "/upside-down-text",
+      "name": "text upside down"
+    },
+    {
+      "url": "/tga-to-jpg",
+      "name": "tga to jpg"
+    },
+    {
+      "url": "/tga-to-png",
+      "name": "tga to png"
+    },
+    {
+      "url": "/thermal-conductivity-converter",
+      "name": "thermal conductivity converter"
+    },
+    {
+      "url": "/thermal-expansion-converter",
+      "name": "thermal expansion converter"
+    },
+    {
+      "url": "/thermal-resistance-converter",
+      "name": "thermal resistance converter"
+    },
+    {
+      "url": "/thz-to-hz",
+      "name": "thz to hz"
+    },
+    {
+      "url": "/tiff-to-jpg",
+      "name": "tiff to jpg"
+    },
+    {
+      "url": "/tiff-to-png",
+      "name": "tiff to png"
+    },
+    {
+      "url": "/time-converter",
+      "name": "time converter"
+    },
+    {
+      "url": "/timer",
+      "name": "timer and stopwatch"
+    },
+    {
+      "url": "/tip",
+      "name": "tip calculator"
+    },
+    {
+      "url": "/file-to-data-uri",
+      "name": "to data uri"
+    },
+    {
+      "url": "/gzip-file",
+      "name": "to gzip (.gz)"
+    },
+    {
+      "url": "/tons-to-btu-hr",
+      "name": "tons to btu/hr"
+    },
+    {
+      "url": "/tons-to-kw",
+      "name": "tons to kw"
+    },
+    {
+      "url": "/torque-converter",
+      "name": "torque converter"
+    },
+    {
+      "url": "/trim-video",
+      "name": "trim video"
+    },
+    {
+      "url": "/tsv-to-csv",
+      "name": "tsv to csv"
+    },
+    {
+      "url": "/tumbler",
+      "name": "tumbler template maker"
+    },
+    {
+      "url": "/twos-complement",
+      "name": "two's complement converter"
+    },
+    {
+      "url": "/txt-to-pdf",
+      "name": "txt to pdf"
+    },
+    {
+      "url": "/txt-to-word",
+      "name": "txt to word"
+    },
+    {
+      "url": "/typing",
+      "name": "typing speed test"
+    },
+    {
+      "url": "/typography-converter",
+      "name": "typography converter"
+    },
+    {
+      "url": "/units",
+      "name": "unit converter"
+    },
+    {
+      "url": "/timestamp",
+      "name": "unix timestamp converter"
+    },
+    {
+      "url": "/url-encode",
+      "name": "url encode and decode"
+    },
+    {
+      "url": "/url-to-webloc",
+      "name": "url shortcut to webloc"
+    },
+    {
+      "url": "/uuid-generator",
+      "name": "uuid generator"
+    },
+    {
+      "url": "/va-to-watts",
+      "name": "va to watts calculator"
+    },
+    {
+      "url": "/vcf-to-csv",
+      "name": "vcf to csv"
+    },
+    {
+      "url": "/video",
+      "name": "video and audio converter"
+    },
+    {
+      "url": "/mp3",
+      "name": "video and audio to mp3"
+    },
+    {
+      "url": "/gif",
+      "name": "video to gif"
+    },
+    {
+      "url": "/vigenere-cipher",
+      "name": "vigenère cipher"
+    },
+    {
+      "url": "/viscosity-dynamic-converter",
+      "name": "viscosity - dynamic converter"
+    },
+    {
+      "url": "/viscosity-kinematic-converter",
+      "name": "viscosity - kinematic converter"
+    },
+    {
+      "url": "/vob-to-mp4",
+      "name": "vob to mp4"
+    },
+    {
+      "url": "/voltage-converter",
+      "name": "voltage converter"
+    },
+    {
+      "url": "/volts-to-amps",
+      "name": "volts to amps calculator"
+    },
+    {
+      "url": "/volts-to-gigavolts",
+      "name": "volts to gigavolts"
+    },
+    {
+      "url": "/volts-to-kilovolts",
+      "name": "volts to kilovolts"
+    },
+    {
+      "url": "/volts-to-megavolts",
+      "name": "volts to megavolts"
+    },
+    {
+      "url": "/volts-to-microvolts",
+      "name": "volts to microvolts"
+    },
+    {
+      "url": "/volts-to-millivolts",
+      "name": "volts to millivolts"
+    },
+    {
+      "url": "/volts-to-watts",
+      "name": "volts to watts calculator"
+    },
+    {
+      "url": "/volume-dry-converter",
+      "name": "volume - dry converter"
+    },
+    {
+      "url": "/volume-lumber-converter",
+      "name": "volume - lumber converter"
+    },
+    {
+      "url": "/volume-charge-density-converter",
+      "name": "volume charge density converter"
+    },
+    {
+      "url": "/volume-converter",
+      "name": "volume converter"
+    },
+    {
+      "url": "/vtt-to-srt",
+      "name": "vtt to srt"
+    },
+    {
+      "url": "/watts-to-amps",
+      "name": "watts to amps calculator"
+    },
+    {
+      "url": "/watts-to-btu-hr",
+      "name": "watts to btu/hr"
+    },
+    {
+      "url": "/watts-to-dbm",
+      "name": "watts to dbm"
+    },
+    {
+      "url": "/watts-to-gw",
+      "name": "watts to gw"
+    },
+    {
+      "url": "/watts-to-hp",
+      "name": "watts to hp"
+    },
+    {
+      "url": "/watts-to-kw",
+      "name": "watts to kw"
+    },
+    {
+      "url": "/watts-to-kwh",
+      "name": "watts to kwh calculator"
+    },
+    {
+      "url": "/watts-to-lumens",
+      "name": "watts to lumens converter"
+    },
+    {
+      "url": "/watts-to-megawatts",
+      "name": "watts to mw"
+    },
+    {
+      "url": "/watts-to-mw",
+      "name": "watts to mw"
+    },
+    {
+      "url": "/watts-to-va",
+      "name": "watts to va calculator"
+    },
+    {
+      "url": "/watts-to-volts",
+      "name": "watts to volts calculator"
+    },
+    {
+      "url": "/wav-to-aiff",
+      "name": "wav to aiff"
+    },
+    {
+      "url": "/wav-to-flac",
+      "name": "wav to flac"
+    },
+    {
+      "url": "/wav-to-mp3",
+      "name": "wav to mp3"
+    },
+    {
+      "url": "/wav-to-ogg",
+      "name": "wav to ogg"
+    },
+    {
+      "url": "/read",
+      "name": "web page to text"
+    },
+    {
+      "url": "/webcam-test",
+      "name": "webcam test"
+    },
+    {
+      "url": "/webm-to-mp4",
+      "name": "webm to mp4"
+    },
+    {
+      "url": "/webp-to-jpg",
+      "name": "webp to jpg"
+    },
+    {
+      "url": "/webp-to-png",
+      "name": "webp to png"
+    },
+    {
+      "url": "/weeks-to-days",
+      "name": "weeks to days"
+    },
+    {
+      "url": "/weight-converter",
+      "name": "weight converter"
+    },
+    {
+      "url": "/ai",
+      "name": "wezzetai: ask for any tool"
+    },
+    {
+      "url": "/wh-to-kwh",
+      "name": "wh to kwh"
+    },
+    {
+      "url": "/wh-to-mah",
+      "name": "wh to mah converter"
+    },
+    {
+      "url": "/wma-to-mp3",
+      "name": "wma to mp3"
+    },
+    {
+      "url": "/wmv-to-mp4",
+      "name": "wmv to mp4"
+    },
+    {
+      "url": "/words",
+      "name": "word counter"
+    },
+    {
+      "url": "/x3f-to-jpg",
+      "name": "x3f to jpg"
+    },
+    {
+      "url": "/xml-to-json",
+      "name": "xml to json"
+    },
+    {
+      "url": "/xor-cipher",
+      "name": "xor cipher"
+    },
+    {
+      "url": "/yards-to-meters",
+      "name": "yards to meters"
+    },
+    {
+      "url": "/years-to-days",
+      "name": "years to days"
+    },
+    {
+      "url": "/zip",
+      "name": "zip and unzip"
+    },
+    {
+      "url": "/forum",
+      "name": "forum"
+    },
+    {
+      "url": "/chat",
+      "name": "people chat"
+    },
+    {
+      "url": "/aicomms",
+      "name": "agent chat: board for ai agents"
+    },
+    {
+      "url": "/plugin",
+      "name": "wezzet for claude and chatgpt"
+    },
+    {
+      "url": "/extension",
+      "name": "Wezzet Extension: Help and Support"
+    }
+  ],
+  "calculatorFeatures": [
+    {
+      "url": "/calculators",
+      "name": "Percentage"
+    },
+    {
+      "url": "/calculators",
+      "name": "Percentage change"
+    },
+    {
+      "url": "/calculators",
+      "name": "Circle area"
+    },
+    {
+      "url": "/calculators",
+      "name": "Cylinder volume"
+    },
+    {
+      "url": "/calculators",
+      "name": "Sphere volume"
+    },
+    {
+      "url": "/calculators",
+      "name": "Triangle area"
+    },
+    {
+      "url": "/calculators",
+      "name": "Right triangle hypotenuse"
+    },
+    {
+      "url": "/calculators",
+      "name": "Average speed"
+    },
+    {
+      "url": "/calculators",
+      "name": "Density"
+    },
+    {
+      "url": "/calculators",
+      "name": "Kinetic energy (J)"
+    },
+    {
+      "url": "/calculators",
+      "name": "Ohm’s law: current (A)"
+    },
+    {
+      "url": "/calculators",
+      "name": "Electrical power (W)"
+    }
+  ],
+  "countingNote": "Every public tool and feature destination, with the 12 everyday calculators counted individually. Repeated links, account and information pages are excluded."
+}
