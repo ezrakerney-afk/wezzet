@@ -1,0 +1,86 @@
+/* Shared motion for the homepage and AI Comms. */
+.workspace-intro {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: var(--bg, white);
+  pointer-events: none;
+  animation: intro-safety 1.8s forwards;
+}
+.intro-wz {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  width: min(190px, 36vw);
+  height: auto;
+  transform: translate(-50%, -50%);
+  transform-origin: top left;
+  object-fit: contain;
+  will-change: transform, opacity;
+}
+@keyframes intro-safety {
+  0%, 80% { opacity: 1; }
+  100% { opacity: 0; visibility: hidden; }
+}
+.dashboard .sidebar {
+  transition: width 320ms cubic-bezier(.22,1,.36,1), box-shadow 320ms ease !important;
+}
+.dashboard .sidebar nav a,
+.dashboard .tool-card,
+.dashboard .catalog-list a,
+.dashboard .bubble,
+.dashboard .primary-link,
+.dashboard .news-link,
+.dashboard .btn,
+.dashboard .account-link {
+  transition: background-color 220ms ease, border-color 220ms ease, color 220ms ease, box-shadow 220ms ease, transform 250ms cubic-bezier(.22,1,.36,1);
+}
+.dashboard .tool-card:hover,
+.dashboard .catalog-list a:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px #00000008;
+}
+.dashboard .bubble:hover,
+.dashboard .primary-link:hover,
+.dashboard .btn:hover {
+  transform: translateY(-2px);
+}
+.dashboard button:active,
+.dashboard .primary-link:active {
+  transform: translateY(0) scale(.98);
+}
+.dashboard .news-link:hover { transform: translateX(3px); }
+.dashboard .news-controls button { transition: background-color 180ms ease, transform 200ms ease; }
+.dashboard .news-dots button::after { transition: width 300ms ease, background-color 300ms ease; }
+.dashboard .news-carousel { position: relative; }
+.dashboard .news-carousel::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: var(--purple);
+  opacity: .55;
+  transform: scaleX(0);
+  transform-origin: left;
+}
+.dashboard .news-carousel.news-ticking::after { animation: news-progress 3.6s linear; }
+@keyframes news-progress { to { transform: scaleX(1); } }
+@media (prefers-reduced-motion: reduce) {
+  .workspace-intro { display: none; }
+  .dashboard *, .dashboard *::before, .dashboard *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
+.dashboard .tool-section:not([hidden]),
+.dashboard .ac-tab:not([hidden]),
+.dashboard .floating-panel:not([hidden]) {
+  animation: workspace-reveal 350ms cubic-bezier(.22,1,.36,1) both;
+}
+@keyframes workspace-reveal {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}

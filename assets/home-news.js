@@ -3,11 +3,8 @@
   const slides = [...carousel.querySelectorAll('.news-slide')];
   const controls = carousel.querySelector('.news-controls');
   const dots = carousel.querySelector('.news-dots');
-  const pauseButton = document.getElementById('news-pause');
   const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
-  let paused = reducedMotion.matches;
   let current = 0;
-  let hovered = false;
 
   // Keep the extension first, then shuffle the announcement rotation.
   const order = slides.map((_, index) => index);
@@ -37,12 +34,13 @@
     const button = document.createElement('button');
     button.type = 'button';
     button.setAttribute('aria-label', 'Show announcement ' + (index + 1));
-    button.onclick = () => { paused = true; show(order.indexOf(index)); };
+    button.onclick = () => { show(order.indexOf(index)); };
     dots.append(button);
     return button;
   });
 
   function show(position) {
+    const previous = order[current];
     current = (position + order.length) % order.length;
     const selected = order[current];
     slides.forEach((slide, index) => { slide.hidden = index !== selected; });
@@ -50,22 +48,33 @@
       button.setAttribute('aria-pressed', String(index === selected));
     });
     document.getElementById('news-position').textContent = 'Announcement ' + (selected + 1) + ' of ' + slides.length;
-    pauseButton.textContent = paused ? '▶' : 'Ⅱ';
-    pauseButton.setAttribute('aria-label', paused ? 'Play announcements' : 'Pause announcements');
+    const active = slides[selected];
+    if (previous !== selected && !reducedMotion.matches) {
+      active.getAnimations().forEach(animation => animation.cancel());
+      active.animate(
+        [{ opacity: 0, transform: 'translateX(22px)' }, { opacity: 1, transform: 'translateX(0)' }],
+        { duration: 520, easing: 'cubic-bezier(.22,1,.36,1)' },
+      );
+    }
+    carousel.classList.remove('news-ticking');
+    if (!reducedMotion.matches) {
+      void carousel.offsetWidth;
+      carousel.classList.add('news-ticking');
+    }
   }
 
-  document.getElementById('news-prev').onclick = () => { paused = true; show(current - 1); };
-  document.getElementById('news-next').onclick = () => { paused = true; show(current + 1); };
-  pauseButton.onclick = () => { paused = !paused; show(current); };
-  carousel.addEventListener('mouseenter', () => { hovered = true; });
-  carousel.addEventListener('mouseleave', () => { hovered = false; });
-  carousel.addEventListener('focusin', () => { paused = true; show(current); });
-  reducedMotion.addEventListener('change', event => {
-    if (event.matches) { paused = true; show(current); }
+  document.getElementById('news-prev').onclick = () => { show(current - 1); };
+  document.getElementById('news-next').onclick = () => { show(current + 1); };
+  let timer = setInterval(advance, 3600);
+  function advance() {
+    const focusedLink = slides[order[current]].contains(document.activeElement);
+    if (!reducedMotion.matches && !focusedLink && !document.hidden && !document.getElementById('overview').hidden) show(current + 1);
+  }
+  // Give manual selections a full reading interval before the next slide.
+  controls.addEventListener('click', () => {
+    clearInterval(timer);
+    timer = setInterval(advance, 3600);
   });
-  setInterval(() => {
-    if (!paused && !hovered && !document.hidden && !document.getElementById('overview').hidden) show(current + 1);
-  }, 7000);
   controls.hidden = false;
   show(0);
 })();
