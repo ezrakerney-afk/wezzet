@@ -160,7 +160,9 @@
     $('ac-signin').hidden = on; $('ac-who').hidden = !on; $('ac-dmbox').hidden = !on; $('ac-send').hidden = !on; $('ac-mine-l').hidden = !on; $('ac-guest').hidden = on;
     if (!on) { $('ac-chat').hidden = true; chat = null; }
   }
+  let pinned = false;
   async function signIn(k) {
+    pinned = true;
     if (!k.trim()) return; via = ''; key = k.trim();
     const r = await api('me?fmt=json');
     if (r.error) { key = ''; return err(r.error === 'bad key' ? 'That token is not valid.' : r.error); }
@@ -187,10 +189,11 @@
   function pick() {
     const box = $('ac-linked'); if (!box) return;
     const v = vaultGet(), others = [...new Set([...Object.keys(v), ...linked])].filter(n => n !== me);
+    const addForm = () => { const f = el('form', 'ac-bar'); const i = el('input'); i.type = 'password'; i.placeholder = 'Add agent: paste token (wza_...)'; i.autocomplete = 'off'; i.setAttribute('aria-label', 'Agent token'); const b = el('button', 'btn btn-quiet', 'Add'); b.type = 'submit'; f.append(i, b); f.onsubmit = e => { e.preventDefault(); signIn(i.value); }; return f; };
     const top = $('ac-topsw');
     if (top) {
       const mk = (txt, f) => { const b = el('button', 'btn btn-quiet', txt); b.type = 'button'; b.onclick = f; return b; };
-      top.replaceChildren(el('span', 'ac-tag', me ? 'Agent: ' + me : 'Not signed in'), ...others.map(n => mk('Switch to ' + n, () => { if (v[n]) signIn(v[n]); else { store('wz-ackey', null); useAgent(n); } })), mk('+ Add agent', () => { const k = prompt('Paste an agent token (wza_...)'); if (k) signIn(k); }));
+      top.replaceChildren(el('span', 'ac-tag', me ? 'Agent: ' + me : 'Not signed in'), ...others.map(n => mk('Switch to ' + n, () => { if (v[n]) signIn(v[n]); else { store('wz-ackey', null); useAgent(n); } })), addForm());
     }
     box.replaceChildren(...others.map(n => { const b = el('button', 'btn btn-quiet', 'Switch to ' + n); b.type = 'button'; b.onclick = () => { if (v[n]) signIn(v[n]); else { store('wz-ackey', null); useAgent(n); } }; return b; }));
   }
@@ -198,7 +201,7 @@
     if (!acc) { linked = []; pick(); if (via) signOut(); return; }
     const r = await wzAccount.call('account');
     linked = Array.isArray(r.agents) ? r.agents : [];
-    if (!key && linked.length) useAgent(linked[0]); else pick();
+    if (!key && !pinned && linked.length) useAgent(linked[0]); else pick();
   }
   function signOut() { if (me) vault(me, null); store('wz-ackey', null); key = me = via = ''; $('ac-key').value = ''; show(false); pick(); reload(); loadAgents(); }
 
@@ -254,6 +257,7 @@
   $('ac-aname').placeholder = 'Agent name, e.g. ' + rnd(A) + '-' + rnd(N) + '-' + (10 + (Math.random() * 90 | 0));
   $('ac-prompt').value = prompt();
   const saved = store('wz-ackey'), lm = /^#login=(wzk_[0-9a-f]+)$/.exec(location.hash);
+  pinned = !!(saved || lm);
   if (lm) {
     // One-time link from the open_aicomms tool: swap it for a token, then sign in as that agent.
     history.replaceState(null, '', location.pathname);
