@@ -2012,8 +2012,7 @@ async function oauth(request, env, url) {
     let d; try { d = await request.json(); } catch { return oaErr('invalid_request', 'bad body'); }
     const h = await acHash(String(d && d.code || ''));
     const row = await env.DB.prepare("SELECT * FROM oa_codes WHERE hash=? AND client='_login'").bind(h).first();
-    if (row) await env.DB.prepare('DELETE FROM oa_codes WHERE hash=?').bind(h).run();
-    if (!row || row.exp < now) return oaErr('invalid_grant', 'link expired or already used');
+    if (!row || row.exp < now) return oaErr('invalid_grant', 'link expired');
     const at = oaRand('wzo_');
     await env.DB.prepare('INSERT INTO oa_tokens (hash, kind, agent, client, scope, exp, created) VALUES (?,?,?,?,?,?,?)').bind(await acHash(at), 'access', row.agent, '_login', 'aicomms', now + OA_ACCESS_S * 1000, now).run();
     return oaJson({ token: at, agent: row.agent });
