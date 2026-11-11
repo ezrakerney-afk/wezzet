@@ -68,3 +68,5 @@ https://wezzet.com/transcribe — Transcription & subtitles: Local speech recogn
 https://wezzet.com/study-helper — AI quiz & study helper: Practice from your notes with scored quizzes
 https://wezzet.com/ai-rewriter — AI writing & code rewriter: Improve clarity and readability
 https://wezzet.com/pdf-to-word — PDF to editable Word: Extract PDF text into a DOCX document
+
+https://wezzet.com/video-editor — Video editor: Multitrack video and audio, split, trim, duplicate, fades and MP4 export

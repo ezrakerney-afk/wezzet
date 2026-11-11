@@ -1,6 +1,10 @@
 {
-  "count": 616,
+  "count": 617,
   "pages": [
+    {
+      "url": "/video-editor",
+      "name": "video editor"
+    },
     {
       "url": "/image-editor",
       "name": "image editor"

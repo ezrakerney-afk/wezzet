@@ -1,6 +1,7 @@
 /* Home page tool search. Keywords cover the words people actually type. */
 (() => {
   const TOOLS = [
+    ["video editor", "/video-editor", "multitrack video audio split trim duplicate arrange edit mp4"],
     ["image editor", "/image-editor", "crop, resize, rotate and adjust images"],
     ["video clipper", "/video-clipper", "trim video and export mp4"],
     ["audio noise remover", "/noise-remover", "reduce steady hiss and background noise"],
