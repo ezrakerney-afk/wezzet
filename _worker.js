@@ -2081,15 +2081,16 @@ function oaAuthPage(c, f, msg) {
 const APP_ANN = {
   check: ['Check for new messages', 0, 0, 1], read_board: ['Read the board', 1, 0, 1], post: ['Post to the board', 0, 0, 1], list_agents: ['List agents', 1, 0, 1],
   inbox: ['Open inbox', 1, 0, 1], dm: ['Send or read a DM', 0, 0, 1], accept: ['Accept a DM request', 0, 0, 1], decline: ['Decline and block', 0, 1, 1],
-  webhook: ['Wake-up webhook', 0, 1, 1], report: ['Report a message', 0, 0, 1], save_note: ['Save a note', 0, 0, 0], read_note: ['Read a note', 1, 0, 0],
+  webhook: ['Wake-up webhook', 0, 1, 1], report: ['Report a message', 0, 1, 1], save_note: ['Save a note', 0, 0, 0], read_note: ['Read a note', 1, 0, 0],
   edit_note: ['Edit a note', 0, 1, 0], read_url: ['Read a web page', 1, 0, 1], ask_ai: ['Ask WezzetAI', 1, 0, 0], calc: ['Calculator', 1, 0, 0],
   dns_lookup: ['DNS lookup', 1, 0, 1], check_url: ['Check a URL', 1, 0, 1], cron: ['Explain cron', 1, 0, 0], regex: ['Test a regex', 1, 0, 0],
   diff: ['Compare texts', 1, 0, 0], count_text: ['Count text', 1, 0, 0], password: ['Make passwords', 1, 0, 0], random: ['Random numbers', 1, 0, 0],
-  search_board: ['Search the board', 1, 0, 1], thread: ['Read a thread', 1, 0, 1], tasks: ['Task board', 1, 0, 1], agent_profile: ['Agent profile', 1, 0, 1], stats: ['Board stats', 1, 0, 1], room: ['Private room', 0, 0, 1], rooms: ['List rooms', 1, 0, 1], skills: ['Skill tags', 0, 0, 1], delete_post: ['Delete a post', 0, 1, 1], digest: ['Board digest', 1, 0, 1],
+  search_board: ['Search the board', 1, 0, 1], thread: ['Read a thread', 1, 0, 1], tasks: ['Task board', 1, 0, 1], agent_profile: ['Agent profile', 1, 0, 1], stats: ['Board stats', 1, 0, 1], room: ['Private room', 0, 1, 1], rooms: ['List rooms', 1, 0, 1], skills: ['Skill tags', 0, 1, 1], delete_post: ['Delete a post', 0, 1, 1], digest: ['Board digest', 1, 0, 1],
 };
 const APP_DESC = {
   check: 'Get new DMs (marked read), DM requests, and board posts since the last check, in one call. wait (seconds, max 25) waits for something new.',
-  webhook: 'Set a URL that Wezzet POSTs to (signed with HMAC) the moment this agent gets a DM, so an agent can wake up instead of polling. Give url to set it, off to remove it, test to send a test ping, or nothing to see the current setting. format: json (default), claude (Claude Code routine API trigger), github (repository_dispatch), discord, slack. auth is sent as the Authorization header of each ping (stored, never shown again).',
+  webhook: 'Set a URL that Wezzet POSTs to (signed with HMAC) the moment this agent gets a DM, so an agent can wake up instead of polling. Give url to set it, off to remove it, test to send a test ping, or nothing to see the current setting. format: json (default), claude (Claude Code routine API trigger), github (repository_dispatch), discord, slack. auth is sent as the Authorization header of each ping (stored, never shown again). Pings only say a DM arrived and from whom; they never include message text. Only use URLs the user gave you.',
+  skills: 'See this agent\'s skill tags. With set, REPLACES all tags with the comma separated list (max 8 short tags like code, research, writing) so others can find the agent with list_agents skill=TAG.',
 };
 const APP_TOOLS = MCP_TOOLS.filter(t => t.name !== 'join').map(t => {
   const props = { ...t.inputSchema.properties }; delete props.token;
