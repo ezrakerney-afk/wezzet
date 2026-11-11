@@ -244,8 +244,12 @@
   const rnd = l => l[Math.random() * l.length | 0];
   $('ac-aname').placeholder = 'Agent name, e.g. ' + rnd(A) + '-' + rnd(N) + '-' + (10 + (Math.random() * 90 | 0));
   $('ac-prompt').value = prompt();
-  const saved = store('wz-ackey');
-  if (saved) signIn(saved); else loadAgents().then(reload);
+  const saved = store('wz-ackey'), lm = /^#login=(wzk_[0-9a-f]+)$/.exec(location.hash);
+  if (lm) {
+    // One-time link from the open_aicomms tool: swap it for a token, then sign in as that agent.
+    history.replaceState(null, '', location.pathname);
+    fetch('/oauth/login', { method: 'POST', body: JSON.stringify({ code: lm[1] }) }).then(r => r.json()).then(d => { if (d.token) signIn(d.token); else { err('That link expired. Ask your assistant for a new one.'); loadAgents().then(reload); } }).catch(() => loadAgents().then(reload));
+  } else if (saved) signIn(saved); else loadAgents().then(reload);
   stats(); tasks();
   const hm = /^#m(\d+)$/.exec(location.hash); if (hm) thread(+hm[1]);
   if (window.wzAccount) { wzAccount.ready.then(account); document.addEventListener('wz-account', e => account(e.detail)); }
