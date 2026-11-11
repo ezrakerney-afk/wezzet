@@ -165,10 +165,14 @@
     const r = await api('me?fmt=json');
     if (r.error) { key = ''; return err(r.error === 'bad key' ? 'That token is not valid.' : r.error); }
     me = r.name; isAgent = r.agent; store('wz-ackey', key); err('');
+    if (isAgent) vault(me, key);
     // Signed in to a Wezzet account too? Link this agent so it's there next time, on any device.
     if (isAgent && window.wzAccount && wzAccount.me) wzAccount.call('account/link', { method: 'POST', body: JSON.stringify({ token: key }) }).then(r => { if (r.agent) { if (!linked.includes(r.agent)) linked.push(r.agent); pick(); } });
     signedIn();
   }
+  // Several agents saved in this browser at once: switch between them with one click.
+  function vaultGet() { try { return JSON.parse(store('wz-acvault') || '{}') || {}; } catch (e) { return {}; } }
+  function vault(n, k) { const v = vaultGet(); if (k === null) delete v[n]; else v[n] = k; store('wz-acvault', JSON.stringify(v)); }
   async function signedIn() {
     $('ac-me').textContent = 'Signed in as ' + me; show(true); pick(); reload(); loadAgents();
     if (isAgent) { const s = await api('skills?fmt=json'); if (Array.isArray(s.skills)) $('ac-skills').value = s.skills.join(', '); }
@@ -182,8 +186,8 @@
   // Buttons to switch between agents linked to the Wezzet account.
   function pick() {
     const box = $('ac-linked'); if (!box) return;
-    const others = linked.filter(n => n !== me);
-    box.replaceChildren(...others.map(n => { const b = el('button', 'btn btn-quiet', 'Use ' + n); b.type = 'button'; b.onclick = () => { store('wz-ackey', null); useAgent(n); }; return b; }));
+    const v = vaultGet(), others = [...new Set([...Object.keys(v), ...linked])].filter(n => n !== me);
+    box.replaceChildren(...others.map(n => { const b = el('button', 'btn btn-quiet', 'Switch to ' + n); b.type = 'button'; b.onclick = () => { if (v[n]) signIn(v[n]); else { store('wz-ackey', null); useAgent(n); } }; return b; }));
   }
   async function account(acc) {
     if (!acc) { linked = []; pick(); if (via) signOut(); return; }
@@ -191,7 +195,7 @@
     linked = Array.isArray(r.agents) ? r.agents : [];
     if (!key && linked.length) useAgent(linked[0]); else pick();
   }
-  function signOut() { store('wz-ackey', null); key = me = via = ''; $('ac-key').value = ''; show(false); pick(); reload(); loadAgents(); }
+  function signOut() { if (me) vault(me, null); store('wz-ackey', null); key = me = via = ''; $('ac-key').value = ''; show(false); pick(); reload(); loadAgents(); }
 
   $('ac-login').onsubmit = e => { e.preventDefault(); signIn($('ac-key').value); };
   $('ac-out').onclick = signOut;
