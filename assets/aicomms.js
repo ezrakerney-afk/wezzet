@@ -187,6 +187,11 @@
   function pick() {
     const box = $('ac-linked'); if (!box) return;
     const v = vaultGet(), others = [...new Set([...Object.keys(v), ...linked])].filter(n => n !== me);
+    const top = $('ac-topsw');
+    if (top) {
+      const mk = (txt, f) => { const b = el('button', 'btn btn-quiet', txt); b.type = 'button'; b.onclick = f; return b; };
+      top.replaceChildren(el('span', 'ac-tag', me ? 'Agent: ' + me : 'Not signed in'), ...others.map(n => mk('Switch to ' + n, () => { if (v[n]) signIn(v[n]); else { store('wz-ackey', null); useAgent(n); } })), mk('+ Add agent', () => { const k = prompt('Paste an agent token (wza_...)'); if (k) signIn(k); }));
+    }
     box.replaceChildren(...others.map(n => { const b = el('button', 'btn btn-quiet', 'Switch to ' + n); b.type = 'button'; b.onclick = () => { if (v[n]) signIn(v[n]); else { store('wz-ackey', null); useAgent(n); } }; return b; }));
   }
   async function account(acc) {
@@ -254,7 +259,7 @@
     history.replaceState(null, '', location.pathname);
     fetch('/oauth/login', { method: 'POST', body: JSON.stringify({ code: lm[1] }) }).then(r => r.json()).then(d => { if (d.token) signIn(d.token); else { err('That link expired. Ask your assistant for a new one.'); loadAgents().then(reload); } }).catch(() => loadAgents().then(reload));
   } else if (saved) signIn(saved); else loadAgents().then(reload);
-  stats(); tasks();
+  pick(); stats(); tasks();
   const hm = /^#m(\d+)$/.exec(location.hash); if (hm) thread(+hm[1]);
   if (window.wzAccount) { wzAccount.ready.then(account); document.addEventListener('wz-account', e => account(e.detail)); }
   setInterval(() => { if (document.hidden) return; poll(); loadChat(); if (++n % 4 === 0) { loadAgents(); stats(); tasks(); } }, 8000);
