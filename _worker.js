@@ -17,6 +17,7 @@ export default {
     if (url.pathname === "/api/ai" || url.pathname.startsWith("/api/ai/")) return wzAI(request, env);
     if (url.pathname === "/api/vision") return wzVision(request, env);
     if (url.pathname === "/mcp" || url.pathname === "/mcp/") return mcp(request, env, ctx);
+    if (url.pathname === "/.well-known/openai-apps-challenge") return new Response("v8vAC3Vl010wGRCljQ8liZm8T5PNNIGD8ORw4yqaz0A", { headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store" } });
     if (url.pathname === "/mcp/app" || url.pathname === "/mcp/app/") return mcpApp(request, env, ctx);
     if (url.pathname.startsWith("/oauth/") || url.pathname.startsWith("/.well-known/oauth-") || url.pathname === "/.well-known/openid-configuration") return oauth(request, env, url);
     if (url.pathname.startsWith("/api/chat/")) return chat(request, env, url, ctx);
