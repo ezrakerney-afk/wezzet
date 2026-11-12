@@ -1,3 +1,4 @@
+import {encoderFailure} from '../assets/video-editor-errors.mjs';
 import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';
 import {mkdtempSync,copyFileSync,rmSync} from 'node:fs';
@@ -13,12 +14,21 @@ assert.throws(()=>validateProject({...base(),clips:[{...base().clips[0],in:-1}]}
 p=base();p.ratio='source';Object.assign(p.media[0],{width:3840,height:2160,fps:59.94,hasAudio:true});p.clips.push({...p.clips[0],id:'a1',track:'a'});
 let settings=exportSettings(p);assert.equal(settings.width,3840);assert.equal(settings.height,2160);assert.equal(settings.fps,60000/1001);assert.equal(settings.crf,16);
 assert.equal(originalExport(p).id,'source');p.clips[0].duration=2;assert.equal(originalExport(p),null);
-const graph=exportArgs(p,3840,2160,settings);assert.equal(graph.filter(a=>a==='-i').length,1);assert.equal(graph[graph.indexOf('-b:a')+1],'320k');
+const graph=exportArgs(p,3840,2160,settings);assert.equal(graph.filter(a=>a==='-i').length,2);assert.ok(graph.includes('-ss'));assert.equal(graph[graph.indexOf('-b:a')+1],'320k');
 p.ratio='9:16';settings=exportSettings(p,'1080','60');assert.equal(settings.width,1080);assert.equal(settings.height,1920);assert.equal(settings.fps,60);
 p=base();assert.throws(()=>exportSettings(p),/frame rate/);assert.equal(exportSettings(p,'720','30').width,1280);
+assert.equal(encoderFailure(['[Parsed_scale_1] Failed to configure output pad on Parsed_scale_1','Error reinitializing filters!','Error while processing the decoded data for stream #0:0','Conversion failed!']), '[Parsed_scale_1] Failed to configure output pad on Parsed_scale_1');
 const dir=mkdtempSync(join(tmpdir(),'wezzet-editor-'));
 try{
  execFileSync('ffmpeg',['-v','error','-f','lavfi','-i','testsrc2=size=160x90:rate=30:duration=4','-f','lavfi','-i','sine=frequency=440:duration=4','-c:v','libx264','-c:a','aac','-shortest',join(dir,'sample.mp4')]);copyFileSync(join(dir,'sample.mp4'),join(dir,'source.media'));
+ // Input-level seeking must not shift cuts to a keyframe or apply source-in twice.
+ execFileSync('ffmpeg',['-v','error','-f','lavfi','-i','color=red:s=160x90:r=30:d=1','-f','lavfi','-i','color=blue:s=160x90:r=30:d=1','-filter_complex','[0:v][1:v]concat=n=2:v=1:a=0','-c:v','libx264','-g','120',join(dir,'seek.mp4')]);
+ copyFileSync(join(dir,'seek.mp4'),join(dir,'seek.media'));
+ const seekProject=base();seekProject.media=[{id:'seek',kind:'video',duration:2}];seekProject.clips=[{...seekProject.clips[0],media:'seek',in:1.2,duration:.4}];
+ execFileSync('ffmpeg',['-v','error',...exportArgs(seekProject,160,90)],{cwd:dir});
+ const pixel=execFileSync('ffmpeg',['-v','error','-i','output.mp4','-vf','scale=1:1','-frames:v','1','-f','rawvideo','-pix_fmt','rgb24','-'],{cwd:dir});
+ assert.ok(pixel[2]>200&&pixel[0]<30,'Cut should begin on the blue frame after seeking');
+ console.log('PASS exact source-in seeking across a keyframe boundary');
  for(const scenario of ['split-speed-fades','audio-only','muted','delayed-video','source-60fps']){
  p=base();p.clips[0].duration=1;p.clips[0].speed=2;p.clips[0].fadeIn=.2;p.clips[0].fadeOut=.2;p.clips.push({...p.clips[0],id:'audio',track:'a',start:.5});p.clips.push({...p.clips[0],id:'dup',start:2,in:2,speed:1});
  if(scenario==='audio-only')p.clips=p.clips.filter(c=>c.track==='a');if(scenario==='muted')p.tracks.forEach(t=>t.muted=true);if(scenario==='delayed-video')p.clips=p.clips.filter(c=>c.id==='dup');

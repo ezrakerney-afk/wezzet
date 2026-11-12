@@ -51,17 +51,28 @@ export function originalExport(p,resolution='source',frameRate='source') {
  return null;
 }
 export function exportArgs(p,width,height,{fps=30,crf=16}={}){
- const args=['-y','-filter_complex_threads','1'],filters=[],inputs=new Map();
+ const args=['-y','-filter_complex_threads','1'],filters=[],inputs=new Map(),ranges=new Map();
  const active=p.clips.filter(c=>!p.tracks.find(t=>t.id===c.track).muted);
- for(const c of active){if(inputs.has(c.media))continue;const m=p.media.find(m=>m.id===c.media);inputs.set(c.media,inputs.size);if(m.kind==='image')args.push('-loop','1');args.push('-threads','1','-i',m.id+'.media');}
+ // Open only the source range needed by each clip. Feeding one entire source
+ // into many differently trimmed branches can retain large queues of frames.
+ // Matching video/audio ranges still share one input decoder.
+ for(const c of active){
+  const m=p.media.find(m=>m.id===c.media),key=JSON.stringify([c.media,c.in,c.duration*c.speed]);
+  if(!ranges.has(key)){
+   ranges.set(key,ranges.size);
+   if(m.kind==='image')args.push('-loop','1');else args.push('-ss',String(c.in));
+   args.push('-t',String(c.duration*c.speed),'-threads','1','-i',m.id+'.media');
+  }
+  inputs.set(c.id,ranges.get(key));
+ }
  const total=duration(p);filters.push(`color=c=black:s=${width}x${height}:r=${fps}:d=${total}[base]`);let v='base',vi=0;const audio=[];
  // Higher video lanes appear above lower ones, in both preview and export.
  const video=active.filter(c=>p.tracks.find(t=>t.id===c.track).kind==='video').sort((a,b)=>p.tracks.findIndex(t=>t.id===b.track)-p.tracks.findIndex(t=>t.id===a.track)||p.clips.indexOf(a)-p.clips.indexOf(b));
- for(const c of video){let f=`[${inputs.get(c.media)}:v]trim=start=${c.in}:duration=${c.duration*c.speed},setpts=(PTS-STARTPTS)/${c.speed},scale=${width}:${height}:force_original_aspect_ratio=decrease,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=${fps},format=yuva420p`;
+ for(const c of video){let f=`[${inputs.get(c.id)}:v]trim=start=0:duration=${c.duration*c.speed},setpts=(PTS-STARTPTS)/${c.speed},scale=${width}:${height}:force_original_aspect_ratio=decrease:force_divisible_by=2,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=${fps},format=${c.fadeIn||c.fadeOut?'yuva420p':'yuv420p'}`;
  if(c.fadeIn)f+=`,fade=t=in:st=0:d=${Math.min(c.fadeIn,c.duration)}:alpha=1`;
  if(c.fadeOut)f+=`,fade=t=out:st=${Math.max(0,c.duration-c.fadeOut)}:d=${Math.min(c.fadeOut,c.duration)}:alpha=1`;
  f+=`,setpts=PTS+${c.start}/TB[v${vi}]`;filters.push(f);filters.push(`[${v}][v${vi}]overlay=eof_action=pass:repeatlast=0:enable='gte(t,${c.start})*lt(t,${c.start+c.duration})'[mix${vi}]`);v='mix'+vi++;}
- for(const c of active.filter(c=>p.tracks.find(t=>t.id===c.track).kind==='audio')){const n=audio.length;let f=`[${inputs.get(c.media)}:a]atrim=start=${c.in}:duration=${c.duration*c.speed},asetpts=PTS-STARTPTS`;let speed=c.speed;while(speed>2){f+=',atempo=2';speed/=2;}while(speed<.5){f+=',atempo=0.5';speed/=.5;}f+=`,atempo=${speed},volume=${c.volume}`;if(c.fadeIn)f+=`,afade=t=in:d=${Math.min(c.fadeIn,c.duration)}`;if(c.fadeOut)f+=`,afade=t=out:st=${Math.max(0,c.duration-c.fadeOut)}:d=${Math.min(c.fadeOut,c.duration)}`;f+=`,adelay=${Math.round(c.start*1000)}:all=1[a${n}]`;filters.push(f);audio.push(`[a${n}]`);}
+ for(const c of active.filter(c=>p.tracks.find(t=>t.id===c.track).kind==='audio')){const n=audio.length;let f=`[${inputs.get(c.id)}:a]atrim=start=0:duration=${c.duration*c.speed},asetpts=PTS-STARTPTS`;let speed=c.speed;while(speed>2){f+=',atempo=2';speed/=2;}while(speed<.5){f+=',atempo=0.5';speed/=.5;}f+=`,atempo=${speed},volume=${c.volume}`;if(c.fadeIn)f+=`,afade=t=in:d=${Math.min(c.fadeIn,c.duration)}`;if(c.fadeOut)f+=`,afade=t=out:st=${Math.max(0,c.duration-c.fadeOut)}:d=${Math.min(c.fadeOut,c.duration)}`;f+=`,adelay=${Math.round(c.start*1000)}:all=1[a${n}]`;filters.push(f);audio.push(`[a${n}]`);}
  if(audio.length)filters.push(`${audio.join('')}amix=inputs=${audio.length}:duration=longest:normalize=0,apad,atrim=duration=${total}[audio]`);
  args.push('-filter_complex',filters.join(';'),'-map',`[${v}]`);if(audio.length)args.push('-map','[audio]');args.push('-t',String(total),'-r',String(fps),'-c:v','libx264','-threads','1','-preset','veryfast','-crf',String(crf),'-pix_fmt','yuv420p','-c:a','aac','-b:a','320k','-movflags','+faststart','output.mp4');return args;
 }

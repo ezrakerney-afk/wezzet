@@ -1,4 +1,5 @@
-import {duration,uid,splitClip,trimClip,removeClip,validateProject,exportArgs,exportSettings,originalExport,sourceShape} from './video-editor-model.mjs?v=2';
+import {encoderFailure} from './video-editor-errors.mjs?v=3';
+import {duration,uid,splitClip,trimClip,removeClip,validateProject,exportArgs,exportSettings,originalExport,sourceShape} from './video-editor-model.mjs?v=3';
 import {cacheMedia,cachedMedia} from './video-editor-storage.mjs?v=2';
 import {FFmpeg} from '/vendor/ffmpeg-0.12.15/index.js';
 const $=id=>document.getElementById(id), canvas=$('preview'), ctx=canvas.getContext('2d');
@@ -94,7 +95,7 @@ $('close-export').onclick=()=>{if(!busy)$('export-panel').hidden=true;};
 async function loadEngine(){
  if(ff)return ff;
  const f=new FFmpeg();ff=f;
- f.on('log',({message})=>{exportLogs.push(message);if(exportLogs.length>100)exportLogs.shift();});
+ f.on('log',({message})=>{exportLogs.push(message);if(exportLogs.length>500)exportLogs.shift();});
  f.on('progress',({time:elapsed})=>{if(rendering&&Number.isFinite(elapsed)){$('progress').value=Math.max(0,Math.min(.99,elapsed/1000000/duration(p)));$('export-status').textContent=`Rendering MP4 · ${Math.round($('progress').value*100)}%. Keep this tab open.`;}});
  const urls=[];
  try{
@@ -120,7 +121,7 @@ function offerDownload(blob,name,message){
 }
 $('export').onclick=async()=>{
  if(busy||loading||!p.clips.length)return;
- $('export-panel').hidden=false;$('download').hidden=true;
+ $('export-panel').hidden=false;$('download').hidden=true;$('export-debug').hidden=true;$('export-log').textContent='';
  const active=p.clips.filter(c=>!track(c).muted);
  if(active.some(c=>!files.has(c.media))){exportStatus('Reconnect missing media before exporting: import the original files.');return;}
  pause();busy=true;cancelled=false;rendering=false;exportLogs=[];refresh();
@@ -156,11 +157,12 @@ $('export').onclick=async()=>{
   exportLogs=[];rendering=true;$('progress').value=0;
   const code=await timeout(engine.exec(exportArgs(p,settings.width,settings.height,settings)),30*60*1000,'Rendering exceeded 30 minutes. Try a shorter timeline or a lower resolution.');
   rendering=false;if(cancelled)throw Error('Cancelled');
-  if(code!==0)throw Error('The video encoder could not finish. '+(exportLogs.filter(line=>/error|invalid|failed|memory|not found|no stream/i.test(line)).slice(-2).join(' ')||'The browser may have run out of memory. Try a shorter timeline or 720p.'));
+  if(code!==0)throw Error('The video encoder could not finish.\n'+encoderFailure(exportLogs));
   exportStatus('Preparing your download…');
   const bytes=await engine.readFile('output.mp4');if(!bytes.length)throw Error('The encoder produced an empty file. Try a shorter timeline.');
   offerDownload(new Blob([bytes],{type:'video/mp4'}),'wezzet-edit.mp4',`Export ready · ${settings.width} × ${settings.height} · ${settings.fps.toFixed(3)} fps. Click Download to save it.`);
  }catch(e){
+  if(!cancelled){$('export-debug').hidden=false;$('export-log').textContent=exportLogs.join('\n')||errorText(e);}
   const message=errorText(e);exportStatus(cancelled?'Export cancelled. Your edits are safe.':/memory|out of bounds|alloc/i.test(message)?'The browser ran out of memory during export. Your edits are safe. Try 720p, close other tabs, or export a shorter timeline.':message);
  }finally{
   rendering=false;engineAbort?.abort();engineAbort=null;
