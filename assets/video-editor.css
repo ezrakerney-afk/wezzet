@@ -3,3 +3,24 @@
 .viewer{min-height:0}.canvas-wrap canvas{position:absolute;inset:0;width:100%;height:100%;box-shadow:none}.transport{flex-shrink:0}@media(max-width:720px){.viewer{min-height:320px}}
 
 .waveform{position:absolute;left:8px;right:8px;bottom:3px;width:calc(100% - 16px);height:17px;pointer-events:none;opacity:.35}.waveform path{stroke:#a1f8d3;stroke-width:.6;fill:none}.clip.audio small{position:relative;z-index:1}
+
+/* Fixed slots prevent the time readout and icon glyphs from moving transport controls. */
+.transport{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:12px}
+.transport>div{display:flex;align-items:center;justify-content:center;gap:7px}
+.transport>.tag{justify-self:end;text-align:right}
+#clock{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-variant-numeric:tabular-nums;white-space:nowrap}
+.transport button{width:36px;height:36px;flex:0 0 36px;padding:0;display:grid;place-items:center;line-height:1}
+.transport .play{margin:0;width:36px;height:36px;min-width:36px;min-height:36px}
+.play svg{width:20px;height:20px;display:block;fill:currentColor}
+.play .pause-icon,.play[aria-pressed=true] .play-icon{display:none}
+.play[aria-pressed=true] .pause-icon{display:block}
+#export-panel{position:fixed;right:24px;bottom:24px;width:min(420px,calc(100vw - 32px));z-index:20;border:1px solid #79629d;border-radius:12px;background:#211c2c;box-shadow:0 16px 60px #0009;padding:18px}
+.export-panel-heading{display:flex;align-items:center;justify-content:space-between}
+.export-panel-heading button{font-size:20px;line-height:1;background:transparent;border:0;padding:4px 8px}
+#export-status{line-height:1.6;overflow-wrap:anywhere;color:#d7cde8}
+#export-panel progress{display:block;width:100%;margin:12px 0;accent-color:#bba3ff}
+.export-panel-actions{display:flex;gap:10px;align-items:center}
+#download{display:inline-block;border-radius:7px;padding:11px 16px;font-weight:700}
+@media(max-width:720px){.transport{grid-template-columns:1fr auto;gap:8px}#clock{font-size:10px}.transport>div{gap:3px}#export-panel{right:16px;bottom:16px}}
+
+#missing-media{position:absolute;z-index:2;text-align:center;background:#211c2cf5;border:1px solid #786396;border-radius:12px;padding:22px;width:min(440px,90%);box-shadow:0 12px 36px #0006}#missing-media strong{font-size:18px}#missing-description{line-height:1.6;color:#d6c9e6;overflow-wrap:anywhere}.asset.missing{border-color:#9e7751}.asset.missing small{color:#edbe8c}
