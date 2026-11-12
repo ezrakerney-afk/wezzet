@@ -21,3 +21,21 @@ Projects store edit decisions, not media bytes. Original files must be reimporte
 after a fresh session. Each source is limited to 250 MB; browser codec and memory
 limits apply. This editor supports basic layered editing and fades, not desktop
 NLE features such as keyframes, chroma key, title composition or color grading.
+
+
+### Export quality and project recovery regression checks
+
+`node tests/video-editor.mjs` additionally checks source dimensions (including
+4K), fractional source frame rates, explicit output presets, 60 fps encoding,
+shared input decoders, and eligibility for byte-identical original downloads.
+Browser checks verified a 640×360 60 fps edited export with ffprobe; an unedited
+MP4 download matched its original SHA-256. Export cancellation recovered the
+controls, and the fixed SVG transport retained the same horizontal position
+and 36×36 dimensions while playing and paused.
+
+An older version-1 JSON project was opened without media, showed a reconnect
+prompt, recovered its original footage without changing the timeline, and then
+restored the same media from IndexedDB in a fresh tab. Cache storage is best
+effort and may be evicted or unavailable; original media is still necessary on
+other devices. Edited output is high-quality 8-bit H.264/AAC, not lossless or
+HDR-preserving. Only unchanged MP4/M4V downloads are bit-exact.
