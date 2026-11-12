@@ -24,3 +24,5 @@
 @media(max-width:720px){.transport{grid-template-columns:1fr auto;gap:8px}#clock{font-size:10px}.transport>div{gap:3px}#export-panel{right:16px;bottom:16px}}
 
 #missing-media{position:absolute;z-index:2;text-align:center;background:#211c2cf5;border:1px solid #786396;border-radius:12px;padding:22px;width:min(440px,90%);box-shadow:0 12px 36px #0006}#missing-media strong{font-size:18px}#missing-description{line-height:1.6;color:#d6c9e6;overflow-wrap:anywhere}.asset.missing{border-color:#9e7751}.asset.missing small{color:#edbe8c}
+
+#export-panel{max-height:calc(100vh - 48px);overflow:auto}#export-debug{margin:12px 0}#export-debug summary{cursor:pointer;color:#d8c5fa}#export-log{max-height:220px;overflow:auto;white-space:pre-wrap;font:11px/1.5 ui-monospace,monospace;background:#131018;padding:10px;border-radius:6px;user-select:text}#export-status{white-space:pre-line}
