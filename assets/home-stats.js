@@ -13,14 +13,16 @@
       const link = document.createElement('a');
       link.href = tool.url;
       const rank = document.createElement('span');
-      rank.className = 'popular-rank'; rank.textContent = String(i + 1).padStart(2, '0');
+      rank.className = 'popular-rank';
+      rank.textContent = String(i + 1);
+      rank.setAttribute('aria-hidden', 'true');
       const name = document.createElement('strong'); name.textContent = tool.name;
       const count = document.createElement('span'); count.className = 'popular-visits';
       count.textContent = tool.visits.toLocaleString() + (tool.visits === 1 ? ' visit' : ' visits');
       link.append(rank, name, count); li.append(link); list.append(li);
     });
-    status.hidden = data.top.length >= 5;
-    status.textContent = data.top.length ? 'More tools will appear as they receive visits.' : 'The ranking starts with real visits. Your community’s favorites will appear here soon.';
+    status.hidden = data.top.length > 0;
+    status.textContent = 'Rankings will appear once tools receive visits.';
   } catch {
     status.textContent = 'Rankings are temporarily unavailable. Please try again later.';
   }
