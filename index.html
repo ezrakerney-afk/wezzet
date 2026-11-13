@@ -69,7 +69,7 @@
     </script>
     <link rel="stylesheet" href="/assets/site.css?v=7" />
     <link rel="stylesheet" href="/assets/dashboard.css?v=7" />
-    <link rel="stylesheet" href="/assets/home.css?v=1" />
+    <link rel="stylesheet" href="/assets/home.css?v=2" />
   </head>
   <body class="dashboard home-page">
     <a class="skip-link" href="#main">Skip to content</a>
@@ -79,12 +79,6 @@
           <img src="/assets/icon-48.png" width="30" height="30" alt="" />
           <span>wezzet<span class="brand-dot">.</span></span>
         </a>
-        <nav class="home-nav" aria-label="Main navigation">
-          <a href="#tools" data-section="tools">Tools</a>
-          <a href="/ai">WezzetAI</a>
-          <a href="#agents" data-section="agents">AI agents</a>
-          <a href="/forum">Community</a>
-        </nav>
         <div class="home-account">
           <button class="theme-toggle" aria-label="Switch theme" type="button">◐</button>
           <a id="account-link" class="account-link" href="/signin">Sign in <span aria-hidden="true">→</span></a>
@@ -92,6 +86,30 @@
       </div>
     </header>
 
+    <aside class="sidebar home-sidebar">
+      <p class="nav-caption">YOUR WORKSPACE</p>
+      <nav aria-label="Workspace">
+        <a href="#overview" data-section="overview" aria-current="page"
+          ><span aria-hidden="true">▦</span>Overview</a
+        ><a href="#tools" data-section="tools"><span aria-hidden="true">⇄</span>Tools</a
+        ><a href="#agents" data-section="agents"
+          ><span aria-hidden="true">◎</span>AI agents</a
+        >
+        <a href="/ai"><span aria-hidden="true">✦</span>WezzetAI</a>
+      </nav>
+      <p class="nav-caption">CONNECT</p>
+      <nav aria-label="Community">
+        <a href="/chat"
+          ><span aria-hidden="true">◌</span>Messages
+          <span class="unread-badge" data-chat-badge hidden></span></a
+        ><a href="/forum"><span aria-hidden="true">☰</span>Community</a
+        ><a href="/signin"><span aria-hidden="true">○</span>My account</a>
+      </nav>
+      <div class="sidebar-bottom">
+        <a href="/about">About Wezzet →</a>
+      </div>
+    </aside>
+    <div class="home-content">
     <main id="main" class="home-wrap" tabindex="-1">
       <section id="overview" aria-labelledby="home-heading">
         <div class="home-hero">
@@ -111,13 +129,53 @@
             <p class="search-examples">Try <a href="/heic-to-jpg">HEIC to JPG</a>, <a href="/compress-pdf">Compress PDF</a>, or <a href="/qr">QR generator</a>.</p>
           </div>
 
-          <section class="home-shortcuts" aria-labelledby="shortcut-heading">
-            <h2 id="shortcut-heading">Quick links</h2>
-            <ul>
-              <li><a href="/convert"><span><strong>File converter</strong><small>Change a file’s format</small></span><span aria-hidden="true">↗</span></a></li>
-              <li><a href="/video-editor"><span><strong>Video editor</strong><small>Cut clips and edit audio</small></span><span aria-hidden="true">↗</span></a></li>
-              <li><a href="/ai"><span><strong>WezzetAI</strong><small>Ask a question or search the web</small></span><span aria-hidden="true">↗</span></a></li>
-            </ul>
+          <section class="news-carousel" aria-roledescription="carousel" aria-label="Wezzet news" id="website-news">
+            <div class="news-slides">
+              <article class="news-slide" aria-roledescription="slide" aria-label="1 of 6">
+                <p class="news-topic">Chrome extension</p>
+                <h2>Keep Wezzet within reach.</h2>
+                <p>Open Wezzet tools from your browser toolbar.</p>
+                <a class="home-text-link" href="https://chromewebstore.google.com/detail/jfodhobmjhmnpifgceamblefmemildmp?utm_source=item-share-cb" target="_blank" rel="noopener noreferrer">Add to Chrome <span aria-hidden="true">↗</span></a>
+              </article>
+              <article class="news-slide" aria-roledescription="slide" aria-label="2 of 6" hidden>
+                <p class="news-topic">AI Comms</p>
+                <h2>A workspace for your AI agents.</h2>
+                <p>Connect agents, share tasks, and bring conversations together.</p>
+                <a class="home-text-link" href="/aicomms">Explore AI Comms <span aria-hidden="true">→</span></a>
+              </article>
+              <article class="news-slide" aria-roledescription="slide" aria-label="3 of 6" hidden>
+                <p class="news-topic">Tool catalog</p>
+                <h2>Every tool. One place.</h2>
+                <p>Browse converters, calculators, and everyday utilities in one searchable catalog.</p>
+                <a class="home-text-link" href="#tools">Browse all tools <span aria-hidden="true">→</span></a>
+              </article>
+              <article class="news-slide" aria-roledescription="slide" aria-label="4 of 6" hidden>
+                <p class="news-topic">Create and edit</p>
+                <h2>Edit video in your browser.</h2>
+                <p>Cut clips, rearrange footage, and edit audio in Wezzet’s video editor.</p>
+                <a class="home-text-link" href="/video-editor">Open video editor <span aria-hidden="true">→</span></a>
+              </article>
+              <article class="news-slide" aria-roledescription="slide" aria-label="5 of 6" hidden>
+                <p class="news-topic">Wezzet account</p>
+                <h2>Pick up across your workspace.</h2>
+                <p>Use the same account for Messages, WezzetAI, and AI Comms.</p>
+                <a class="home-text-link" href="/signin">Sign in <span aria-hidden="true">→</span></a>
+              </article>
+              <article class="news-slide" aria-roledescription="slide" aria-label="6 of 6" hidden>
+                <p class="news-topic">Recently opened</p>
+                <h2>Pick up where you left off.</h2>
+                <ul class="news-recent" aria-label="Recently opened tools"></ul>
+                <p class="news-empty">Tools you open will appear here.</p>
+                <a class="home-text-link" href="#tools">Browse all tools <span aria-hidden="true">→</span></a>
+              </article>
+            </div>
+            <div class="news-controls" hidden>
+              <button type="button" id="news-pause" aria-label="Pause slideshow">Ⅱ</button>
+              <div class="news-dots" role="group" aria-label="Choose announcement"></div>
+              <span id="news-position" class="sr-only" aria-live="polite"></span>
+              <button type="button" id="news-prev" aria-label="Previous announcement">←</button>
+              <button type="button" id="news-next" aria-label="Next announcement">→</button>
+            </div>
           </section>
         </div>
 
@@ -824,6 +882,7 @@
         </nav>
       </footer>
     </main>
+    </div>
     <div class="chat-launchers">
       <button
         id="messages-toggle"
@@ -898,7 +957,9 @@
         /><button type="submit" aria-label="Send support message">↑</button>
       </form>
     </section>
-    <script src="/assets/home-recent.js?v=1" defer></script>
+    <script src="/assets/sidebar.js?v=1" defer></script>
+    <script src="/assets/home-recent.js?v=2" defer></script>
+    <script src="/assets/home-news.js?v=3" defer></script>
     <script src="/assets/home.js?v=tools-28" defer></script>
     <script src="/assets/account.js?v=2" defer></script>
     <script src="/assets/home-catalog.js?v=1" defer></script>
