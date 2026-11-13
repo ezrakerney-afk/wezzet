@@ -63,32 +63,42 @@
   document
     .querySelectorAll("[data-close]")
     .forEach((b) => (b.onclick = () => togglePanel(b.dataset.close, false)));
+  let focusSearch = false;
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape")
       for (const name of ["support", "messages"])
         if (!$(name + "-panel").hidden) togglePanel(name, false);
     if ((e.ctrlKey || e.metaKey) && e.key === "k") {
       e.preventDefault();
-      $("q").focus();
+      if ($("overview").hidden) {
+        focusSearch = true;
+        location.hash = "overview";
+      } else {
+        $("q").focus();
+      }
     }
   });
-  function selectSection() {
+
+  function selectSection(event) {
     const requested = location.hash.slice(1) || "overview";
     const legacyToolTabs = ["converters", "ai-tools", "utilities"];
     const id = legacyToolTabs.includes(requested) ? "tools"
       : ["tools", "agents"].includes(requested) ? requested : "overview";
-    document.querySelectorAll(".tool-section").forEach(section => {
-      section.hidden = section.id !== id;
+    for (const section of ["overview", "tools", "agents"]) {
+      $(section).hidden = section !== id;
+    }
+    document.querySelectorAll("[data-section]").forEach((link) => {
+      if (link.dataset.section === id) link.setAttribute("aria-current", "page");
+      else link.removeAttribute("aria-current");
     });
-    $("overview").hidden = id !== "overview";
-    document.querySelectorAll("[data-section]").forEach((a) => {
-      if (a.dataset.section === id) {
-        a.setAttribute("aria-current", "page");
-        $("crumb").textContent = a.textContent
-          .replace(/^[^A-Za-z]+/, "")
-          .trim();
-      } else a.removeAttribute("aria-current");
-    });
+
+    if (focusSearch && id === "overview") {
+      focusSearch = false;
+      $("q").focus();
+    } else if (event && (requested === id || legacyToolTabs.includes(requested))) {
+      window.scrollTo(0, 0);
+      $(id).querySelector("h1").focus({ preventScroll: true });
+    }
   }
   window.addEventListener("hashchange", selectSection);
   selectSection();

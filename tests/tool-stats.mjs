@@ -40,6 +40,8 @@ const data=await r.json(); assert.equal(data.top.length,5); assert.equal(data.to
 assert.equal((await worker.fetch(request('/api/tool-stats',{},'POST'),env,ctx)).status,405);
 assert.equal((await worker.fetch(request('/api/tool-stats'),{...env,DB:null},ctx)).status,503);
 const page = fs.readFileSync('index.html','utf8');
-assert.equal((page.match(/class="tool-section" hidden/g)||[]).length,4);
+for (const section of ['tools', 'agents']) {
+  assert.ok(page.includes(`class="tool-section" hidden id="${section}"`));
+}
 assert.ok(page.includes('id="feature-count">'+catalog.count));
 console.log('PASS: catalog completeness, canonical counts, ranking order and limit, empty ranking, bot/prefetch exclusion, and unavailable database.');

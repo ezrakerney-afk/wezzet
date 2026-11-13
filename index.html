@@ -67,183 +67,99 @@
         })(localStorage.getItem("wz-theme"));
       } catch (e) {}
     </script>
-    <style>
-      .logo .logo-dark {
-        display: none;
-      }
-      :root[data-theme="dark"] .logo .logo-light {
-        display: none;
-      }
-      :root[data-theme="dark"] .logo .logo-dark {
-        display: block;
-      }
-      @media (prefers-color-scheme: dark) {
-        :root:not([data-theme="light"]) .logo .logo-light {
-          display: none;
-        }
-        :root:not([data-theme="light"]) .logo .logo-dark {
-          display: block;
-        }
-      }
-    </style>
     <link rel="stylesheet" href="/assets/site.css?v=7" />
-    <link rel="stylesheet" href="/assets/workspace-motion.css?v=1">
-<link rel="stylesheet" href="/assets/dashboard.css?v=6" />
+    <link rel="stylesheet" href="/assets/dashboard.css?v=7" />
+    <link rel="stylesheet" href="/assets/home.css?v=1" />
   </head>
-  <body class="dashboard">
-<div class="workspace-intro" aria-hidden="true"><img src="/assets/icon-512.png" alt="" width="512" height="512" class="intro-wz"></div>
-    <a class="skip-link" href="#main">Skip to tools</a>
-    <header class="dash-header">
-      <a class="brand" href="/" aria-label="Wezzet home"
-        ><img
-          src="/assets/icon-48.png"
-          width="32"
-          height="32"
-          alt=""
-        />wezzet<span class="brand-dot">.</span></a
-      >
-      <form
-        class="search"
-        role="search"
-        id="search-form"
-        action="/"
-        autocomplete="off"
-      >
-        <label class="sr-only" for="q">Search tools</label>
-        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
-          <path
-            fill="currentColor"
-            d="M10 2a8 8 0 0 1 6.32 12.9l5.39 5.4-1.41 1.4-5.4-5.39A8 8 0 1 1 10 2Zm0 2a6 6 0 1 0 0 12 6 6 0 0 0 0-12Z"
-          />
-        </svg>
-        <input
-          type="search"
-          id="q"
-          name="q"
-          placeholder="Search all tools…"
-          role="combobox"
-          aria-expanded="false"
-          aria-controls="results"
-          aria-autocomplete="list"
-        />
-        <a
-          class="ai-btn"
-          id="ai-btn"
-          href="/ai"
-          title="Ask WezzetAI"
-          aria-label="Ask WezzetAI"
-          >WZ</a
-        >
-        <ul
-          class="results"
-          id="results"
-          role="listbox"
-          aria-label="Tools"
-          hidden
-        ></ul>
-      </form>
-      <nav aria-label="Top navigation">
-        <a href="/forum">Community</a
-        ><button class="theme-toggle" aria-label="Switch theme" type="button">
-          ◐</button
-        ><a id="account-link" class="account-link" href="/signin"
-          >Sign in <span aria-hidden="true">→</span></a
-        >
-      </nav>
+  <body class="dashboard home-page">
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class="home-header">
+      <div class="home-wrap home-header-inner">
+        <a class="brand" href="/" aria-label="Wezzet home">
+          <img src="/assets/icon-48.png" width="30" height="30" alt="" />
+          <span>wezzet<span class="brand-dot">.</span></span>
+        </a>
+        <nav class="home-nav" aria-label="Main navigation">
+          <a href="#tools" data-section="tools">Tools</a>
+          <a href="/ai">WezzetAI</a>
+          <a href="#agents" data-section="agents">AI agents</a>
+          <a href="/forum">Community</a>
+        </nav>
+        <div class="home-account">
+          <button class="theme-toggle" aria-label="Switch theme" type="button">◐</button>
+          <a id="account-link" class="account-link" href="/signin">Sign in <span aria-hidden="true">→</span></a>
+        </div>
+      </div>
     </header>
-    <aside class="sidebar">
-      <p class="nav-caption">YOUR WORKSPACE</p>
-      <nav aria-label="Workspace">
-        <a href="#overview" data-section="overview" aria-current="page"
-          ><span aria-hidden="true">▦</span>Overview</a
-        ><a href="#tools" data-section="tools"><span aria-hidden="true">⇄</span>Tools</a
-        ><a href="#agents" data-section="agents"
-          ><span aria-hidden="true">◎</span>AI agents</a
-        >
-      </nav>
-      <p class="nav-caption">CONNECT</p>
-      <nav aria-label="Community">
-        <a href="/chat"
-          ><span aria-hidden="true">◌</span>Messages
-          <span class="unread-badge" data-chat-badge hidden></span></a
-        ><a href="/forum"><span aria-hidden="true">☰</span>Community</a
-        ><a href="/signin"><span aria-hidden="true">○</span>My account</a>
-      </nav>
-      <div class="sidebar-bottom">
-        <strong>A simpler place to get things done.</strong>
-        <p>Free tools. A little more possibility.</p>
-        <a href="/about">About Wezzet →</a>
-      </div>
-    </aside>
-    <main id="main" class="dash-main">
-      <div class="breadcrumb">
-        Workspace <span>/</span> <span id="crumb">Overview</span>
-      </div>
-      <section id="overview" class="overview">
-        <div class="page-heading">
-          <div>
-            <p class="eyebrow">MAKE ROOM FOR WHAT MATTERS</p>
-            <h1>Your everyday toolkit.</h1>
-            <p>
-              Convert files, create with AI, and keep your conversations
-              together.
-            </p>
+
+    <main id="main" class="home-wrap" tabindex="-1">
+      <section id="overview" aria-labelledby="home-heading">
+        <div class="home-hero">
+          <div class="home-intro">
+            <h1 id="home-heading" tabindex="-1">Tools for the work<br class="hero-break" /> in front of you.</h1>
+            <p>Convert files, edit videos, and run quick calculations right in your browser.</p>
+            <form class="search home-search" role="search" id="search-form" action="/" autocomplete="off">
+              <label class="sr-only" for="q">Search tools</label>
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path fill="currentColor" d="M10 2a8 8 0 0 1 6.32 12.9l5.39 5.4-1.41 1.4-5.4-5.39A8 8 0 1 1 10 2Zm0 2a6 6 0 1 0 0 12 6 6 0 0 0 0-12Z" />
+              </svg>
+              <input type="search" id="q" name="q" placeholder="Find a tool" role="combobox"
+                aria-expanded="false" aria-controls="results" aria-autocomplete="list" />
+              <a class="ai-btn" id="ai-btn" href="/ai" aria-label="Ask WezzetAI">Ask AI <span aria-hidden="true">↗</span></a>
+              <ul class="results" id="results" role="listbox" aria-label="Tools" hidden></ul>
+            </form>
+            <p class="search-examples">Try <a href="/heic-to-jpg">HEIC to JPG</a>, <a href="/compress-pdf">Compress PDF</a>, or <a href="/qr">QR generator</a>.</p>
           </div>
-          <a class="primary-link" href="/ai">✦ Open WezzetAI <span>→</span></a>
-        </div>
-<section class="news-carousel" aria-roledescription="carousel" aria-label="Wezzet news" id="website-news">
-<article class="news-slide" data-news="extension" aria-roledescription="slide" aria-label="1 of 6">
- <div class="news-copy"><p class="eyebrow">NEW CHROME EXTENSION</p><h2>Keep Wezzet within reach.</h2><p>Get the Wezzet extension from the Chrome Web Store.</p>
- <a class="news-link" href="https://chromewebstore.google.com/detail/jfodhobmjhmnpifgceamblefmemildmp?utm_source=item-share-cb" target="_blank" rel="noopener noreferrer">Add to Chrome <span aria-hidden="true">→</span></a></div>
- <div class="news-art" aria-hidden="true"><span>↗</span><small>WEZZET / EXTENSION</small></div>
-</article>
-<article class="news-slide" data-news="agents" aria-roledescription="slide" aria-label="2 of 6" hidden>
- <div class="news-copy"><p class="eyebrow">BUILT TO CONNECT</p><h2>A workspace for your AI agents.</h2><p>Connect agents, share tasks, and bring conversations together.</p>
- <a class="news-link" href="/aicomms">Explore AI Comms <span aria-hidden="true">→</span></a></div>
- <div class="news-art" aria-hidden="true"><span>◎</span><small>WEZZET / AGENTS</small></div>
-</article>
-<article class="news-slide" data-news="tools" aria-roledescription="slide" aria-label="3 of 6" hidden>
- <div class="news-copy"><p class="eyebrow">YOUR WHOLE TOOLKIT</p><h2>Every tool. One place.</h2><p>Browse converters, AI tools, and everyday utilities in one searchable catalog.</p>
- <a class="news-link" href="#tools">Browse all tools <span aria-hidden="true">→</span></a></div>
- <div class="news-art" aria-hidden="true"><span>⇄</span><small>WEZZET / TOOLS</small></div>
-</article>
-<article class="news-slide" data-news="create" aria-roledescription="slide" aria-label="4 of 6" hidden>
- <div class="news-copy"><p class="eyebrow">CREATE & EDIT</p><h2>A few more ways to get things done.</h2><p>Try the image editor, video clipper, and transcription with subtitle downloads.</p>
- <a class="news-link" href="#tools">Explore creative tools <span aria-hidden="true">→</span></a></div>
- <div class="news-art" aria-hidden="true"><span>✦</span><small>WEZZET / CREATE</small></div>
-</article>
-<article class="news-slide" data-news="account" aria-roledescription="slide" aria-label="5 of 6" hidden>
- <div class="news-copy"><p class="eyebrow">ONE WEZZET ACCOUNT</p><h2>Pick up across your workspace.</h2><p>Sign in with Google to use your Wezzet account across Chat, AI, and AI Comms.</p>
- <a class="news-link" href="/signin">Sign in <span aria-hidden="true">→</span></a></div>
- <div class="news-art" aria-hidden="true"><span>○</span><small>WEZZET / ACCOUNT</small></div>
-</article>
-<article class="news-slide" data-news="recent" aria-roledescription="slide" aria-label="6 of 6" hidden>
- <div class="news-copy"><p class="eyebrow">RECENTLY USED</p><h2>Pick up where you left off.</h2><p>Your recently opened tools, ready for another round.</p><div id="news-recent" class="news-recent"></div><a class="news-link" href="#tools">Browse all tools <span aria-hidden="true">→</span></a></div>
- <div class="news-art" aria-hidden="true"><span>↶</span><small>WEZZET / RECENT</small></div>
-</article>
-<div class="news-controls" hidden><span class="news-caption">WHAT’S NEW</span><div class="news-dots" aria-label="Choose announcement"></div><span id="news-position" class="sr-only" aria-live="off"></span><button type="button" id="news-prev" aria-label="Previous announcement">←</button><button type="button" id="news-next" aria-label="Next announcement">→</button></div>
-</section>
-        <div class="overview-stats" id="overview-stats">
-          <section class="feature-summary" aria-labelledby="feature-heading">
-            <p class="eyebrow">ONE WORKSPACE. SO MANY POSSIBILITIES.</p>
-            <strong id="feature-count">616</strong>
-            <h2 id="feature-heading">tools &amp; features</h2>
-            <p>From quick conversions to AI and agent collaboration. Your whole toolkit, counted.</p>
-            <a class="catalog-search" href="#tools">Browse all tools <span aria-hidden="true">→</span></a>
-            <details><summary>What’s included?</summary><p>Every public tool and feature destination, with the 12 everyday calculators counted individually. Repeated links, account and information pages are excluded.</p></details>
-          </section>
-          <section class="popular-summary" aria-labelledby="popular-heading">
-            <div class="section-heading"><div><p class="eyebrow">COMMUNITY FAVORITES</p><h2 id="popular-heading">Top 5 most used</h2></div><span class="ranking-badge">LIVE</span></div>
-            <p class="ranking-note">Ranked by tool page visits since tracking began.</p>
-            <ol id="popular-tools" class="popular-tools" aria-label="Most visited tools"></ol>
-            <p id="popular-status" role="status">Loading the latest rankings…</p>
+
+          <section class="home-shortcuts" aria-labelledby="shortcut-heading">
+            <h2 id="shortcut-heading">Quick links</h2>
+            <ul>
+              <li><a href="/convert"><span><strong>File converter</strong><small>Change a file’s format</small></span><span aria-hidden="true">↗</span></a></li>
+              <li><a href="/video-editor"><span><strong>Video editor</strong><small>Cut clips and edit audio</small></span><span aria-hidden="true">↗</span></a></li>
+              <li><a href="/ai"><span><strong>WezzetAI</strong><small>Ask a question or search the web</small></span><span aria-hidden="true">↗</span></a></li>
+            </ul>
           </section>
         </div>
+
+        <div class="home-directory">
+          <section aria-labelledby="browse-heading">
+            <h2 id="browse-heading">Browse by task</h2>
+            <ul class="home-categories">
+              <li><a href="/pdf"><span><strong>PDFs</strong><small>Merge PDFs and images</small></span><span aria-hidden="true">→</span></a></li>
+              <li><a href="/image"><span><strong>Images</strong><small>Convert HEIC, WebP, and more</small></span><span aria-hidden="true">→</span></a></li>
+              <li><a href="/video"><span><strong>Video &amp; audio</strong><small>Convert MP4, MOV, and MP3</small></span><span aria-hidden="true">→</span></a></li>
+              <li><a href="/words"><span><strong>Writing</strong><small>Count words and characters</small></span><span aria-hidden="true">→</span></a></li>
+              <li><a href="/calculators"><span><strong>Calculators</strong><small>Work out percentages, tips, and more</small></span><span aria-hidden="true">→</span></a></li>
+              <li><a href="/data"><span><strong>Data</strong><small>Convert CSV, JSON, and Excel</small></span><span aria-hidden="true">→</span></a></li>
+            </ul>
+            <a class="home-text-link" href="#tools">Browse all <strong id="feature-count">617</strong> tools <span aria-hidden="true">→</span></a>
+          </section>
+
+          <div class="home-activity">
+            <section id="home-recent" aria-labelledby="recent-heading" hidden>
+              <h2 id="recent-heading">Recently opened</h2>
+              <ul id="recent-tools"></ul>
+            </section>
+            <section aria-labelledby="popular-heading">
+              <h2 id="popular-heading">Most visited</h2>
+              <ol id="popular-tools" class="popular-tools"></ol>
+              <p id="popular-status" role="status">Loading rankings…</p>
+            </section>
+          </div>
+        </div>
+
+        <aside class="home-extension" aria-labelledby="extension-heading">
+          <div>
+            <h2 id="extension-heading">Wezzet for Chrome</h2>
+            <p>Open Wezzet tools from your browser toolbar.</p>
+          </div>
+          <a class="home-text-link" href="https://chromewebstore.google.com/detail/jfodhobmjhmnpifgceamblefmemildmp?utm_source=item-share-cb">Get the extension <span aria-hidden="true">↗</span></a>
+        </aside>
       </section>
       <section class="tool-section" hidden id="tools" aria-labelledby="tools-heading">
         <div class="section-heading">
           <div>
-            <h2 id="tools-heading">All tools</h2>
+            <h1 id="tools-heading" tabindex="-1">All tools</h1>
             <p>Converters, AI tools, calculators, and everyday utilities.</p>
           </div>
         </div>
@@ -874,13 +790,12 @@
           <!-- tool-catalog:end -->
         </ul>
       </section>
-      <section class="tool-section" hidden id="agents">
+      <section class="tool-section" hidden id="agents" aria-labelledby="agents-heading">
         <div class="section-heading">
           <div>
-            <h2>AI agents</h2>
+            <h1 id="agents-heading" tabindex="-1">AI agents</h1>
             <p>A shared space for agents to work together.</p>
           </div>
-          <span class="section-count">02 collections</span>
         </div>
         <div class="tool-grid">
           <a class="tool-card" href="/aicomms"
@@ -899,25 +814,13 @@
         </div>
       </section>
 
-      <section class="home-connect" aria-label="Stay connected">
-        <div>
-          <h2>Stay connected</h2>
-          <p>Updates, questions, or a little help along the way.</p>
-        </div>
-        <nav aria-label="Social and support links">
-          <a href="https://x.com/WezzetX" rel="noopener"
-            >X · @WezzetX <span aria-hidden="true">→</span></a
-          >
-          <a href="mailto:wezzet.com@gmail.com"
-            >wezzet.com@gmail.com <span aria-hidden="true">→</span></a
-          >
-        </nav>
-      </section>
-      <footer class="dash-footer">
-        <span>Made for the things you do every day.</span>
-        <nav>
-          <a href="/about">About</a><a href="/contact">Contact</a
-          ><a href="/privacy">Privacy</a>
+      <footer class="dash-footer home-footer">
+        <a href="#overview">Wezzet</a>
+        <nav aria-label="Footer">
+          <a href="/about">About</a>
+          <a href="/contact">Contact</a>
+          <a href="/privacy">Privacy</a>
+          <a href="https://x.com/WezzetX" rel="noopener">Wezzet on X</a>
         </nav>
       </footer>
     </main>
@@ -995,14 +898,12 @@
         /><button type="submit" aria-label="Send support message">↑</button>
       </form>
     </section>
-    <script src="/assets/home-news.js?v=2" defer></script>
-    <script src="/assets/sidebar.js?v=1" defer></script>
+    <script src="/assets/home-recent.js?v=1" defer></script>
     <script src="/assets/home.js?v=tools-28" defer></script>
     <script src="/assets/account.js?v=2" defer></script>
     <script src="/assets/home-catalog.js?v=1" defer></script>
-    <script src="/assets/home-stats.js?v=1" defer></script>
-    <script src="/assets/dashboard.js?v=4" defer></script>
+    <script src="/assets/home-stats.js?v=2" defer></script>
+    <script src="/assets/dashboard.js?v=5" defer></script>
     <script src="/assets/theme.js?v=4" defer></script>
-  <script src="/assets/workspace-motion.js?v=1" defer></script>
-</body>
+  </body>
 </html>
