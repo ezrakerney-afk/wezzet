@@ -1,11 +1,14 @@
 const $ = (id) => document.getElementById(id);
 // Each unit is its size in the category's base unit. Strings are units with their own formulas (see SPECIAL).
 const U = {
-  Length: { Nanometers: 1e-9, Micrometers: 1e-6, Millimeters: 0.001, Centimeters: 0.01, Meters: 1, Kilometers: 1000, Inches: 0.0254, Feet: 0.3048, Yards: 0.9144, Miles: 1609.344, "Nautical miles": 1852, "Light years": 9460730472580800 },
-  Weight: { Micrograms: 1e-9, Milligrams: 1e-6, Grams: 0.001, Kilograms: 1, "Metric tons": 1000, Ounces: 0.028349523125, Pounds: 0.45359237, Stone: 6.35029318, "US tons": 907.18474, "Imperial tons": 1016.0469088, Carats: 0.0002, "Troy ounces": 0.0311034768 },
+  "US coins": { Pennies: 0.01, Cents: 0.01, Nickels: 0.05, Dimes: 0.1, Quarters: 0.25, "Half dollars": 0.5, Dollars: 1 },
+  "Large numbers": { Ones: 1, Hundreds: 100, Thousands: 1e3, Lakhs: 1e5, Millions: 1e6, Crores: 1e7, Billions: 1e9, Trillions: 1e12 },
+  "Water weight": { Milligrams: 1e-6, Grams: 0.001, Kilograms: 1, Ounces: 0.028349523125, Pounds: 0.45359237, "US tons": 907.18474, "Metric tons": 1000, Microliters: 1e-6, Drops: 0.00005, Milliliters: 0.001, "Cubic centimeters": 0.001, Liters: 1, Teaspoons: 0.00492892159375, Tablespoons: 0.0147867647813, "Fluid ounces": 0.0295735295625, Cups: 0.2365882365, Pints: 0.473176473, Quarts: 0.946352946, Gallons: 3.785411784, "Cubic feet": 28.316846592, "Cubic meters": 1000, "Cubic yards": 764.554857984 },
+  Length: { Angstroms: 1e-10, Decimeters: 0.1, Mils: 0.0000254, Nanometers: 1e-9, Micrometers: 1e-6, Millimeters: 0.001, Centimeters: 0.01, Meters: 1, Kilometers: 1000, Inches: 0.0254, Feet: 0.3048, Yards: 0.9144, Miles: 1609.344, "Nautical miles": 1852, "Light years": 9460730472580800 },
+  Weight: { Decagrams: 0.01, Micrograms: 1e-9, Milligrams: 1e-6, Grams: 0.001, Kilograms: 1, "Metric tons": 1000, Ounces: 0.028349523125, Pounds: 0.45359237, Stone: 6.35029318, "US tons": 907.18474, "Imperial tons": 1016.0469088, Carats: 0.0002, "Troy ounces": 0.0311034768 },
   Temperature: { Celsius: "C", Fahrenheit: "F", Kelvin: "K", Rankine: "R", "Réaumur": "Re" },
-  Volume: { Milliliters: 0.001, Liters: 1, "Cubic meters": 1000, "Cubic centimeters": 0.001, "Cubic inches": 0.016387064, "Cubic feet": 28.316846592, Teaspoons: 0.00492892159375, Tablespoons: 0.0147867647813, "Fluid ounces": 0.0295735295625, Cups: 0.2365882365, Pints: 0.473176473, Quarts: 0.946352946, Gallons: 3.785411784, "Imperial gallons": 4.54609 },
-  Area: { "Square millimeters": 1e-6, "Square centimeters": 1e-4, "Square meters": 1, Hectares: 1e4, "Square kilometers": 1e6, "Square inches": 0.00064516, "Square feet": 0.09290304, "Square yards": 0.83612736, Acres: 4046.8564224, "Square miles": 2589988.110336 },
+  Volume: { Centiliters: 0.01, Microliters: 0.000001, Milliliters: 0.001, Liters: 1, "Cubic meters": 1000, "Cubic centimeters": 0.001, "Cubic inches": 0.016387064, "Cubic feet": 28.316846592, Teaspoons: 0.00492892159375, Tablespoons: 0.0147867647813, "Fluid ounces": 0.0295735295625, Cups: 0.2365882365, Pints: 0.473176473, Quarts: 0.946352946, Gallons: 3.785411784, "Imperial gallons": 4.54609 },
+  Area: { Ares: 100, "Cents (land)": 40.468564224, Gaj: 0.83612736, "Square millimeters": 1e-6, "Square centimeters": 1e-4, "Square meters": 1, Hectares: 1e4, "Square kilometers": 1e6, "Square inches": 0.00064516, "Square feet": 0.09290304, "Square yards": 0.83612736, Acres: 4046.8564224, "Square miles": 2589988.110336 },
   Speed: { "Meters per second": 1, "Kilometers per hour": 1 / 3.6, "Miles per hour": 0.44704, Knots: 1852 / 3600, "Feet per second": 0.3048, Mach: 340.29, "Speed of light": 299792458 },
   Time: { Nanoseconds: 1e-9, Microseconds: 1e-6, Milliseconds: 0.001, Seconds: 1, Minutes: 60, Hours: 3600, Days: 86400, Weeks: 604800, Months: 2629746, Years: 31556952, Decades: 315569520, Centuries: 3155695200 },
   Power: { Milliwatts: 0.001, Watts: 1, Kilowatts: 1000, Megawatts: 1e6, Gigawatts: 1e9, Horsepower: 745.69987158227, "Brake horsepower": 745.69987158227, "Metric horsepower": 735.49875, "BTU per hour": 0.29307107, "Tons of refrigeration": 3516.8528421, "Joules per second": 1, dBm: "dBm" },
@@ -14,7 +17,7 @@ const U = {
   Current: { Microamps: 1e-6, Milliamps: 0.001, Amps: 1, Kiloamps: 1000 },
   "Electric charge": { Picocoulombs: 1e-12, Nanocoulombs: 1e-9, Microcoulombs: 1e-6, Millicoulombs: 0.001, Coulombs: 1, "Electron charges": 1.602176634e-19, "Milliamp hours": 3.6, "Amp hours": 3600 },
   Frequency: { Hertz: 1, Kilohertz: 1e3, Megahertz: 1e6, Gigahertz: 1e9, Terahertz: 1e12, "Radians per second": 1 / (2 * Math.PI), RPM: 1 / 60 },
-  Pressure: { Pascals: 1, Kilopascals: 1000, Megapascals: 1e6, Bar: 1e5, Millibar: 100, Atmospheres: 101325, PSI: 6894.757293168, "mm of mercury": 133.322387415, "Inches of mercury": 3386.389, Torr: 101325 / 760 },
+  Pressure: { KSI: 6894757.29, "Inches of water": 249.0889, "Kilograms per square centimeter": 98066.5, Pascals: 1, Kilopascals: 1000, Megapascals: 1e6, Bar: 1e5, Millibar: 100, Atmospheres: 101325, PSI: 6894.757293168, "mm of mercury": 133.322387415, "Inches of mercury": 3386.389, Torr: 101325 / 760 },
   Force: { Newtons: 1, Kilonewtons: 1000, Dynes: 1e-5, "Pounds-force": 4.4482216152605, "Kilograms-force": 9.80665 },
   Angle: { Degrees: 1, Radians: 180 / Math.PI, Gradians: 0.9, "Arc minutes": 1 / 60, "Arc seconds": 1 / 3600, Turns: 360 },
   "Data storage": { Bits: 0.125, Bytes: 1, Kilobytes: 1e3, Megabytes: 1e6, Gigabytes: 1e9, Terabytes: 1e12, Petabytes: 1e15, Kibibytes: 1024, Mebibytes: 1048576, Gibibytes: 1073741824, Tebibytes: 1099511627776 },
