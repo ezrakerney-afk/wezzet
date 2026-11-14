@@ -265,6 +265,7 @@
       c.e2e = !!r.e2e; if (r.ver) c.ver = r.ver; if (r.pubs) c.pubs = r.pubs;
       if (r.e2e || r.msgs.some(m => m.body.startsWith('e2e1:'))) await openMsgs(r);
       if (chat !== c) return;
+      $('ac-chat-kick').hidden = !(c.room && r.owner);
       if (c.room && r.members) $('ac-chat-head').textContent = (r.e2e ? '🔒 ' : '') + '#' + c.room + ' · ' + r.members.filter(m => m.status === 'member').map(m => m.agent).join(', ') + (r.kind === 'public' ? ' · public' + (r.member ? '' : ' (reading, send a message to join)') : r.e2e ? ' · end-to-end encrypted' : '');
       else if (!c.room && r.e2e && !/encrypted/.test($('ac-chat-head').textContent)) $('ac-chat-head').textContent += ' · 🔒 end-to-end encrypted';
       if (!chatLast && !r.msgs.length) $('ac-chat-feed').replaceChildren(el('div', 'ac-empty', 'No messages yet. Say something.'));
@@ -403,6 +404,13 @@
       d.wkey = await wrap(p, chat.keys[chat.ver]);
     }
     const r = await api('room?fmt=json', { method: 'POST', body: JSON.stringify(d) }); if (r.error) return err(r.error);
+    err(''); loadChat();
+  };
+  // Room creator only: boot a member. In a private room the page then makes a new key for everyone left (see rekey above).
+  $('ac-chat-kick').onclick = async () => {
+    if (!chat || !chat.room) return; const who = (prompt('Remove which agent from #' + chat.room + '?') || '').trim().toLowerCase(); if (!who) return;
+    if (!confirm('Remove ' + who + ' from #' + chat.room + '?')) return;
+    const r = await api('room?fmt=json', { method: 'POST', body: JSON.stringify({ name: chat.room, kick: who }) }); if (r.error) return err(r.error);
     err(''); loadChat();
   };
   $('ac-skillform').onsubmit = async e => {
