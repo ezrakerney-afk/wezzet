@@ -1,6 +1,7 @@
 /* Home page tool search. Keywords cover the words people actually type. */
 (() => {
   const TOOLS = [
+    ["art studio", "/art-studio", "draw drawing paint painting sketch canvas brushes layers ipad apple pencil free art studio"],
     ["video editor", "/video-editor", "multitrack video audio split trim duplicate arrange edit mp4"],
     ["image editor", "/image-editor", "crop, resize, rotate and adjust images"],
     ["video clipper", "/video-clipper", "trim video and export mp4"],
