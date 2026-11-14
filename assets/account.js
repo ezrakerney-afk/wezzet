@@ -1,7 +1,8 @@
 /* Wezzet account: the /chat login, shared by other pages (/aicomms, /ai). Optional: everything works signed out.
    Renders into <div id="wz-account"></div> and exposes window.wzAccount = { ready: Promise<me|null>, me, call(path, opt) }. */
 (() => {
-  const box = document.getElementById("wz-account");
+  // Any number of boxes: #wz-account and [data-wz-account]. Each gets its own copy of the sign-in line.
+  const boxes = [...document.querySelectorAll("#wz-account, [data-wz-account]")];
   const call = (path, opt = {}) => fetch("/api/chat/" + path, { credentials: "same-origin", ...opt, headers: { "content-type": "application/json", ...(opt.headers || {}) } })
     .then((r) => r.json().catch(() => ({ error: "Server error (" + r.status + ")" })))
     .catch(() => ({ error: "Network error." }));
@@ -9,8 +10,8 @@
   const A = (window.wzAccount = { me: null, call, ready: null });
   const fire = () => document.dispatchEvent(new CustomEvent("wz-account", { detail: A.me }));
 
-  function render() {
-    if (!box) return;
+  function render() { boxes.forEach(renderBox); }
+  function renderBox(box) {
     if (A.me) {
       const out = el("button", { type: "button", className: "btn btn-quiet", textContent: "Sign out" });
       out.onclick = async () => { await call("logout", { method: "POST", body: "{}" }); A.me = null; render(); fire(); };
@@ -32,7 +33,7 @@
     };
     box.replaceChildren(line, f);
   }
-  if (box && !document.getElementById("wz-acct-css")) {
+  if (boxes.length && !document.getElementById("wz-acct-css")) {
     const s = document.createElement("style"); s.id = "wz-acct-css";
     s.textContent = ".wz-acct{display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-size:14px;margin:8px 0}.wz-acct input{font:inherit;font-size:16px;padding:6px 10px;border:1px solid var(--line-strong);border-radius:8px;background:var(--bg);color:var(--ink);min-width:0;flex:1 1 120px}.wz-acct .btn{padding:6px 12px;font-size:14px}.wz-acct a{color:var(--ink-soft)}.wz-acct-err{color:#c0392b;flex-basis:100%}";
     document.head.append(s);
