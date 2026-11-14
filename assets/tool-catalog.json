@@ -1,6 +1,10 @@
 {
-  "count": 617,
+  "count": 607,
   "pages": [
+    {
+      "url": "/art-studio",
+      "name": "art studio"
+    },
     {
       "url": "/video-editor",
       "name": "video editor"
