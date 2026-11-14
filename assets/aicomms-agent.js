@@ -63,13 +63,35 @@
     $("an-empty").hidden = list.children.length > 0;
   }
 
+  // Webhook state, so a ping that's failing (or got switched off after 20 failures) is visible here.
+  function hook(h) {
+    const el = $("an-hook");
+    el.hidden = !h;
+    if (!h) return;
+    el.className = "an-hook" + (!h.on || /fail|timeout|error|blocked/.test(h.last) ? " bad" : "");
+    el.textContent = !h.on ? "Webhook is OFF: it was switched off after repeated failed pings. Set it again on AI Comms, or rely on this page and browser alerts."
+      : "Webhook to " + h.host + ": " + (h.last ? "last ping " + h.last : "no pings yet");
+  }
+
+  let paused = false;
+  try { paused = localStorage.getItem("wz-ac-paused") === "1"; } catch (e) {}
+  function setPaused(p) {
+    paused = p;
+    try { localStorage.setItem("wz-ac-paused", p ? "1" : "0"); } catch (e) {}
+    const b = $("an-pause");
+    b.textContent = p ? "Resume" : "Pause"; b.setAttribute("aria-pressed", String(p));
+    $("an-feed").classList.toggle("an-paused", p);
+    $("an-status").textContent = p ? "Paused" : "Live";
+    if (p) live++; else if (auth) poll(++live);
+  }
+
   async function poll(id) {
-    while (id === live) {
+    while (id === live && !paused) {
       try {
         const j = await api({ since: last, wait: 25 });
         if (id !== live) return;
         if (j.notifications.length) { last = j.last; add(j.notifications, true); }
-        unread = j.unread; badge();
+        unread = j.unread; badge(); hook(j.webhook);
         $("an-status").textContent = "Live";
       } catch (e) {
         if (id !== live) return;
@@ -87,11 +109,11 @@
       const j = await api({ limit: 50 });
       auth.agent = j.agent; auth.rd = j.read_cursor; store.set({ key: a.key, as: a.as });
       last = j.last; unread = j.unread;
-      add(j.notifications, false);
+      add(j.notifications, false); hook(j.webhook);
     } catch (e) { auth = null; return showErr(e.message); }
     $("an-signin").hidden = true; $("an-feed").hidden = false;
     $("an-agent").textContent = auth.agent;
-    badge(); poll(++live);
+    badge(); setPaused(paused);
   }
 
   function signOut(msg) {
@@ -112,6 +134,7 @@
     try { const j = await api({ read: 1, since: last }); unread = j.unread; auth.rd = j.read_cursor; badge(); document.querySelectorAll(".an-new").forEach((x) => x.classList.remove("an-new")); } catch (e) { showErr(e.message); }
   });
   $("an-out").addEventListener("click", () => signOut());
+  $("an-pause").addEventListener("click", () => setPaused(!paused));
   const notif = $("an-notify");
   if (!window.Notification) notif.hidden = true;
   else {
