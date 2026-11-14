@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Live transport tracker: flights, trains and ships | Wezzet</title>
+<meta name="description" content="Search live flights by flight number, trains by station and number, ships by name, MMSI or IMO, plus airports, ports, stations and railways worldwide. Free, no sign-in.">
+<link rel="canonical" href="https://wezzet.com/transport">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Wezzet">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#121212" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="icon" href="/assets/icon-32.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+<script>try{(function(t){if(t==="dark"||t==="light")document.documentElement.dataset.theme=t})(localStorage.getItem("wz-theme"))}catch(e){}</script>
+<style>.logo .logo-dark{display:none}:root[data-theme="dark"] .logo .logo-light{display:none}:root[data-theme="dark"] .logo .logo-dark{display:block}@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .logo .logo-light{display:none}:root:not([data-theme="light"]) .logo .logo-dark{display:block}}</style>
+<link rel="stylesheet" href="/assets/site.css?v=7">
+<link rel="stylesheet" href="/assets/site.css?v=7">
+<link rel="stylesheet" href="/assets/dashboard.css?v=6">
+<style>
+.tt{max-width:1100px;margin:0 auto;padding:8px 20px 48px}
+.tt h1{font-size:1.6rem;margin:6px 0 4px}.tt .lede{color:var(--ink-soft);margin:0 0 18px}
+.tt-tabs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.tt-tabs button{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:7px 14px;font:inherit;cursor:pointer}
+.tt-tabs button[aria-selected=true]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.tt-bar{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
+.tt-bar input{flex:1 1 260px;padding:10px 12px;border:1px solid var(--line-strong);border-radius:10px;background:var(--surface);color:var(--ink);font:inherit}
+.tt-bar button{padding:10px 18px;border-radius:10px;border:0;background:var(--accent);color:var(--accent-ink);font:inherit;cursor:pointer}
+.tt-bar button:hover{background:var(--accent-hover)}
+.tt-bar select,.tt-bar button{width:auto;flex:0 0 auto}
+.tt-bar select{padding:10px;border:1px solid var(--line-strong);border-radius:10px;background:var(--surface);color:var(--ink);font:inherit}
+.tt-meta{color:var(--ink-soft);font-size:.85rem;margin:6px 0 10px;min-height:1.2em}.tt-meta.bad{color:var(--bad)}
+.tt-card{border:1px solid var(--line);border-radius:14px;background:var(--surface);overflow:auto}
+.tt table{width:100%;border-collapse:collapse;font-size:.9rem}
+.tt th{position:sticky;top:0;background:var(--surface);text-align:left;padding:10px 12px;border-bottom:1px solid var(--line-strong);cursor:pointer;white-space:nowrap;user-select:none}
+.tt th[aria-sort=ascending]::after{content:" ▲"}.tt th[aria-sort=descending]::after{content:" ▼"}
+.tt td{padding:9px 12px;border-bottom:1px solid var(--line);white-space:nowrap}
+.tt tr:hover td{background:color-mix(in srgb,var(--accent) 6%,transparent)}
+.tt td a{color:var(--accent)}.tt .empty{padding:40px;text-align:center;color:var(--ink-soft)}
+.tt .src{font-size:.8rem;color:var(--ink-soft);margin-top:14px}
+</style>
+</head>
+<body class="dashboard">
+<header class="dash-header">
+  <a class="brand" href="/" aria-label="Wezzet home"><img src="/assets/icon-48.png" width="32" height="32" alt="">wezzet<span class="brand-dot">.</span></a>
+  <nav aria-label="Top navigation"><a href="/">All tools</a><button class="theme-toggle" type="button" aria-label="Switch theme">◐</button></nav>
+</header>
+<main id="main" class="tt">
+  <div class="breadcrumb"><a href="/">Workspace</a><span>/</span><span>Transport tracker</span></div>
+  <h1>Live transport tracker</h1>
+  <p class="lede">Flights, trains and ships around the world, plus airports, ports, stations and railways. Data is fetched live when you search; nothing is stored.</p>
+  <div class="tt-tabs" role="tablist" id="tabs"></div>
+  <form class="tt-bar" id="f"><input id="q" autocomplete="off" aria-label="Search"><select id="lim" aria-label="Results"><option>50</option><option selected>100</option><option>200</option></select><button>Search</button></form>
+  <p class="tt-meta" id="meta" aria-live="polite"></p>
+  <div class="tt-card"><table><thead id="th"></thead><tbody id="tb"></tbody></table><div class="empty" id="empty">Pick a type and search.</div></div>
+  <p class="src">Sources: OpenSky Network (flights), Transitous (trains), Digitraffic AIS (ships in Nordic and Baltic waters), OpenStreetMap via Overpass (airports, ports, stations, railways, the same data as OpenRailwayMap). API: <code>/api/transport?mode=flights&amp;q=UAL</code></p>
+</main>
+<script src="/assets/transport.js?v=1" defer></script>
+<script src="/assets/theme.js" defer></script>
+</body>
+</html>

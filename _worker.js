@@ -15,6 +15,7 @@ export default {
     if (url.pathname === "/api/tool-stats") return toolStats(request, env);
     if (url.pathname.startsWith("/api/aicomms")) return aicomms(request, env, url, ctx);
     if (/^\/api\/(paste|read|calc|json|csv|hash|base64|uuid|dns|status|headers|cron|regex|diff|count|password|random)(\/|$)/.test(url.pathname) || url.pathname === "/api" || url.pathname === "/api/") return tools(request, env, url);
+    if (url.pathname === "/api/transport") return transport(request, url);
     if (url.pathname === "/api/search") return wzSearch(request, env, url);
     if (url.pathname === "/api/ai" || url.pathname.startsWith("/api/ai/")) return wzAI(request, env);
     if (url.pathname === "/api/vision") return wzVision(request, env);
@@ -3703,4 +3704,63 @@ async function toolStats(request, env) {
   } catch {
     return json({error: 'Tool rankings temporarily unavailable'}, 503);
   }
+}
+
+// ---- Transport tracker: live flights, trains, ships, airports, ports and railways.
+// Pulled from free, keyless public sources only when asked; nothing is stored. Responses are cached 30s at the edge.
+// Flights: OpenSky Network. Trains: Transitous (MOTIS, open transit data). Ships: Digitraffic AIS (Baltic/Nordic waters).
+// Airports, ports, stations and railways: OpenStreetMap via Overpass (the data behind OpenRailwayMap).
+async function transport(request, url) {
+  const q = (url.searchParams.get('q') || '').trim().slice(0, 80), mode = url.searchParams.get('mode') || 'flights';
+  const limit = Math.min(200, Math.max(1, +url.searchParams.get('limit') || 100));
+  const H = { 'user-agent': 'Wezzet transport tracker (+https://wezzet.com/transport)', accept: 'application/json' };
+  const get = async (u, o = {}) => { const r = await fetch(u, { ...o, headers: { ...H, ...(o.headers || {}) }, cf: { cacheTtl: 30 } }); if (!r.ok) throw new Error(new URL(u).host + ' answered ' + r.status); return r.json(); };
+  const done = (items, source) => json({ mode, q, count: items.length, source, items: items.slice(0, limit) }, 200, { 'cache-control': 'public, max-age=30' });
+  const bbox = () => { const b = (url.searchParams.get('bbox') || '').split(',').map(Number); return b.length === 4 && b.every(isFinite) ? b : null; };
+  const lc = q.toLowerCase();
+  try {
+    if (mode === 'flights') {
+      const b = bbox(); let u = 'https://opensky-network.org/api/states/all';
+      if (b) u += '?lamin=' + b[1] + '&lomin=' + b[0] + '&lamax=' + b[3] + '&lomax=' + b[2];
+      const d = await get(u);
+      let items = (d.states || []).map((s) => ({ id: s[0], callsign: (s[1] || '').trim(), country: s[2], lon: s[5], lat: s[6], alt_m: s[7] ?? s[13], ground: s[8], speed_kmh: s[9] == null ? null : Math.round(s[9] * 3.6), heading: s[10], vrate: s[11], squawk: s[14], seen: s[4] }));
+      if (lc) items = items.filter((f) => f.callsign.toLowerCase().includes(lc.replace(/\s/g, '')) || f.id === lc || (f.country || '').toLowerCase().includes(lc));
+      return done(items, 'OpenSky Network');
+    }
+    if (mode === 'ships') {
+      const [loc, meta] = await Promise.all([get('https://meri.digitraffic.fi/api/ais/v1/locations', { headers: { 'accept-encoding': 'gzip', 'digitraffic-user': 'Wezzet' } }), get('https://meri.digitraffic.fi/api/ais/v1/vessels', { headers: { 'accept-encoding': 'gzip', 'digitraffic-user': 'Wezzet' } })]);
+      const m = new Map((meta || []).map((v) => [v.mmsi, v]));
+      let items = (loc.features || []).map((f) => { const v = m.get(f.mmsi) || {}; return { mmsi: f.mmsi, imo: v.imo || null, name: (v.name || '').trim(), callsign: v.callSign || '', destination: (v.destination || '').trim(), type: v.shipType, lon: f.geometry.coordinates[0], lat: f.geometry.coordinates[1], speed_kn: f.properties.sog, heading: f.properties.heading, seen: f.properties.timestampExternal }; });
+      if (lc) items = items.filter((s) => String(s.mmsi) === lc || String(s.imo) === lc || s.name.toLowerCase().includes(lc) || s.callsign.toLowerCase() === lc || s.destination.toLowerCase().includes(lc));
+      return done(items, 'Digitraffic AIS (Baltic and Nordic waters)');
+    }
+    if (mode === 'trains') {
+      if (!q) return json({ error: 'Type a station or city to see its departures.' }, 400);
+      const places = await get('https://api.transitous.org/api/v1/geocode?text=' + encodeURIComponent(q));
+      const st = (places || []).find((p) => p.type === 'STOP') || (places || [])[0];
+      if (!st) return done([], 'Transitous');
+      const d = await get('https://api.transitous.org/api/v1/stoptimes?n=80&stopId=' + encodeURIComponent(st.id));
+      const items = (d.stopTimes || []).filter((t) => /RAIL|TRAIN|SUBURBAN|HIGHSPEED|LONG_DISTANCE|REGIONAL|NIGHT/.test(t.mode)).map((t) => ({ number: t.routeShortName || t.displayName || '', line: t.displayName || t.routeShortName || '', operator: t.agencyName || '', to: t.headsign || '', station: st.name, departs: t.place && (t.place.departure || t.place.scheduledDeparture), scheduled: t.place && t.place.scheduledDeparture, track: t.place && (t.place.track || t.place.scheduledTrack) || '', kind: t.mode, realtime: !!t.realTime }));
+      return done(items, 'Transitous (open transit data)');
+    }
+    if (mode === 'airports' || mode === 'ports' || mode === 'stations') {
+      if (q.length < 2) return json({ error: 'Type at least 2 letters.' }, 400);
+      const tags = { airports: ['aeroway:aerodrome'], ports: ['landuse:port', 'harbour', 'industrial:port', 'amenity:ferry_terminal'], stations: ['railway:station', 'railway:halt', 'public_transport:station'] }[mode];
+      const d = await get('https://photon.komoot.io/api/?limit=50&q=' + encodeURIComponent(q) + tags.map((t) => '&osm_tag=' + t).join(''));
+      const items = (d.features || []).map((f) => { const p = f.properties; return { name: p.name || '', code: '', operator: '', city: p.city || p.county || p.state || '', country: p.country || '', lat: f.geometry.coordinates[1], lon: f.geometry.coordinates[0], osm: 'https://www.openstreetmap.org/' + ({ N: 'node', W: 'way', R: 'relation' }[p.osm_type] || 'node') + '/' + p.osm_id }; });
+      return done(items, 'OpenStreetMap (Photon)');
+    }
+    if (mode === 'railways') {
+      if (q.length < 2) return json({ error: 'Type at least 2 letters.' }, 400);
+      const e = q.replace(/[\\"]/g, '');
+      const sel = { airports: `nwr["aeroway"="aerodrome"]["iata"~"^${e}$",i];nwr["aeroway"="aerodrome"]["icao"~"^${e}$",i];nwr["aeroway"="aerodrome"]["name"~"${e}",i]["iata"];`,
+        
+        stations: `node["railway"="station"]["name"~"${e}",i];`,
+        railways: `relation["route"~"^(train|railway)$"]["name"~"${e}",i];relation["route"="train"]["ref"="${e}"];` }[mode];
+      const d = await get('https://overpass-api.de/api/interpreter', { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: 'data=' + encodeURIComponent(`[out:json][timeout:25];(${sel});out center tags 120;`) });
+      const items = (d.elements || []).map((x) => { const t = x.tags || {}; return { name: t.name || t['name:en'] || '', code: t.iata || t.icao || t.ref || t['uic_ref'] || t['seamark:harbour:category'] || '', operator: t.operator || t.network || '', country: t['addr:country'] || t['is_in:country'] || '', from: t.from || '', to: t.to || '', lat: x.lat ?? (x.center && x.center.lat), lon: x.lon ?? (x.center && x.center.lon), osm: 'https://www.openstreetmap.org/' + x.type + '/' + x.id }; });
+      return done(items, 'OpenStreetMap (Overpass)');
+    }
+    return json({ error: 'mode must be flights, trains, ships, airports, ports, stations or railways' }, 400);
+  } catch (err) { return json({ error: 'The live source is busy or unreachable right now (' + err.message + '). Try again in a minute.' }, 502); }
 }
