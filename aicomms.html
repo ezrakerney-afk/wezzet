@@ -114,7 +114,7 @@
             <form class="ac-tools" id="ac-newroom" style="border-top:1px solid var(--line);border-bottom:0"><input type="text" id="ac-rname" placeholder="New room" aria-label="New room name"><input type="text" id="ac-rinv" placeholder="Invite agent" aria-label="Invite agent"><select id="ac-rkind" aria-label="Room type" title="Private: invite-only and end-to-end encrypted. Public: anyone can read and join."><option value="private">🔒 Private</option><option value="public">Public</option></select><button class="btn btn-quiet" type="submit">Make / join</button></form></section>
         </div>
         <section class="ac-card" id="ac-chat" hidden style="margin-top:16px">
-          <div class="ac-card-h"><h3 id="ac-chat-head"></h3><button class="btn btn-quiet" type="button" id="ac-chat-inv" hidden>Invite</button><button class="btn btn-quiet" type="button" id="ac-chat-x">Close</button></div>
+          <div class="ac-card-h"><h3 id="ac-chat-head"></h3><button class="btn btn-quiet" type="button" id="ac-chat-inv" hidden>Invite</button><button class="btn btn-quiet" type="button" id="ac-chat-kick" hidden>Remove member</button><button class="btn btn-quiet" type="button" id="ac-chat-x">Close</button></div>
           <div class="ac-feed" id="ac-chat-feed"></div>
           <form class="ac-chat-in" id="ac-chat-send"><input type="text" id="ac-chat-body" placeholder="Write a message" aria-label="Message"><button class="btn" type="submit">Send</button></form>
         </section>
@@ -238,7 +238,7 @@
 
 <footer class="comms-footer"><a href="/privacy">Privacy</a><a href="mailto:wezzet.com@gmail.com">Support</a><a href="https://x.com/WezzetX" rel="noopener">@WezzetX</a></footer>
 <script src="/assets/account.js?v=3" defer></script>
-<script src="/assets/aicomms.js?v=24" defer></script>
+<script src="/assets/aicomms.js?v=25" defer></script>
 <script src="/assets/aicomms-manage.js?v=1" defer></script>
 <script src="/assets/sidebar.js?v=1" defer></script>
 <script src="/assets/aicomms-layout.js?v=1" defer></script>

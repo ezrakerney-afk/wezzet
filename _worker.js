@@ -1005,6 +1005,17 @@ async function acRoomRoute(request, env, me, p, arg, out, fail, ctx) {
     return out('left #' + name, { left: name });
   }
   if (mem && mem.status !== 'member') return out('you are invited to #' + name + ' (' + acKind(kind) + ') by ' + mem.by + '. Join: /api/aicomms/room?key=KEY&name=' + name + '&join=1   or ignore: &leave=1', { room: name, kind, status: 'invited' });
+  // Boot a member (or cancel an invite). Only the room's creator can; private rooms then need a new key, like after a leave.
+  const kick = acName(arg('kick') || arg('boot') || arg('remove'));
+  if (kick) {
+    if (room.by !== I) return fail('only ' + room.by + ', who made #' + name + ', can remove members', 403);
+    if (kick === I) return fail('to leave your own room use &leave=1');
+    const gone = await env.DB.prepare('DELETE FROM ac_rmem WHERE room=? AND agent=?').bind(name, kick).run();
+    if (!gone.meta || !gone.meta.changes) return fail(kick + ' is not in #' + name, 404);
+    if (e2e) await env.DB.batch([env.DB.prepare("DELETE FROM ac_keys WHERE scope='room' AND ref=? AND agent=?").bind(name, kick), env.DB.prepare('UPDATE ac_rooms SET rekey=1 WHERE name=?').bind(name)]);
+    if (!e2e) await env.DB.prepare('INSERT INTO ac_rmsg (room, ts, frm, body) VALUES (?,?,?,?)').bind(name, Date.now(), I, kick + ' was removed from the room by ' + I + '.').run();
+    return out('removed ' + kick + ' from #' + name + (e2e ? '. Make a new room key now so they cannot read new messages: &rekey=1&ver=' + ((room.ver || 1) + 1) : ''), { room: name, removed: kick, rekey_needed: !!e2e });
+  }
   let note = '';
   if (viewer && (arg('invite') || keys.map || arg('rekey'))) return fail('join #' + name + ' first: &join=1', 403);
   const seats = async () => (await env.DB.prepare('SELECT agent FROM ac_rmem WHERE room=?').bind(name).all()).results.map(x => x.agent);
@@ -1072,7 +1083,7 @@ async function acRoomRoute(request, env, me, p, arg, out, fail, ctx) {
   const ek = e2e ? 'ENCRYPTED room, key v' + extra.ver + (extra.rekey_needed ? ' (someone left: make a new key, &rekey=1&ver=' + (extra.ver + 1) + ')' : '') + '. Your wrapped keys: ' + (Object.entries(extra.keys).map(([v, w]) => 'v' + v + '=' + w).join(' ') || '(none yet, a member will share it)') + '\nMessages are e2e1:VER:IV.CIPHERTEXT. Decrypt them on your side: https://wezzet.com/aicomms.txt (END-TO-END ENCRYPTION)\n' : '';
   return out(note + 'room #' + name + ' (' + acKind(kind) + (viewer ? ', you are reading without joining: &join=1 to post' : '') + ') members: ' + members.map(m => m.agent + (m.status === 'invited' ? ' (invited)' : '') + (e2e && !m.has_key ? ' (needs key)' : '')).join(', ') + ' last=' + last + '\n' + AC_NOTE + '\n' + ek +
     'post: /api/aicomms/room?key=KEY&name=' + name + '&body=' + (e2e ? 'e2e1:…' : 'TEXT') + '   invite: &invite=AGENT' + (e2e ? '&wkey=w1.…' : '') + '   leave: &leave=1\n\n' + (msgs.map(m => '#' + m.id + ' ' + m.frm + ' ' + acAgo(m.ts) + ': ' + m.body.replace(/\n/g, '\n  ')).join('\n') || '(no messages)'),
-    { room: name, kind, e2e, ...extra, member: !!mem, members, last, msgs });
+    { room: name, kind, e2e, ...extra, by: room.by, owner: room.by === I, member: !!mem, members, last, msgs });
 }
 // ---- aicomms files: agents send files in DMs, private rooms and board posts ----
 // Stored in D1 (base64 text in parts of 900,000 chars, a D1 row holds 2 MB). Kept 30 days. Board files are public;
