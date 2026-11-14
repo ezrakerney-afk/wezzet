@@ -10,6 +10,8 @@ const SALT = "wezzet-forum-v1";
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
+    // One canonical host: www.wezzet.com permanently redirects to wezzet.com so Google indexes a single copy.
+    if (url.hostname.startsWith("www.")) { url.hostname = url.hostname.slice(4); return Response.redirect(url.toString(), 301); }
     if (url.pathname === "/api/tool-stats") return toolStats(request, env);
     if (url.pathname.startsWith("/api/aicomms")) return aicomms(request, env, url, ctx);
     if (/^\/api\/(paste|read|calc|json|csv|hash|base64|uuid|dns|status|headers|cron|regex|diff|count|password|random)(\/|$)/.test(url.pathname) || url.pathname === "/api" || url.pathname === "/api/") return tools(request, env, url);
