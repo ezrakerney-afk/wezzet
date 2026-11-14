@@ -56,7 +56,7 @@
       if (seen.has(n.id)) continue;
       seen.add(n.id);
       list.prepend(row(n));
-      if (alert && document.hidden && window.Notification && Notification.permission === "granted") {
+      if (alert && !window.wzPushOn && document.hidden && window.Notification && Notification.permission === "granted") {
         try { new Notification((LABEL[n.event] || "AI Comms") + " for " + auth.agent, { body: n.summary, tag: "wz-ac-" + n.id, icon: "/assets/icon-192.png" }); } catch (e) {}
       }
     }
@@ -135,11 +135,46 @@
   });
   $("an-out").addEventListener("click", () => signOut());
   $("an-pause").addEventListener("click", () => setPaused(!paused));
-  const notif = $("an-notify");
-  if (!window.Notification) notif.hidden = true;
+  // Phone notifications: real Web Push through the service worker, so they arrive even with the page closed.
+  // iPhones only allow this once the page is added to the Home Screen.
+  const notif = $("an-notify"), tip = $("an-tip");
+  const standalone = matchMedia("(display-mode: standalone), (display-mode: fullscreen)").matches || navigator.standalone;
+  const ios = /iPhone|iPad|iPod/.test(navigator.userAgent);
+  const reg = "serviceWorker" in navigator ? navigator.serviceWorker.register("/aicomms/sw.js", { scope: "/aicomms/" }) : null;
+  const say = (t) => { tip.textContent = t; tip.hidden = !t; };
+  async function pushState() {
+    if (!reg || !window.PushManager || !window.Notification) {
+      if (ios && !standalone) { notif.textContent = "Turn on phone notifications"; return; }
+      notif.hidden = true; return;
+    }
+    const sub = await (await reg).pushManager.getSubscription();
+    window.wzPushOn = !!sub;
+    notif.textContent = Notification.permission === "denied" ? "Notifications blocked" : sub ? "Phone notifications on" : "Turn on phone notifications";
+    notif.disabled = Notification.permission === "denied";
+  }
+  notif.addEventListener("click", async () => {
+    if (ios && !standalone) return say("On iPhone: tap Share, then Add to Home Screen. Open Wezzet Agent from your Home Screen and turn notifications on there.");
+    try {
+      if ((await Notification.requestPermission()) !== "granted") return pushState();
+      const r = await reg, old = await r.pushManager.getSubscription();
+      const key = (await (await fetch("/api/aicomms/phone-key?fmt=json")).json()).key;
+      const raw = Uint8Array.from(atob(key.replace(/-/g, "+").replace(/_/g, "/") + "==".slice(0, (4 - key.length % 4) % 4)), (c) => c.charCodeAt(0));
+      const sub = old || await r.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: raw });
+      const q = new URLSearchParams({ fmt: "json", test: "1" }); if (auth.as) q.set("as", auth.as);
+      const res = await fetch("/api/aicomms/phone?" + q, { method: "POST", headers: { authorization: "Bearer " + auth.key, "content-type": "application/json" }, body: JSON.stringify(sub) });
+      const j = await res.json().catch(() => ({}));
+      say(res.ok ? "Done. You'll get a notification for everything " + auth.agent + " gets, even with this closed." : j.error || "Couldn't turn notifications on.");
+    } catch (e) { say("Couldn't turn notifications on in this browser."); }
+    pushState();
+  });
+  pushState();
+  if (!ios && !standalone) window.addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); say("Tip: install this page (browser menu → Install) to get it full screen and pinned."); });
+
+  const full = $("an-full");
+  if (!document.documentElement.requestFullscreen || standalone) full.hidden = true;
   else {
-    const label = () => { notif.textContent = Notification.permission === "granted" ? "Browser alerts on" : Notification.permission === "denied" ? "Alerts blocked in browser" : "Turn on browser alerts"; notif.disabled = Notification.permission !== "default"; };
-    label(); notif.addEventListener("click", () => Notification.requestPermission().then(label));
+    full.addEventListener("click", () => document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen().catch(() => {}));
+    document.addEventListener("fullscreenchange", () => { full.textContent = document.fullscreenElement ? "Exit full screen" : "Full screen"; });
   }
   setInterval(() => document.querySelectorAll(".an-item time").forEach((t) => { t.textContent = ago(+t.dataset.ts); }), 30e3);
   const saved = store.get();

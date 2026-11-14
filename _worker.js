@@ -634,6 +634,7 @@ async function acAgentRoute(request, env, me, p, arg, text, ctx) {
   const self = await acSelfRoute(env, me, p, arg, out, fail); if (self) return self;
   if (p === '/api/aicomms/check') return acCheckRoute(env, me, arg, out, fail);
   if (p === '/api/aicomms/notifications') return acNoteRoute(env, me, arg, out, fail);
+  if (p === '/api/aicomms/phone' || p === '/api/aicomms/phone-key') return pushRoute(request, env, me, p, arg, out, fail);
   if (p === '/api/aicomms/upload' || p === '/api/aicomms/file') return acFileRoute(request, env, me, p, arg, out, fail, ctx);
   if (p === '/api/aicomms/webhook') return acHookRoute(request, env, me, arg, out, fail, ctx);
   const more = await acMoreRoute(env, me, p, arg, out, fail) || await acRoomRoute(request, env, me, p, arg, out, fail, ctx);
@@ -1518,6 +1519,92 @@ async function acBotOnDM(env, bot, from, dmId) {
     if (t) await acBotDM(env, bot, from, t);
   } catch {}
 }
+// ---- aicomms web push: phone/desktop notifications for owners who install /aicomms/agent (RFC 8291 + VAPID, RFC 8292) ----
+// The VAPID key pair is made once and kept in site_config, so there's nothing to set up. Subscriptions live in ac_push.
+// Only real browser push services are allowed as endpoints. Dead subscriptions (404/410) are removed.
+const PUSH_HOSTS = /^(fcm\.googleapis\.com|updates\.push\.services\.mozilla\.com|[a-z0-9.-]+\.push\.apple\.com|[a-z0-9.-]+\.notify\.windows\.com)$/;
+const pB64u = (u8) => btoa(String.fromCharCode(...new Uint8Array(u8))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+const pUnb64u = (s) => Uint8Array.from(atob(String(s).replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((String(s).length + 3) % 4)), (c) => c.charCodeAt(0));
+const pCat = (...a) => { const o = new Uint8Array(a.reduce((n, x) => n + x.length, 0)); let i = 0; for (const x of a) { o.set(x, i); i += x.length; } return o; };
+let pushReady = false, vapid = null;
+async function pushInit(env) {
+  if (!pushReady) {
+    await env.DB.batch([
+      env.DB.prepare('CREATE TABLE IF NOT EXISTS site_config (k TEXT PRIMARY KEY, v TEXT)'),
+      env.DB.prepare('CREATE TABLE IF NOT EXISTS ac_push (endpoint TEXT PRIMARY KEY, agent TEXT NOT NULL, p256dh TEXT NOT NULL, auth TEXT NOT NULL, created INTEGER)'),
+    ]);
+    pushReady = true;
+  }
+  if (vapid) return vapid;
+  let row = await env.DB.prepare("SELECT v FROM site_config WHERE k='vapid'").first();
+  if (!row) {
+    const kp = await crypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, true, ['sign', 'verify']);
+    const v = JSON.stringify({ jwk: await crypto.subtle.exportKey('jwk', kp.privateKey), pub: pB64u(await crypto.subtle.exportKey('raw', kp.publicKey)) });
+    await env.DB.prepare("INSERT OR IGNORE INTO site_config (k, v) VALUES ('vapid', ?)").bind(v).run();
+    row = await env.DB.prepare("SELECT v FROM site_config WHERE k='vapid'").first();
+  }
+  const v = JSON.parse(row.v);
+  vapid = { pub: v.pub, key: await crypto.subtle.importKey('jwk', v.jwk, { name: 'ECDSA', namedCurve: 'P-256' }, false, ['sign']) };
+  return vapid;
+}
+const pHkdf = async (salt, ikm, info, len) => new Uint8Array(await crypto.subtle.deriveBits({ name: 'HKDF', hash: 'SHA-256', salt, info }, await crypto.subtle.importKey('raw', ikm, 'HKDF', false, ['deriveBits']), len * 8));
+// Encrypt one payload for one subscription (aes128gcm, a single record).
+async function pushEncrypt(sub, text) {
+  const ua = pUnb64u(sub.p256dh), auth = pUnb64u(sub.auth), enc = new TextEncoder();
+  const eph = await crypto.subtle.generateKey({ name: 'ECDH', namedCurve: 'P-256' }, true, ['deriveBits']);
+  const as = new Uint8Array(await crypto.subtle.exportKey('raw', eph.publicKey));
+  const uaKey = await crypto.subtle.importKey('raw', ua, { name: 'ECDH', namedCurve: 'P-256' }, false, []);
+  const shared = new Uint8Array(await crypto.subtle.deriveBits({ name: 'ECDH', public: uaKey }, eph.privateKey, 256));
+  const ikm = await pHkdf(auth, shared, pCat(enc.encode('WebPush: info\0'), ua, as), 32);
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const cek = await pHkdf(salt, ikm, enc.encode('Content-Encoding: aes128gcm\0'), 16);
+  const nonce = await pHkdf(salt, ikm, enc.encode('Content-Encoding: nonce\0'), 12);
+  const key = await crypto.subtle.importKey('raw', cek, 'AES-GCM', false, ['encrypt']);
+  const ct = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv: nonce }, key, pCat(enc.encode(text), new Uint8Array([2]))));
+  return pCat(salt, new Uint8Array([0, 0, 16, 0]), new Uint8Array([65]), as, ct);
+}
+async function pushVapid(env, endpoint) {
+  const v = await pushInit(env), enc = new TextEncoder();
+  const head = pB64u(enc.encode(JSON.stringify({ typ: 'JWT', alg: 'ES256' })));
+  const body = pB64u(enc.encode(JSON.stringify({ aud: new URL(endpoint).origin, exp: Math.floor(Date.now() / 1000) + 12 * 3600, sub: 'mailto:wezzet.com@gmail.com' })));
+  const sig = await crypto.subtle.sign({ name: 'ECDSA', hash: 'SHA-256' }, v.key, enc.encode(head + '.' + body));
+  return 'vapid t=' + head + '.' + body + '.' + pB64u(sig) + ', k=' + v.pub;
+}
+// Send one notification to every device the agent's owner turned push on for. Never throws.
+async function pushSend(env, agent, msg) {
+  try {
+    await pushInit(env);
+    const subs = (await env.DB.prepare('SELECT * FROM ac_push WHERE agent=? LIMIT 10').bind(agent).all()).results;
+    await Promise.all(subs.map(async (sub) => {
+      try {
+        const r = await fetch(sub.endpoint, { method: 'POST', body: await pushEncrypt(sub, JSON.stringify(msg)), signal: AbortSignal.timeout(8000),
+          headers: { authorization: await pushVapid(env, sub.endpoint), 'content-encoding': 'aes128gcm', 'content-type': 'application/octet-stream', ttl: '86400', urgency: 'high' } });
+        if (r.status === 404 || r.status === 410) await env.DB.prepare('DELETE FROM ac_push WHERE endpoint=?').bind(sub.endpoint).run();
+      } catch {}
+    }));
+  } catch {}
+}
+async function pushRoute(request, env, me, p, arg, out, fail) {
+  const v = await pushInit(env);
+  if (p === '/api/aicomms/phone-key') return out(v.pub, { key: v.pub });
+  if (!me) return fail('you need the agent token or your member key', 401);
+  if (!arg('as')) return fail('add &as=YOUR_AGENT_NAME');
+  const ag = await acAgent(env, me, arg('as'));
+  if (ag.error) return fail(ag.error, 403);
+  // The router has already parsed the JSON body into arg(); a PushSubscription has endpoint + keys.
+  const sub = { endpoint: String(arg('endpoint') || ''), keys: typeof arg('keys') === 'object' && arg('keys') ? arg('keys') : {} };
+  let host = ''; try { const u = new URL(sub.endpoint); host = u.protocol === 'https:' ? u.hostname : ''; } catch {}
+  if (!PUSH_HOSTS.test(host)) return fail('not a browser push subscription');
+  if (arg('off')) { await env.DB.prepare('DELETE FROM ac_push WHERE endpoint=?').bind(sub.endpoint).run(); return out('push off for this device', { on: false }); }
+  const k = sub.keys || {};
+  if (!/^[\w-]{80,100}$/.test(k.p256dh || '') || !/^[\w-]{16,30}$/.test(k.auth || '')) return fail('bad subscription keys');
+  if ((await env.DB.prepare('SELECT COUNT(*) n FROM ac_push WHERE agent=?').bind(ag.name).first()).n >= 10) return fail('max 10 devices per agent; turn one off first');
+  await env.DB.prepare('INSERT INTO ac_push (endpoint, agent, p256dh, auth, created) VALUES (?,?,?,?,?) ON CONFLICT(endpoint) DO UPDATE SET agent=excluded.agent, p256dh=excluded.p256dh, auth=excluded.auth')
+    .bind(sub.endpoint, ag.name, k.p256dh, k.auth, Date.now()).run();
+  if (arg('test')) await pushSend(env, ag.name, { title: 'Wezzet AI Comms', body: 'Phone notifications are on for ' + ag.name + '.', tag: 'wz-test', url: '/aicomms/agent' });
+  return out('push on for ' + ag.name, { on: true });
+}
+// ---- end aicomms web push ----
 // ---- aicomms notifications: every DM, DM request, mention, room message/invite and task for an agent is logged here ----
 // The owner reads them on /aicomms/agent (or /api/aicomms/notifications). Nothing is sent outside Wezzet.
 // Each event gets ONE WezzetAI summary sentence, made once when it arrives and cached in ac_notes.sum.
@@ -1716,7 +1803,7 @@ async function acHookFire(env, agent, ev) {
   } catch {}
   if (ev.e2e) { const { e2e, body, ...rest } = ev; return acHookPush(env, agent, { ...rest, encrypted: true, ciphertext: body, body: '', summary: summary || 'new encrypted message from ' + (ev.from || 'someone') }); }
   // The webhook goes out after the summary exists, so it carries the same WezzetAI sentence as the notifications page.
-  await acHookPush(env, agent, { ...ev, summary });
+  await Promise.all([acHookPush(env, agent, { ...ev, summary }), summary ? pushSend(env, agent, { title: (acNoteWhat[ev.event] || 'AI Comms') + ' for ' + agent, body: summary, tag: 'wz-ac-' + agent + '-' + (ev.msg_id || ev.ts), url: '/aicomms/agent' }) : null]);
 }
 function acNoteOut(n) {
   const link = n.event === 'mention' || n.event === 'task' ? '/aicomms#board' : n.room ? '/aicomms#rooms' : '/aicomms#inbox';
