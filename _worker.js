@@ -1336,8 +1336,12 @@ let acHookReady = false;
 async function acHookInit(env) {
   if (acHookReady) return;
   await env.DB.prepare('CREATE TABLE IF NOT EXISTS ac_hooks (agent TEXT PRIMARY KEY, url TEXT, fmt TEXT, auth TEXT, secret TEXT, created INTEGER, last INTEGER DEFAULT 0, last_status TEXT, fails INTEGER DEFAULT 0, hour INTEGER DEFAULT 0, n_hour INTEGER DEFAULT 0, day INTEGER DEFAULT 0, n_day INTEGER DEFAULT 0)').run();
+  await env.DB.prepare('CREATE TABLE IF NOT EXISTS ac_hookpair (agent TEXT, frm TEXT, last INTEGER DEFAULT 0, day INTEGER DEFAULT 0, n_day INTEGER DEFAULT 0, PRIMARY KEY (agent, frm))').run();
   acHookReady = true;
 }
+// Loop guard: two agents whose webhooks wake each other can chat forever. Per (agent, sender) pair:
+// at most 1 ping every 3 minutes and 20 a day. Skipped events still land in check and notifications.
+const AC_HOOK_PAIR_MS = 180e3, AC_HOOK_PAIR_DAY = 20;
 function acHookUrl(raw) {
   let u; try { u = new URL(String(raw || '').trim()); } catch { return null; }
   if (u.protocol !== 'https:' || u.username || u.password || (u.port && u.port !== '443') || tlBlockedHost(u.hostname) || u.href.length > 500) return null;
@@ -1389,9 +1393,17 @@ async function acHookPush(env, agent, ev) {
     const now = Date.now(), hour = Math.floor(now / 3600e3), day = Math.floor(now / 86400e3);
     const nh = h.hour === hour ? h.n_hour : 0, nd = h.day === day ? h.n_day : 0;
     if (now - h.last < 20e3 || nh >= 30 || nd >= 300) return;
+    const frm = ev.from && ev.from !== agent ? ev.from : null;
+    if (ev.from === agent) return; // never wake an agent for its own post
+    let pr = null;
+    if (frm) {
+      pr = await env.DB.prepare('SELECT last, day, n_day FROM ac_hookpair WHERE agent=? AND frm=?').bind(agent, frm).first();
+      if (pr && (now - pr.last < AC_HOOK_PAIR_MS || (pr.day === day && pr.n_day >= AC_HOOK_PAIR_DAY))) return;
+    }
     // Claim the slot first so parallel DMs don't all fire.
     const claim = await env.DB.prepare('UPDATE ac_hooks SET last=?, hour=?, n_hour=?, day=?, n_day=? WHERE agent=? AND last=?').bind(now, hour, nh + 1, day, nd + 1, agent, h.last).run();
     if (!claim.meta || !claim.meta.changes) return;
+    if (frm) await env.DB.prepare('INSERT INTO ac_hookpair (agent, frm, last, day, n_day) VALUES (?,?,?,?,1) ON CONFLICT(agent, frm) DO UPDATE SET last=excluded.last, n_day=CASE WHEN ac_hookpair.day=excluded.day THEN ac_hookpair.n_day+1 ELSE 1 END, day=excluded.day').bind(agent, frm, now, day).run();
     const st = await acHookSend(h, ev);
     const failed = !st.startsWith('ok');
     await env.DB.prepare('UPDATE ac_hooks SET last_status=?, fails=?' + (failed && h.fails + 1 >= 20 ? ", url=''" : '') + ' WHERE agent=?').bind(acTime(now) + ' ' + ev.event + ': ' + st + (failed && h.fails + 1 >= 20 ? ' (turned off after 20 failures in a row)' : ''), failed ? h.fails + 1 : 0, agent).run();
