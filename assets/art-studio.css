@@ -17,3 +17,6 @@ button,select,label{touch-action:manipulation}#viewport,#paper,#art,#overlay,#pi
 .pixel-mode [for=smoothing],.pixel-mode #smoothing,.pixel-mode .check:has(#pressure),.pixel-mode .text-settings{display:none}
 .tools{overflow-x:hidden}.tools button{flex-shrink:0;min-width:0;width:100%;max-width:48px}
 @media(max-width:650px){#brush-panel #pixel-hint{grid-row:6;margin-top:8px}.tools button{max-width:39px}}
+/* Render at screen resolution instead of asking the browser to scale a canvas layer. */
+#paper #art,#paper #overlay,#pixel-grid{display:none!important}#display{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;touch-action:none;image-rendering:auto}#paper{will-change:auto}
+#export-quality{padding:10px 12px;background:#f4f0fc;border-radius:8px;color:#68538c}

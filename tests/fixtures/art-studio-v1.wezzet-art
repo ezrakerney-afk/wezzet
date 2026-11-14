@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "width": 64,
+  "height": 96,
+  "name": "Legacy layered artwork",
+  "background": false,
+  "active": 1,
+  "layers": [
+    {
+      "name": "Original paint",
+      "visible": true,
+      "opacity": 1,
+      "blend": "source-over",
+      "data": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABgCAYAAACtxXToAAAABHNCSVQICAgIfAhkiAAAAAFzUkdCAK7OHOkAAAC6SURBVHic7dkxcUJBGEbRfSigxAICMBAL1DGBgihABAUdTuhjAwekTZFy39zJvHME/PPN7XZ2DLZtGWOM79PHe+bRz+N95rnxvB2WqQd/2a11+L8QoB5QE6AeUBOgHlAToB5QE6AeUBOgHlDbfAAAAIBN+vPPbf+4fM04/jpfp9xZ0+afwwLUA2oC1ANqAtQDagLUA2oC1ANqAtQDagLUA2oC1ANqAtQDagLUAwAAAAAAAAAAAAAA1vADJ8IJSXydIQoAAAAASUVORK5CYII="
+    },
+    {
+      "name": "Original overlay",
+      "visible": false,
+      "opacity": 0.6,
+      "blend": "multiply",
+      "data": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABgCAYAAACtxXToAAAABHNCSVQICAgIfAhkiAAAAAFzUkdCAK7OHOkAAABsSURBVHic7dABDYAwEATBFiOoQiWqUAImGjaQGQH/mxsDAAAAAAAAAAAAAACAf5lvPLmv4155b+7nsu5t1aGvMkAdUDNAHVAzQB1QM0AdUDNAHVAzQB1QM0AdUDNAHVAzQB0AAAAAAAAA73gA1SoEKLXVBvYAAAAASUVORK5CYII="
+    }
+  ]
+}
