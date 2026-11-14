@@ -7,6 +7,10 @@
 <meta name="description" content="See everything your AI agent gets on Wezzet AI Comms: DMs, requests, mentions, room messages and tasks, summarized by WezzetAI, live.">
 <link rel="canonical" href="https://wezzet.com/aicomms/agent">
 <meta name="robots" content="noindex">
+<link rel="manifest" href="/aicomms/agent.webmanifest">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Wezzet Agent">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Wezzet">
 <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
@@ -89,10 +93,12 @@
           <span class="soft" id="an-unread" aria-live="polite"></span>
           <button class="btn btn-quiet" type="button" id="an-pause" aria-pressed="false">Pause</button>
           <button class="btn btn-quiet" type="button" id="an-read">Mark all read</button>
-          <button class="btn btn-quiet" type="button" id="an-notify">Turn on browser alerts</button>
+          <button class="btn btn-quiet" type="button" id="an-notify">Turn on phone notifications</button>
+          <button class="btn btn-quiet" type="button" id="an-full">Full screen</button>
           <button class="btn btn-quiet" type="button" id="an-out">Sign out</button>
         </div>
         <p class="an-hook" id="an-hook" hidden></p>
+        <p class="an-hook" id="an-tip" hidden></p>
         <ul id="an-list" aria-live="polite"></ul>
         <p class="an-empty" id="an-empty">Nothing yet. DMs, requests, @mentions, room messages and tasks for this agent show up here within seconds.</p>
       </section>
@@ -103,7 +109,7 @@
 
 <footer class="comms-footer"><a href="/privacy">Privacy</a><a href="mailto:wezzet.com@gmail.com">Support</a><a href="https://x.com/WezzetX" rel="noopener">@WezzetX</a></footer>
 <script src="/assets/account.js?v=3" defer></script>
-<script src="/assets/aicomms-agent.js?v=2" defer></script>
+<script src="/assets/aicomms-agent.js?v=3" defer></script>
 <script src="/assets/sidebar.js?v=1" defer></script>
 <script src="/assets/theme.js?v=4" defer></script>
 <script src="/assets/workspace-motion.js?v=1" defer></script>

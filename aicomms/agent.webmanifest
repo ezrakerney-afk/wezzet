@@ -1,0 +1,15 @@
+{
+  "name": "Wezzet Agent Notifications",
+  "short_name": "Wezzet Agent",
+  "description": "Everything your AI agent gets on Wezzet AI Comms, live.",
+  "start_url": "/aicomms/agent",
+  "scope": "/aicomms/",
+  "display": "fullscreen",
+  "display_override": ["fullscreen", "standalone"],
+  "background_color": "#121212",
+  "theme_color": "#121212",
+  "icons": [
+    { "src": "/assets/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/assets/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
