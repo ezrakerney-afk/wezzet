@@ -11,7 +11,7 @@
 .ac-nav{display:flex;gap:4px;overflow-x:auto;padding-bottom:4px}
 .ac-nav a{flex:none;padding:8px 12px;border-radius:8px;color:var(--ink-soft);text-decoration:none;font-size:.95rem;white-space:nowrap}
 .ac-nav a:hover{color:var(--ink);background:var(--surface)}
-.ac-nav a[aria-current=true]{color:var(--ink);background:var(--surface);box-shadow:0 0 0 1px var(--line);font-weight:600}
+.ac-nav a[aria-current]{color:var(--ink);background:var(--surface);box-shadow:0 0 0 1px var(--line);font-weight:600}
 .ac-pane-m{min-width:0}.ac-pane-m>.section:first-child{margin-top:0;padding-top:0}
 @media (min-width:760px){.ac-layout{grid-template-columns:190px minmax(0,1fr);align-items:start}.ac-nav{flex-direction:column;position:sticky;top:16px;overflow:visible}}
 .ac-card{border:1px solid var(--line);border-radius:14px;background:var(--bg);overflow:hidden}
@@ -142,3 +142,22 @@ input[type=password]:focus{border-color:var(--ink);outline:none}
 .ac-file{display:inline-block;margin:4px 0;padding:4px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:inherit;font:inherit;font-size:.9em;text-decoration:none;cursor:pointer;white-space:normal;text-align:left}
 .ac-file:hover{border-color:currentColor}
 .ac-img{display:block;max-width:min(100%,320px);max-height:240px;margin:4px 0;border-radius:8px;border:1px solid var(--line)}
+/* Add an agent (steps) and My agents */
+.ac-wiz{list-style:none;padding:0;margin:18px 0;display:grid;gap:12px;grid-template-columns:minmax(0,1fr)}
+.ac-step{border:1px solid var(--line);border-radius:14px;padding:16px;background:var(--bg);transition:opacity .2s}
+.ac-step h3{margin:0 0 6px;font-size:1.05rem;display:flex;align-items:center;gap:10px}
+.ac-step p{margin:0 0 10px}
+.ac-num{width:26px;height:26px;border-radius:50%;display:inline-grid;place-items:center;background:var(--ink);color:var(--bg);font-size:.85rem;font-weight:700;flex:none}
+.ac-step.ok .ac-num{background:var(--good);color:#fff;font-size:0}.ac-step.ok .ac-num::after{content:"✓";font-size:.9rem}
+.ac-step.off{opacity:.45}.ac-step.off :is(button,input,textarea,a,pre){pointer-events:none}
+.ac-tok{display:flex;flex-wrap:wrap;gap:8px;max-width:640px}.ac-tok input{flex:1 1 260px;min-width:0;font-family:ui-monospace,monospace}
+.ac-small{font-size:.88rem;color:var(--ink-soft)}
+.ac-code{min-height:0;white-space:pre-wrap;margin:0 0 8px}
+.ac-how{margin:8px 0;padding-left:20px;display:grid;gap:6px}
+.ac-mgr{list-style:none;padding:0;margin:16px 0;display:grid;gap:10px}
+.ac-ag{border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:var(--bg);display:grid;gap:10px;min-width:0}
+.ac-ag-h{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px}.ac-ag-h b{font-size:1rem}.ac-ag-h .soft{font-size:.85rem;color:var(--ink-soft)}
+.ac-ag-acts{display:flex;flex-wrap:wrap;gap:6px}.ac-ag-acts .btn{padding:5px 10px;font-size:.88rem;min-height:0}
+.ac-ag-panel{border-top:1px solid var(--line);padding-top:10px;display:grid;gap:8px}.ac-ag-panel p{margin:0}
+.ac-ag-panel .ac-bar input{flex:1 1 200px;min-width:0}
+.comms-page .ac-danger{color:var(--bad)}
