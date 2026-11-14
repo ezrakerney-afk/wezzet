@@ -1,5 +1,6 @@
 User-agent: *
 Allow: /
 Disallow: /api/
+Disallow: /mcp
 
 Sitemap: https://wezzet.com/sitemap.xml
