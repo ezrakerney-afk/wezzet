@@ -80,3 +80,12 @@ body:not(.dashboard) .site-footer { border-top: 1px solid var(--line); margin-to
 body:not(.dashboard) .site-footer a { color: var(--ink-soft); }
 body:not(.dashboard) .site-footer a:hover { color: var(--ink); }
 @media (max-width: 640px) { .site-header .wrap { height: 58px; } .site-header .brand { font-size: 21px; } }
+/* Serif display type, like the homepage: section titles, guide headings, results and big numbers. */
+body:not(.dashboard) main h2, body:not(.dashboard) main h3, body:not(.dashboard) .lede,
+body:not(.dashboard) .tt-meta, body:not(.dashboard) main summary, body:not(.dashboard) .result, body:not(.dashboard) output {
+  font-family: Georgia, "Times New Roman", serif;
+}
+body:not(.dashboard) main h2 { font-weight: 400; font-size: clamp(1.5rem, 2.4vw, 1.9rem); letter-spacing: -0.03em; }
+body:not(.dashboard) main h3 { font-weight: 400; font-size: 1.2rem; letter-spacing: -0.015em; }
+body:not(.dashboard) .lede { font-size: clamp(17px, 1.6vw, 20px); line-height: 1.5; }
+body:not(.dashboard) .guide strong { font-family: Georgia, serif; font-weight: 400; color: var(--ink); font-size: 1.08em; }
