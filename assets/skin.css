@@ -1,0 +1,82 @@
+/* Homepage look for every tool page: wordmark header, serif display titles, card-framed tools, quiet chips. */
+body:not(.dashboard) {
+  --purple: #7045e8;
+  --radius: 14px;
+  font: 15.5px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+}
+body:not(.dashboard) .site-header {
+  position: sticky; top: 0; z-index: 20;
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  backdrop-filter: saturate(1.4) blur(10px);
+  border-bottom: 1px solid var(--line);
+}
+.site-header .wrap { display: flex; align-items: center; height: 68px; padding-block: 0; }
+.site-header .brand { display: flex; align-items: center; gap: 8px; font-size: 24px; font-weight: 750; letter-spacing: -1.2px; color: var(--ink); text-decoration: none; }
+.site-header .brand img { width: 28px; height: 28px; object-fit: contain; }
+.site-header .brand-dot { color: var(--purple); margin-left: -7px; }
+.site-header .site-nav { margin-left: auto; display: flex; align-items: center; gap: 18px; }
+.site-header .site-nav a { color: var(--ink-soft); text-decoration: none; font-weight: 500; }
+.site-header .site-nav a:hover { color: var(--ink); }
+.site-header .theme-toggle { border: 1px solid var(--line); background: transparent; border-radius: 999px; width: 34px; height: 34px; display: grid; place-items: center; color: var(--ink); }
+
+body:not(.dashboard) main > .wrap { max-width: 980px; padding-top: clamp(28px, 5vw, 56px); padding-bottom: 64px; }
+body:not(.dashboard) .tool-head { margin-bottom: 26px; }
+body:not(.dashboard) main h1 {
+  font-family: Georgia, "Times New Roman", serif; font-weight: 400;
+  letter-spacing: -0.045em; line-height: 1.05; font-size: clamp(36px, 5.2vw, 60px); margin: 0 0 12px;
+}
+body:not(.dashboard) .lede { font-size: clamp(16px, 1.4vw, 18px); color: var(--ink-soft); max-width: 60ch; margin: 0; }
+body:not(.dashboard) main h2 { font-size: 1.25rem; letter-spacing: -0.02em; margin: 0 0 12px; }
+
+/* The tool itself sits in one card, like the homepage panels. */
+body:not(.dashboard) .tool-head ~ .field,
+body:not(.dashboard) .tool-head ~ .field-row,
+body:not(.dashboard) .tool-head ~ .row-actions,
+body:not(.dashboard) .tool-head ~ #answer { position: relative; }
+body:not(.dashboard) .tool-card-frame,
+body:not(.dashboard) .tool,
+body:not(.dashboard) .panel,
+body:not(.dashboard) .dropzone {
+  border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface);
+}
+body:not(.dashboard) .tool-frame { border: 1px solid var(--line); border-radius: 18px; background: var(--surface); padding: clamp(18px, 3vw, 28px); box-shadow: 0 1px 0 var(--line), 0 18px 40px -28px rgba(0,0,0,.35); }
+
+body:not(.dashboard) label { font-size: .82rem; font-weight: 600; letter-spacing: .01em; color: var(--ink-soft); }
+body:not(.dashboard) input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]):not([type=file]),
+body:not(.dashboard) select,
+body:not(.dashboard) textarea {
+  border: 1px solid var(--line-strong); border-radius: 10px; background: var(--bg); color: var(--ink);
+  padding: 10px 12px; font: inherit; transition: border-color .15s, box-shadow .15s;
+}
+body:not(.dashboard) input:focus, body:not(.dashboard) select:focus, body:not(.dashboard) textarea:focus {
+  outline: none; border-color: var(--purple); box-shadow: 0 0 0 3px color-mix(in srgb, var(--purple) 22%, transparent);
+}
+body:not(.dashboard) .btn, body:not(.dashboard) button.primary {
+  border-radius: 10px; font-weight: 600; padding: 10px 18px; border: 1px solid transparent; background: var(--purple); color: #fff; transition: transform .1s, filter .15s;
+}
+body:not(.dashboard) .btn:hover { filter: brightness(1.08); }
+body:not(.dashboard) .btn:active { transform: translateY(1px); }
+body:not(.dashboard) .btn-quiet { background: transparent; color: var(--ink); border-color: var(--line-strong); }
+body:not(.dashboard) #answer { font-family: Georgia, serif; font-weight: 400 !important; font-size: clamp(22px, 3vw, 30px) !important; letter-spacing: -0.02em; }
+
+body:not(.dashboard) table.plain { width: 100%; border-collapse: separate; border-spacing: 0; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; background: var(--surface); }
+body:not(.dashboard) table.plain td, body:not(.dashboard) table.plain th { padding: 10px 14px; border-bottom: 1px solid var(--line); text-align: left; }
+body:not(.dashboard) table.plain tr:last-child td { border-bottom: 0; }
+body:not(.dashboard) table.plain td:first-child { font-variant-numeric: tabular-nums; font-weight: 600; }
+
+body:not(.dashboard) .section { margin-top: 48px; }
+body:not(.dashboard) .guide { margin-top: 48px; padding-top: 32px; border-top: 1px solid var(--line); max-width: 72ch; }
+body:not(.dashboard) .guide p, body:not(.dashboard) .guide li { color: var(--ink-soft); }
+body:not(.dashboard) .guide h3 { font-size: 1.02rem; margin: 22px 0 6px; }
+body:not(.dashboard) .guide code { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 1px 6px; }
+body:not(.dashboard) .related ul { list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+body:not(.dashboard) .related a { display: inline-block; padding: 7px 13px; border: 1px solid var(--line); border-radius: 999px; text-decoration: none; color: var(--ink); font-size: .9rem; background: var(--surface); transition: border-color .15s, color .15s; }
+body:not(.dashboard) .related a:hover { border-color: var(--purple); color: var(--purple); }
+
+body:not(.dashboard) .site-footer { border-top: 1px solid var(--line); margin-top: 32px; padding: 28px 0; color: var(--ink-soft); font-size: .9rem; }
+body:not(.dashboard) .site-footer a { color: var(--ink-soft); }
+body:not(.dashboard) .site-footer a:hover { color: var(--ink); }
+@media (max-width: 640px) { .site-header .wrap { height: 58px; } .site-header .brand { font-size: 21px; } }

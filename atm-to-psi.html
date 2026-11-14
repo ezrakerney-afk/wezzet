@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>atm to PSI: Free Online | Wezzet</title>
+<title>atm to PSI converter: formula, table and examples | Wezzet</title>
 <meta name="description" content="Convert atmospheres to psi, with a table of every other pressure unit. Free, no sign up.">
 <link rel="canonical" href="https://wezzet.com/atm-to-psi">
 <meta property="og:type" content="website">
@@ -23,13 +23,14 @@
 <script>try{(function(t){if(t==="dark"||t==="light")document.documentElement.dataset.theme=t})(localStorage.getItem("wz-theme"))}catch(e){}</script>
 <style>.logo .logo-dark{display:none}:root[data-theme="dark"] .logo .logo-light{display:none}:root[data-theme="dark"] .logo .logo-dark{display:block}@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .logo .logo-light{display:none}:root:not([data-theme="light"]) .logo .logo-dark{display:block}}</style>
 <link rel="stylesheet" href="/assets/site.css?v=7">
+<link rel="stylesheet" href="/assets/skin.css?v=1">
 <script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"SoftwareApplication","name":"atm to PSI","url":"https://wezzet.com/atm-to-psi","applicationCategory":"UtilitiesApplication","operatingSystem":"Any (web browser)","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"description":"Convert atmospheres to psi, with a table of every other pressure unit. Free, no sign up."}]}</script>
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1814434432126124" crossorigin="anonymous"></script>
 </head>
 <body>
 <header class="site-header">
   <div class="wrap">
-    <a class="logo" href="/"><img class="logo-light" src="/assets/logo.png" alt="Wezzet" width="113" height="52"><img class="logo-dark" src="/assets/logo-dark.png" alt="Wezzet" width="113" height="52"></a>
+    <a class="brand" href="/" aria-label="Wezzet home"><img src="/assets/icon-48.png" width="28" height="28" alt="">wezzet<span class="brand-dot">.</span></a>
     <nav class="site-nav" aria-label="Main"><a href="/">All tools</a><button class="theme-toggle" type="button" aria-label="Switch between light and dark mode"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm0 2v16a8 8 0 0 1 0-16Z"/></svg></button></nav>
   </div>
 </header>
@@ -40,7 +41,7 @@
       <h1>atm to PSI</h1>
       <p class="lede">Convert atmospheres to psi, with a table of every other pressure unit.</p>
     </div>
-    <div class="field tight" style="max-width:260px">
+    <div class="tool-frame"><div class="field tight" style="max-width:260px">
       <label for="cat">Type</label>
       <select id="cat" data-cat="Pressure" data-from="Atmospheres" data-to="PSI"></select>
     </div>
@@ -51,7 +52,21 @@
     </div>
     <div class="row-actions" style="margin-top:12px"><button class="btn btn-quiet" type="button" id="swap">Swap</button></div>
     <p id="answer" role="status" style="font-size:1.4rem;font-weight:700;margin:18px 0 0"></p>
-    <table class="plain" style="margin-top:20px"><tbody id="table"></tbody></table>
+    <table class="plain" style="margin-top:20px"><tbody id="table"></tbody></table></div>
+    <section class="guide" aria-labelledby="how"><h2 id="how">How to convert atmospheres to psi</h2>
+<p>One atmosphere equals <strong>14.69594878 psi</strong>. To convert, multiply the number of atmospheres by 14.69594878:</p>
+<p><code>psi = atmospheres × 14.69594878</code></p>
+<p>To go the other way, divide by 14.69594878, or multiply by 0.0680459639: <code>atmospheres = psi × 0.0680459639</code>.</p>
+<h3>Worked example</h3>
+<p>Say you have 7.5 atmospheres. Multiply 7.5 by 14.69594878: 7.5 × 14.69594878 = <strong>110.2196158 psi</strong>.</p>
+<h3>Atmospheres to psi table</h3>
+<table class="plain"><tbody><tr><td>1 atmospheres</td><td>14.69594878 psi</td></tr><tr><td>2 atmospheres</td><td>29.39189755 psi</td></tr><tr><td>5 atmospheres</td><td>73.47974388 psi</td></tr><tr><td>10 atmospheres</td><td>146.9594878 psi</td></tr><tr><td>20 atmospheres</td><td>293.9189755 psi</td></tr><tr><td>50 atmospheres</td><td>734.7974388 psi</td></tr><tr><td>100 atmospheres</td><td>1,469.594878 psi</td></tr><tr><td>250 atmospheres</td><td>3,673.987194 psi</td></tr><tr><td>500 atmospheres</td><td>7,347.974388 psi</td></tr><tr><td>1,000 atmospheres</td><td>14,695.94878 psi</td></tr></tbody></table>
+<h3>PSI back to atmospheres</h3><ul><li>1 psi = 0.0680459639 atmospheres</li><li>10 psi = 0.6804596391 atmospheres</li><li>100 psi = 6.804596391 atmospheres</li></ul>
+<h3>Accuracy</h3>
+<p>Wezzet uses exact defined factors where they exist (for example, the international inch is exactly 2.54 cm and the pound is exactly 0.45359237 kg) and shows up to 10 significant digits. Round the result to match the precision of your original measurement.</p>
+<p>This page also converts atmospheres to ksi, inches of water, kilograms per square centimeter, pascals, kilopascals, megapascals and every other pressure unit in the table above; change the To menu to switch.</p>
+</section>
+
     <section class="section related" aria-labelledby="related"><h2 id="related">Related tools</h2><ul><li><a href="/units">All units converters</a></li><li><a href="/psi-to-atm">PSI to atm</a></li><li><a href="/mmhg-to-kpa">mmHg to kPa</a></li><li><a href="/bar-to-kpa">Bar to kPa</a></li><li><a href="/mb-to-gb">MB to GB</a></li><li><a href="/gb-to-mb">GB to MB</a></li><li><a href="/gb-to-tb">GB to TB</a></li><li><a href="/tb-to-gb">TB to GB</a></li><li><a href="/kb-to-mb">KB to MB</a></li><li><a href="/mb-to-kb">MB to KB</a></li><li><a href="/bytes-to-bits">Bytes to Bits</a></li><li><a href="/bits-to-bytes">Bits to Bytes</a></li></ul></section>
   </div>
 </main>

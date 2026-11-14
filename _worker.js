@@ -15,7 +15,7 @@ export default {
     if (url.pathname === "/api/tool-stats") return toolStats(request, env);
     if (url.pathname.startsWith("/api/aicomms")) return aicomms(request, env, url, ctx);
     if (/^\/api\/(paste|read|calc|json|csv|hash|base64|uuid|dns|status|headers|cron|regex|diff|count|password|random)(\/|$)/.test(url.pathname) || url.pathname === "/api" || url.pathname === "/api/") return tools(request, env, url);
-    if (url.pathname === "/api/transport") return transport(request, url);
+    if (url.pathname === "/api/transport") return transport(request, url, env);
     if (url.pathname === "/api/search") return wzSearch(request, env, url);
     if (url.pathname === "/api/ai" || url.pathname.startsWith("/api/ai/")) return wzAI(request, env);
     if (url.pathname === "/api/vision") return wzVision(request, env);
@@ -3710,7 +3710,7 @@ async function toolStats(request, env) {
 // Pulled from free, keyless public sources only when asked; nothing is stored. Responses are cached 30s at the edge.
 // Flights: OpenSky Network. Trains: Transitous (MOTIS, open transit data). Ships: Digitraffic AIS (Baltic/Nordic waters).
 // Airports, ports, stations and railways: OpenStreetMap via Overpass (the data behind OpenRailwayMap).
-async function transport(request, url) {
+async function transport(request, url, env) {
   const q = (url.searchParams.get('q') || '').trim().slice(0, 80), mode = url.searchParams.get('mode') || 'flights';
   const limit = Math.min(200, Math.max(1, +url.searchParams.get('limit') || 100));
   const H = { 'user-agent': 'Wezzet transport tracker (+https://wezzet.com/transport)', accept: 'application/json' };
@@ -3728,6 +3728,27 @@ async function transport(request, url) {
       return done(items, 'OpenSky Network');
     }
     if (mode === 'ships') {
+      if (env.AISSTREAM_KEY) {
+        // Worldwide AIS: listen to aisstream.io for a few seconds, keep the latest fix per ship, then hang up.
+        const r = await fetch('https://stream.aisstream.io/v0/stream', { headers: { upgrade: 'websocket' } });
+        const ws = r.webSocket; if (!ws) throw new Error('aisstream.io refused the connection');
+        ws.accept();
+        const ships = new Map();
+        ws.addEventListener('message', (ev) => { try { const d = JSON.parse(typeof ev.data === 'string' ? ev.data : new TextDecoder().decode(ev.data)), md = d.MetaData || {}, id = md.MMSI;
+          const s = ships.get(id) || { mmsi: id, imo: null, name: '', callsign: '', destination: '', type: null };
+          s.name = (md.ShipName || s.name || '').trim(); s.lat = md.latitude; s.lon = md.longitude; s.seen = Date.parse(md.time_utc) || Date.now();
+          const p = d.Message && d.Message.PositionReport; if (p) { s.speed_kn = p.Sog; s.heading = p.TrueHeading === 511 ? p.Cog : p.TrueHeading; }
+          const st = d.Message && d.Message.ShipStaticData; if (st) { s.imo = st.ImoNumber || s.imo; s.callsign = (st.CallSign || '').trim(); s.destination = (st.Destination || '').trim(); s.type = st.Type; }
+          ships.set(id, s); } catch (e) {} });
+        const sub = { APIKey: env.AISSTREAM_KEY, BoundingBoxes: [[[-90, -180], [90, 180]]], FilterMessageTypes: ['PositionReport', 'ShipStaticData'] };
+        if (/^\d{9}$/.test(q)) sub.FiltersShipMMSI = [q];
+        ws.send(JSON.stringify(sub));
+        await new Promise((ok) => setTimeout(ok, /^\d{9}$/.test(q) ? 8000 : 4000));
+        try { ws.close(1000); } catch (e) {}
+        let items = [...ships.values()];
+        if (lc) items = items.filter((s) => String(s.mmsi) === lc || String(s.imo) === lc || s.name.toLowerCase().includes(lc) || s.callsign.toLowerCase() === lc || s.destination.toLowerCase().includes(lc));
+        return done(items, 'aisstream.io (worldwide AIS, live sample)');
+      }
       const [loc, meta] = await Promise.all([get('https://meri.digitraffic.fi/api/ais/v1/locations', { headers: { 'accept-encoding': 'gzip', 'digitraffic-user': 'Wezzet' } }), get('https://meri.digitraffic.fi/api/ais/v1/vessels', { headers: { 'accept-encoding': 'gzip', 'digitraffic-user': 'Wezzet' } })]);
       const m = new Map((meta || []).map((v) => [v.mmsi, v]));
       let items = (loc.features || []).map((f) => { const v = m.get(f.mmsi) || {}; return { mmsi: f.mmsi, imo: v.imo || null, name: (v.name || '').trim(), callsign: v.callSign || '', destination: (v.destination || '').trim(), type: v.shipType, lon: f.geometry.coordinates[0], lat: f.geometry.coordinates[1], speed_kn: f.properties.sog, heading: f.properties.heading, seen: f.properties.timestampExternal }; });

@@ -17,7 +17,7 @@
 <style>.logo .logo-dark{display:none}:root[data-theme="dark"] .logo .logo-light{display:none}:root[data-theme="dark"] .logo .logo-dark{display:block}@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .logo .logo-light{display:none}:root:not([data-theme="light"]) .logo .logo-dark{display:block}}</style>
 <link rel="stylesheet" href="/assets/site.css?v=7">
 <link rel="stylesheet" href="/assets/site.css?v=7">
-<link rel="stylesheet" href="/assets/dashboard.css?v=6">
+<link rel="stylesheet" href="/assets/skin.css?v=1">
 <style>
 .tt{max-width:1100px;margin:0 auto;padding:8px 20px 48px}
 .tt h1{font-size:1.6rem;margin:6px 0 4px}.tt .lede{color:var(--ink-soft);margin:0 0 18px}
@@ -41,12 +41,12 @@
 .tt .src{font-size:.8rem;color:var(--ink-soft);margin-top:14px}
 </style>
 </head>
-<body class="dashboard">
-<header class="dash-header">
+<body>
+<header class="site-header"><div class="wrap">
   <a class="brand" href="/" aria-label="Wezzet home"><img src="/assets/icon-48.png" width="32" height="32" alt="">wezzet<span class="brand-dot">.</span></a>
-  <nav aria-label="Top navigation"><a href="/">All tools</a><button class="theme-toggle" type="button" aria-label="Switch theme">◐</button></nav>
+  <nav class="site-nav" aria-label="Main"><a href="/">All tools</a><button class="theme-toggle" type="button" aria-label="Switch theme">◐</button></nav></div>
 </header>
-<main id="main" class="tt">
+<main id="main" class="tt"><div class="wrap">
   <div class="breadcrumb"><a href="/">Workspace</a><span>/</span><span>Transport tracker</span></div>
   <h1>Live transport tracker</h1>
   <p class="lede">Flights, trains and ships around the world, plus airports, ports, stations and railways. Data is fetched live when you search; nothing is stored.</p>
@@ -54,8 +54,8 @@
   <form class="tt-bar" id="f"><input id="q" autocomplete="off" aria-label="Search"><select id="lim" aria-label="Results"><option>50</option><option selected>100</option><option>200</option></select><button>Search</button></form>
   <p class="tt-meta" id="meta" aria-live="polite"></p>
   <div class="tt-card"><table><thead id="th"></thead><tbody id="tb"></tbody></table><div class="empty" id="empty">Pick a type and search.</div></div>
-  <p class="src">Sources: OpenSky Network (flights), Transitous (trains), Digitraffic AIS (ships in Nordic and Baltic waters), OpenStreetMap via Overpass (airports, ports, stations, railways, the same data as OpenRailwayMap). API: <code>/api/transport?mode=flights&amp;q=UAL</code></p>
-</main>
+  <p class="src">Sources: OpenSky Network (flights), Transitous (trains), aisstream.io (ships worldwide), OpenStreetMap via Overpass (airports, ports, stations, railways, the same data as OpenRailwayMap). API: <code>/api/transport?mode=flights&amp;q=UAL</code></p>
+</div></main>
 <script src="/assets/transport.js?v=1" defer></script>
 <script src="/assets/theme.js" defer></script>
 </body>

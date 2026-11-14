@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Minutes to hours: Free Online | Wezzet</title>
+<title>Minutes to hours converter: formula, table and examples | Wezzet</title>
 <meta name="description" content="Convert minutes to hours, with a table of every other time unit. Free, no sign up.">
 <link rel="canonical" href="https://wezzet.com/minutes-to-hours">
 <meta property="og:type" content="website">
@@ -23,13 +23,14 @@
 <script>try{(function(t){if(t==="dark"||t==="light")document.documentElement.dataset.theme=t})(localStorage.getItem("wz-theme"))}catch(e){}</script>
 <style>.logo .logo-dark{display:none}:root[data-theme="dark"] .logo .logo-light{display:none}:root[data-theme="dark"] .logo .logo-dark{display:block}@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .logo .logo-light{display:none}:root:not([data-theme="light"]) .logo .logo-dark{display:block}}</style>
 <link rel="stylesheet" href="/assets/site.css?v=7">
+<link rel="stylesheet" href="/assets/skin.css?v=1">
 <script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"SoftwareApplication","name":"Text to binary","url":"https://wezzet.com/minutes-to-hours","applicationCategory":"UtilitiesApplication","operatingSystem":"Any (web browser)","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"description":"Turn text into binary, hex or base64 and back. Free, no sign up."}]}</script>
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1814434432126124" crossorigin="anonymous"></script>
 </head>
 <body>
 <header class="site-header">
   <div class="wrap">
-    <a class="logo" href="/"><img class="logo-light" src="/assets/logo.png" alt="Wezzet" width="113" height="52"><img class="logo-dark" src="/assets/logo-dark.png" alt="Wezzet" width="113" height="52"></a>
+    <a class="brand" href="/" aria-label="Wezzet home"><img src="/assets/icon-48.png" width="28" height="28" alt="">wezzet<span class="brand-dot">.</span></a>
     <nav class="site-nav" aria-label="Main"><a href="/">All tools</a><button class="theme-toggle" type="button" aria-label="Switch between light and dark mode"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm0 2v16a8 8 0 0 1 0-16Z"/></svg></button></nav>
   </div>
 </header>
@@ -40,7 +41,7 @@
       <h1>Minutes to hours</h1>
       <p class="lede">Convert minutes to hours, with a table of every other time unit.</p>
     </div>
-    <div class="field tight" style="max-width:260px">
+    <div class="tool-frame"><div class="field tight" style="max-width:260px">
       <label for="cat">Type</label>
       <select id="cat" data-cat="Time" data-from="Minutes" data-to="Hours"></select>
     </div>
@@ -51,7 +52,21 @@
     </div>
     <div class="row-actions" style="margin-top:12px"><button class="btn btn-quiet" type="button" id="swap">Swap</button></div>
     <p id="answer" role="status" style="font-size:1.4rem;font-weight:700;margin:18px 0 0"></p>
-    <table class="plain" style="margin-top:20px"><tbody id="table"></tbody></table>
+    <table class="plain" style="margin-top:20px"><tbody id="table"></tbody></table></div>
+    <section class="guide" aria-labelledby="how"><h2 id="how">How to convert minutes to hours</h2>
+<p>One minute equals <strong>0.0166666667 hours</strong>. To convert, multiply the number of minutes by 0.0166666667:</p>
+<p><code>hours = minutes × 0.0166666667</code></p>
+<p>To go the other way, divide by 0.0166666667, or multiply by 60: <code>minutes = hours × 60</code>.</p>
+<h3>Worked example</h3>
+<p>Say you have 7.5 minutes. Multiply 7.5 by 0.0166666667: 7.5 × 0.0166666667 = <strong>0.125 hours</strong>.</p>
+<h3>Minutes to hours table</h3>
+<table class="plain"><tbody><tr><td>1 minutes</td><td>0.0166666667 hours</td></tr><tr><td>2 minutes</td><td>0.0333333333 hours</td></tr><tr><td>5 minutes</td><td>0.0833333333 hours</td></tr><tr><td>10 minutes</td><td>0.1666666667 hours</td></tr><tr><td>20 minutes</td><td>0.3333333333 hours</td></tr><tr><td>50 minutes</td><td>0.8333333333 hours</td></tr><tr><td>100 minutes</td><td>1.666666667 hours</td></tr><tr><td>250 minutes</td><td>4.166666667 hours</td></tr><tr><td>500 minutes</td><td>8.333333333 hours</td></tr><tr><td>1,000 minutes</td><td>16.66666667 hours</td></tr></tbody></table>
+<h3>Hours back to minutes</h3><ul><li>1 hours = 60 minutes</li><li>10 hours = 600 minutes</li><li>100 hours = 6,000 minutes</li></ul>
+<h3>Accuracy</h3>
+<p>Wezzet uses exact defined factors where they exist (for example, the international inch is exactly 2.54 cm and the pound is exactly 0.45359237 kg) and shows up to 10 significant digits. Round the result to match the precision of your original measurement.</p>
+<p>This page also converts minutes to nanoseconds, microseconds, milliseconds, seconds, days, weeks and every other time unit in the table above; change the To menu to switch.</p>
+</section>
+
     <section class="section related" aria-labelledby="related"><h2 id="related">Related tools</h2><ul><li><a href="/units">All units converters</a></li><li><a href="/minutes-to-seconds">Minutes to seconds</a></li><li><a href="/minutes-to-years">Minutes to years</a></li><li><a href="/ml-to-cc">Ml to cc</a></li><li><a href="/ml-to-cups">Ml to cups</a></li><li><a href="/ml-to-kg">Ml to kg</a></li><li><a href="/ml-to-lbs">Ml to lbs</a></li><li><a href="/ml-to-oz">Ml to oz</a></li><li><a href="/ml-to-ul">Ml to ul</a></li><li><a href="/mm-to-foot">Mm to foot</a></li><li><a href="/mm-to-inches">Mm to inches</a></li><li><a href="/mm-to-km">Mm to km</a></li></ul></section>
   </div>
 </main>
