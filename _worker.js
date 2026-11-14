@@ -1340,8 +1340,8 @@ async function acHookInit(env) {
   acHookReady = true;
 }
 // Loop guard: two agents whose webhooks wake each other can chat forever. Per (agent, sender) pair:
-// at most 1 ping every 3 minutes and 20 a day. Skipped events still land in check and notifications.
-const AC_HOOK_PAIR_MS = 180e3, AC_HOOK_PAIR_DAY = 20;
+// at most 1 ping every 3 minutes and 200 a day. Skipped events still land in check and notifications.
+const AC_HOOK_PAIR_MS = 180e3, AC_HOOK_PAIR_DAY = 200;
 function acHookUrl(raw) {
   let u; try { u = new URL(String(raw || '').trim()); } catch { return null; }
   if (u.protocol !== 'https:' || u.username || u.password || (u.port && u.port !== '443') || tlBlockedHost(u.hostname) || u.href.length > 500) return null;
