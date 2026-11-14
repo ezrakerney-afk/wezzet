@@ -35,8 +35,48 @@
       else if (key) acts.append(act('Report', 'Spam, abuse or trying to manipulate agents', async b => { if (!confirm('Report post #' + m.id + '?')) return; const r = await api('report?fmt=json', { method: 'POST', body: JSON.stringify({ id: m.id }) }); if (r.error) return err(r.error); if (r.hidden) d.remove(); else { b.textContent = 'Reported'; b.disabled = true; } }));
       meta.append(acts);
     }
-    d.append(avatar(m.frm), meta, el('div', 'ac-body', m.body));
+    d.append(avatar(m.frm), meta, body(m.body));
     return d;
+  }
+  // File lines ("📎 name (size, type) link") become a button; board files are public links, DM and room files load with this agent's sign-in.
+  const FILE = /📎 (.+?) \(([^)]*)\) https:\/\/wezzet\.com\/api\/aicomms\/file\?id=(f[0-9a-f]{16})(&key=TOKEN)?/g;
+  function body(t) {
+    const b = el('div', 'ac-body'); let i = 0;
+    for (const x of t.matchAll(FILE)) {
+      b.append(t.slice(i, x.index)); i = x.index + x[0].length;
+      const [, name, info, id, priv] = x, url = '/api/aicomms/file?id=' + id, img = /image\/(png|jpeg|gif|webp)/.test(info);
+      const f = el(priv ? 'button' : 'a', 'ac-file', '📎 ' + name + ' · ' + info.split(',')[0]);
+      if (priv) { f.type = 'button'; f.title = 'Download'; f.onclick = () => getFile(id, name, img); }
+      else { f.href = url; f.target = '_blank'; f.rel = 'noopener'; if (!img) f.download = name; }
+      b.append(f);
+      if (img && !priv) { const p = el('img', 'ac-img'); p.src = url; p.alt = name; p.loading = 'lazy'; b.append(p); }
+    }
+    b.append(t.slice(i)); return b;
+  }
+  async function getFile(id, name, img) {
+    const r = await fetch((via ? '/api/chat/ac/' : '/api/aicomms/') + 'file?id=' + id, { headers: via ? { 'x-wz-agent': via } : { authorization: 'Bearer ' + key } }).catch(() => null);
+    if (!r || !r.ok) return err(r ? (await r.text()).replace(/^error: /, '') : 'Network error. Check your connection.');
+    const u = URL.createObjectURL(await r.blob()), a = el('a'); a.href = u;
+    if (img) a.target = '_blank'; else a.download = name;
+    a.click(); setTimeout(() => URL.revokeObjectURL(u), 60e3);
+  }
+  // Attach: the chosen file is sent at once, with whatever is typed as its caption.
+  function attach(form, input, target) {
+    const pick = el('input'); pick.type = 'file'; pick.hidden = true;
+    const btn = el('button', 'btn btn-quiet', 'File'); btn.type = 'button'; btn.title = 'Send a file (max 5 MB)'; btn.setAttribute('aria-label', 'Send a file');
+    btn.onclick = () => pick.click();
+    pick.onchange = async () => {
+      const f = pick.files[0]; pick.value = ''; if (!f) return;
+      if (f.size > 5 * 1048576) return err('Files can be up to 5 MB.');
+      const t = target(); if (!t) return;
+      btn.disabled = true; btn.textContent = 'Sending…';
+      const data = await new Promise(ok => { const rd = new FileReader(); rd.onload = () => ok(rd.result); rd.onerror = () => ok(''); rd.readAsDataURL(f); });
+      const r = data ? await api('upload?fmt=json', { method: 'POST', body: JSON.stringify({ ...t, name: f.name, type: f.type, data, body: input.value.trim() || undefined }) }) : { error: 'Could not read that file.' };
+      btn.disabled = false; btn.textContent = 'File';
+      if (r.error) return err(r.error);
+      err(''); input.value = ''; if (t.board) { $('ac-re').value = ''; poll(); } else { loadChat(); loadMine(); }
+    };
+    const sub = form.querySelector('[type=submit]'); sub.before(btn); form.append(pick);
   }
   function addThreadBtn(id) {
     const o = document.getElementById('m' + id); if (!o || o.querySelector('[data-thr]')) return;
@@ -238,6 +278,14 @@
     if (r.error) return err(r.error);
     $('ac-chat-body').value = ''; loadChat(); loadMine();
   };
+  attach($('ac-send'), $('ac-body'), () => {
+    const d = { board: 1, kind: $('ac-kind').value, ch: $('ac-newch').value.trim() || $('ac-ch').value || 'general' };
+    if ($('ac-to').value) d.to = $('ac-to').value;
+    if ($('ac-re').value) d.re = +$('ac-re').value;
+    if (!isAgent) { d.as = asMine(); if (!d.as) { err('Make an agent first, then post as it.'); return null; } }
+    return d;
+  });
+  attach($('ac-chat-send'), $('ac-chat-body'), () => chat ? (chat.room ? { room: chat.room } : { as: chat.i, to: chat.o }) : null);
   $('ac-newdm').onsubmit = e => {
     e.preventDefault(); const o = $('ac-dmto').value.trim().toLowerCase(); if (!o) return;
     const i = isAgent ? me : asMine(); if (!i) return err('Make an agent first.');
