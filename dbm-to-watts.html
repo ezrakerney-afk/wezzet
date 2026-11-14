@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>dBm to watts converter: Free Online | Wezzet</title>
-<meta name="description" content="Convert dBm to watts and milliwatts, and back. Free, no sign up.">
+<title>Dbm to watts: Free Online | Wezzet</title>
+<meta name="description" content="Convert dbm to watts, with a table of every other power unit. Free, no sign up.">
 <link rel="canonical" href="https://wezzet.com/dbm-to-watts">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Wezzet">
-<meta property="og:title" content="dBm to watts converter: Free Online | Wezzet">
+<meta property="og:title" content="Dbm to watts: Free Online | Wezzet">
 <meta property="og:url" content="https://wezzet.com/dbm-to-watts">
 <meta property="og:image" content="https://wezzet.com/assets/og/tip.png">
 <meta property="og:image:width" content="1200">
@@ -23,7 +23,7 @@
 <script>try{(function(t){if(t==="dark"||t==="light")document.documentElement.dataset.theme=t})(localStorage.getItem("wz-theme"))}catch(e){}</script>
 <style>.logo .logo-dark{display:none}:root[data-theme="dark"] .logo .logo-light{display:none}:root[data-theme="dark"] .logo .logo-dark{display:block}@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .logo .logo-light{display:none}:root:not([data-theme="light"]) .logo .logo-dark{display:block}}</style>
 <link rel="stylesheet" href="/assets/site.css?v=7">
-<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"SoftwareApplication","name":"dBm to watts converter","url":"https://wezzet.com/dbm-to-watts","applicationCategory":"UtilitiesApplication","operatingSystem":"Any (web browser)","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"description":"Convert dBm to watts and milliwatts, and back. Free, no sign up."}]}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"SoftwareApplication","name":"Text to binary","url":"https://wezzet.com/dbm-to-watts","applicationCategory":"UtilitiesApplication","operatingSystem":"Any (web browser)","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"description":"Turn text into binary, hex or base64 and back. Free, no sign up."}]}</script>
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1814434432126124" crossorigin="anonymous"></script>
 </head>
 <body>
@@ -37,11 +37,22 @@
 <main data-gen="1">
   <div class="wrap">
     <div class="tool-head">
-      <h1>dBm to watts converter</h1>
-      <p class="lede">Convert dBm to watts and milliwatts, and back.</p>
+      <h1>Dbm to watts</h1>
+      <p class="lede">Convert dbm to watts, with a table of every other power unit.</p>
     </div>
-    <div id="app" class="tight" data-mode="db"></div>
-    <section class="section related" aria-labelledby="related"><h2 id="related">Related tools</h2><ul><li><a href="/ohms-law">All electric converters</a></li><li><a href="/amps-to-watts">Amps to watts calculator</a></li><li><a href="/watts-to-amps">Watts to amps calculator</a></li><li><a href="/amps-to-kw">Amps to kW calculator</a></li><li><a href="/kw-to-amps">kW to amps calculator</a></li><li><a href="/amps-to-kva">Amps to kVA calculator</a></li><li><a href="/kva-to-amps">kVA to amps calculator</a></li><li><a href="/watts-to-va">Watts to VA calculator</a></li><li><a href="/va-to-watts">VA to watts calculator</a></li><li><a href="/kva-to-kw">kVA to kW calculator</a></li><li><a href="/kw-to-kva">kW to kVA calculator</a></li></ul></section>
+    <div class="field tight" style="max-width:260px">
+      <label for="cat">Type</label>
+      <select id="cat" data-cat="Power" data-from="dBm" data-to="Watts"></select>
+    </div>
+    <div class="field-row three tight" style="margin-top:14px">
+      <div class="field"><label for="val">Value</label><input type="number" id="val" value="1" step="any"></div>
+      <div class="field"><label for="from">From</label><select id="from"></select></div>
+      <div class="field"><label for="to">To</label><select id="to"></select></div>
+    </div>
+    <div class="row-actions" style="margin-top:12px"><button class="btn btn-quiet" type="button" id="swap">Swap</button></div>
+    <p id="answer" role="status" style="font-size:1.4rem;font-weight:700;margin:18px 0 0"></p>
+    <table class="plain" style="margin-top:20px"><tbody id="table"></tbody></table>
+    <section class="section related" aria-labelledby="related"><h2 id="related">Related tools</h2><ul><li><a href="/units">All units converters</a></li><li><a href="/decimeter-to-meter">Decimeter to meter</a></li><li><a href="/degrees-to-radians">Degrees to radians</a></li><li><a href="/dimes-to-dollars">Dimes to dollars</a></li><li><a href="/drops-to-ml">Drops to ml</a></li><li><a href="/fahrenheit-to-celsius">Fahrenheit to celsius</a></li><li><a href="/feet-to-inches">Feet to inches</a></li><li><a href="/feet-to-miles">Feet to miles</a></li><li><a href="/feet-to-yards">Feet to yards</a></li><li><a href="/fluid-ounces-to-pounds">Fluid ounces to pounds</a></li><li><a href="/ft-to-m">Ft to m</a></li><li><a href="/g-to-lbs">G to lbs</a></li></ul></section>
   </div>
 </main>
 
@@ -50,7 +61,7 @@
     <p><a href="/">Wezzet</a> · <a href="/about">About</a> · <a href="/contact">Contact</a> · <a href="/privacy">Privacy</a> · Follow <a href="https://x.com/WezzetX" rel="noopener">@WezzetX</a> on X.</p>
   </div>
 </footer>
-<script src="/assets/electric.js?v=1" defer></script>
+<script src="/assets/units.js?v=6" defer></script>
 <script src="/assets/theme.js?v=4" defer></script>
 </body>
 </html>

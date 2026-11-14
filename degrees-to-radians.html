@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Degrees to radians: Free Online | Wezzet</title>
-<meta name="description" content="Convert angles between decimal degrees, radians, gradians and degrees-minutes-seconds. Free, no sign up.">
+<meta name="description" content="Convert degrees to radians, with a table of every other angle unit. Free, no sign up.">
 <link rel="canonical" href="https://wezzet.com/degrees-to-radians">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Wezzet">
@@ -23,7 +23,7 @@
 <script>try{(function(t){if(t==="dark"||t==="light")document.documentElement.dataset.theme=t})(localStorage.getItem("wz-theme"))}catch(e){}</script>
 <style>.logo .logo-dark{display:none}:root[data-theme="dark"] .logo .logo-light{display:none}:root[data-theme="dark"] .logo .logo-dark{display:block}@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .logo .logo-light{display:none}:root:not([data-theme="light"]) .logo .logo-dark{display:block}}</style>
 <link rel="stylesheet" href="/assets/site.css?v=7">
-<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"SoftwareApplication","name":"Degrees to radians","url":"https://wezzet.com/degrees-to-radians","applicationCategory":"UtilitiesApplication","operatingSystem":"Any (web browser)","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"description":"Convert angles between decimal degrees, radians, gradians and degrees-minutes-seconds. Free, no sign up."}]}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"SoftwareApplication","name":"Text to binary","url":"https://wezzet.com/degrees-to-radians","applicationCategory":"UtilitiesApplication","operatingSystem":"Any (web browser)","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"description":"Turn text into binary, hex or base64 and back. Free, no sign up."}]}</script>
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1814434432126124" crossorigin="anonymous"></script>
 </head>
 <body>
@@ -38,10 +38,21 @@
   <div class="wrap">
     <div class="tool-head">
       <h1>Degrees to radians</h1>
-      <p class="lede">Convert angles between decimal degrees, radians, gradians and degrees-minutes-seconds.</p>
+      <p class="lede">Convert degrees to radians, with a table of every other angle unit.</p>
     </div>
-    <div id="app" class="tight" data-mode="angle" data-from="deg"></div>
-    <section class="section related" aria-labelledby="related"><h2 id="related">Related tools</h2><ul><li><a href="/number">All numbers converters</a></li><li><a href="/radians-to-degrees">Radians to degrees</a></li><li><a href="/degrees-to-dms">Degrees to degrees, minutes, seconds</a></li><li><a href="/dms-to-degrees">Degrees, minutes, seconds to decimal degrees</a></li><li><a href="/gray-code">Gray code and BCD converter</a></li><li><a href="/bcd-converter">BCD converter</a></li><li><a href="/decimal-to-binary">Decimal to binary converter</a></li><li><a href="/binary-to-decimal">Binary to decimal converter</a></li><li><a href="/decimal-to-hex">Decimal to hex converter</a></li><li><a href="/hex-to-decimal">Hex to decimal converter</a></li><li><a href="/decimal-to-octal">Decimal to octal converter</a></li></ul></section>
+    <div class="field tight" style="max-width:260px">
+      <label for="cat">Type</label>
+      <select id="cat" data-cat="Angle" data-from="Degrees" data-to="Radians"></select>
+    </div>
+    <div class="field-row three tight" style="margin-top:14px">
+      <div class="field"><label for="val">Value</label><input type="number" id="val" value="1" step="any"></div>
+      <div class="field"><label for="from">From</label><select id="from"></select></div>
+      <div class="field"><label for="to">To</label><select id="to"></select></div>
+    </div>
+    <div class="row-actions" style="margin-top:12px"><button class="btn btn-quiet" type="button" id="swap">Swap</button></div>
+    <p id="answer" role="status" style="font-size:1.4rem;font-weight:700;margin:18px 0 0"></p>
+    <table class="plain" style="margin-top:20px"><tbody id="table"></tbody></table>
+    <section class="section related" aria-labelledby="related"><h2 id="related">Related tools</h2><ul><li><a href="/units">All units converters</a></li><li><a href="/dimes-to-dollars">Dimes to dollars</a></li><li><a href="/drops-to-ml">Drops to ml</a></li><li><a href="/fahrenheit-to-celsius">Fahrenheit to celsius</a></li><li><a href="/feet-to-inches">Feet to inches</a></li><li><a href="/feet-to-miles">Feet to miles</a></li><li><a href="/feet-to-yards">Feet to yards</a></li><li><a href="/fluid-ounces-to-pounds">Fluid ounces to pounds</a></li><li><a href="/ft-to-m">Ft to m</a></li><li><a href="/g-to-lbs">G to lbs</a></li><li><a href="/g-to-oz">G to oz</a></li><li><a href="/gaj-to-square-yard">Gaj to square yard</a></li></ul></section>
   </div>
 </main>
 
@@ -50,7 +61,7 @@
     <p><a href="/">Wezzet</a> · <a href="/about">About</a> · <a href="/contact">Contact</a> · <a href="/privacy">Privacy</a> · Follow <a href="https://x.com/WezzetX" rel="noopener">@WezzetX</a> on X.</p>
   </div>
 </footer>
-<script src="/assets/number.js?v=1" defer></script>
+<script src="/assets/units.js?v=6" defer></script>
 <script src="/assets/theme.js?v=4" defer></script>
 </body>
 </html>
