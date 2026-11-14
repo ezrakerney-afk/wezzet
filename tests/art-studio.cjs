@@ -1,22 +1,23 @@
 // Run with: node tests/art-studio.cjs (requires @napi-rs/canvas).
 const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
-const {createCanvas,Image}=require('@napi-rs/canvas');
+const {createCanvas,Image,loadImage}=require('@napi-rs/canvas');
 class Element{
- constructor(){this.value='';this.checked=false;this.hidden=false;this.disabled=false;this.style={};this.dataset={};this.children=[];this.handlers={};this.classList={toggle(){}};this.clientWidth=900;this.clientHeight=700;}
+ constructor(){this.value='';this.checked=false;this.hidden=false;this.disabled=false;this.style={};this.dataset={};this.children=[];this.handlers={};this.classList={toggle(){},remove(){}};this.clientWidth=900;this.clientHeight=700;}
  append(...x){this.children.push(...x);}replaceChildren(...x){this.children=x;}setAttribute(){}addEventListener(k,fn){this.handlers[k]=fn;}getBoundingClientRect(){return {left:0,top:0,width:900,height:700};}setPointerCapture(){}focus(){}click(){this.onclick?.();}remove(){}showModal(){}close(){}
 }
 const nodes=new Map();const $=id=>{if(!nodes.has(id))nodes.set(id,['art','overlay'].includes(id)?createCanvas(1600,1200):new Element());return nodes.get(id);};
 for(const [key,value] of Object.entries({size:'12',opacity:'100',tolerance:'24',name:'Test',font:'sans-serif','font-size':'48'}))$(key).value=value;
 $('background').checked=$('pressure').checked=true;
-const context=vm.createContext({console,Image,Blob,URL,document:{getElementById:$,createElement:t=>t==='canvas'?createCanvas(1,1):new Element(),querySelectorAll:()=>[],querySelector:()=>null,body:new Element()},window:{addEventListener(){}},requestAnimationFrame:()=>1,ResizeObserver:class{observe(){}},setTimeout:()=>1,clearTimeout(){},confirm:()=>true,alert(){}});
+const context=vm.createContext({console,Image,Blob,URL,document:{getElementById:$,createElement:t=>t==='canvas'?createCanvas(1,1):new Element(),addEventListener(){},querySelectorAll:()=>[],querySelector:()=>null,body:new Element()},window:{addEventListener(){}},requestAnimationFrame:()=>1,ResizeObserver:class{observe(){}},setTimeout:()=>1,clearTimeout(){},confirm:()=>true,alert(){}});
 let source=fs.readFileSync(__dirname+'/../assets/art-studio.js','utf8').replace(/init\(\);\s*$/,'');
-vm.runInContext(source+`\nthis.api={reset,render,snapshot,decodeProject,applyProject,travel,selectTool,setColor,point,fit,view,flood,commit,current,getState:()=>({width,height,layers,active,zoom,panX,panY,stroke,gesture,historyIndex,baseCanvas}),setView:()=>{zoom=1;panX=0;panY=0;},setBrush:(b,s,o)=>{brush=b;size=s;opacity=o;}};`,context);
+vm.runInContext(source+`\nthis.api={init,setupPreview,setupMode,preventSelection,flushStroke,reset,render,snapshot,decodeProject,applyProject,travel,selectTool,setColor,point,fit,view,flood,commit,current,getState:()=>({width,height,layers,active,zoom,panX,panY,stroke,gesture,historyIndex,baseCanvas,pixelMode,ready}),setView:()=>{zoom=1;panX=0;panY=0;},setBrush:(b,s,o)=>{brush=b;size=s;opacity=o;}};`,context);
 const a=context.api, vp=$('viewport');
 const event=(x,y,id=1,type='mouse',pressure=.5)=>({clientX:x,clientY:y,pointerId:id,pointerType:type,pressure,button:0,preventDefault(){}});
 const send=(type,e)=>vp.handlers[type]({...e,type});
 const pixel=(x,y,c=a.current().canvas)=>[...c.getContext('2d').getImageData(x,y,1,1).data];
 const draw=(tool,x,y,xx,yy)=>{a.selectTool(tool);send('pointerdown',event(x,y));send('pointermove',event(xx,yy));send('pointerup',event(xx,yy));};
 (async()=>{
+ await a.init();assert.equal(a.getState().ready,false,'Startup must wait for canvas setup');assert.equal(a.getState().layers.length,0,'No drawing layers before Create canvas');
  a.reset(200,200);a.setView();a.setColor('#ff0000');a.setBrush('ink',12,1);draw('brush',20,30,150,30);assert.deepEqual(pixel(80,30),[255,0,0,255]);assert.equal(pixel(80,50)[3],0);
  await a.travel(-1);assert.equal(pixel(80,30)[3],0);await a.travel(1);assert.equal(pixel(80,30)[3],255);
  draw('eraser',80,20,80,40);assert.equal(pixel(80,30)[3],0);await a.travel(-1);
@@ -36,5 +37,24 @@ const draw=(tool,x,y,xx,yy)=>{a.selectTool(tool);send('pointerdown',event(x,y));
  a.setView();send('pointerdown',event(20,20,1,'touch'));send('pointerup',event(20,20,1,'touch'));assert.equal(pixel(20,20)[3],255,'Touch fill applies on release');
  a.reset(200,200);a.setView();a.selectTool('brush');a.setBrush('ink',10,1);send('pointerdown',event(30,40,1,'pen',1));send('pointerdown',event(100,100,2,'touch'));send('pointermove',event(60,40,1,'pen',1));send('pointerup',event(60,40,1,'pen',1));send('pointerup',event(100,100,2,'touch'));assert.equal(pixel(45,40)[3],255,'Palm touch must not interrupt pen stroke');
  $('flip-layer').onclick();assert.equal(pixel(155,40)[3],255);assert.equal(pixel(45,40)[3],0);$('rotate-layer').onclick();assert.equal(pixel(159,155)[3],255);await a.travel(-1);assert.equal(pixel(155,40)[3],255);
+
+ // Fresh pixel projects, exact binary-alpha strokes and pixel-preserving shapes.
+ $('new-pixel').checked=true;a.setupMode();assert.equal(+$('new-width').value,32);assert.equal(+$('new-height').value,32);$('new-width').value=16;$('new-height').value=32;assert.equal(a.setupPreview(),true);$('new-form').onsubmit({preventDefault(){}});assert.equal(a.getState().pixelMode,true);assert.equal(a.getState().width,16);assert.equal(a.getState().height,32);assert.equal($('background').checked,false);assert.ok(a.getState().zoom>1,'Small pixel canvas fits enlarged');
+ a.setView();a.setColor('#ff0000');a.setBrush('ink',1,1);draw('brush',1.3,2.7,12.2,13.4);const binary=()=>{const data=a.current().canvas.getContext('2d').getImageData(0,0,16,32).data;for(let i=3;i<data.length;i+=4)assert.ok(data[i]===0||data[i]===255,'Pixel strokes must have no antialiasing');};binary();assert.deepEqual(pixel(1,2),[255,0,0,255]);assert.equal(pixel(12,13)[3],255);assert.equal(pixel(0,2)[3],0);
+ draw('eraser',5,6,7,8);binary();assert.equal(pixel(6,7)[3],0);$('fill-shapes').checked=false;draw('line',0,20,15,23);binary();draw('rectangle',2,24,8,29);binary();draw('ellipse',8,1,14,8);binary();
+ const pixelProject=a.snapshot();assert.equal(pixelProject.pixelMode,true);const restored=await a.decodeProject(pixelProject);a.applyProject(pixelProject,restored);assert.equal(a.getState().pixelMode,true);assert.equal(a.getState().width,16);assert.equal(a.snapshot().layers[0].data,pixelProject.layers[0].data);
+ await assert.rejects(()=>a.decodeProject({...pixelProject,width:0}));$('new-width').value=4096;$('new-height').value=4096;assert.equal(a.setupPreview(),false);$('new-width').value=1;$('new-height').value=1;assert.equal(a.setupPreview(),true);
+ // Pen takes precedence even if a palm arrived first. Release reaches the final point.
+ a.reset(200,200);a.setView();a.setBrush('ink',10,1);$('pen-only').checked=true;send('pointerdown',event(90,90,1,'touch'));send('pointerdown',event(20,20,2,'pen',1));send('pointermove',event(60,20,2,'pen',1));send('pointerup',event(100,20,2,'pen',0));send('pointerup',event(90,90,1,'touch'));assert.equal(pixel(99,20)[3],255,'Pointerup endpoint retained without zero-pressure cutoff');assert.equal(a.getState().gesture,null);
+ let prevented=false;a.preventSelection({target:{closest:()=>null},preventDefault(){prevented=true;}});assert.equal(prevented,true,'Chrome and canvas selection is blocked');prevented=false;a.preventSelection({target:{closest:()=>({})},preventDefault(){prevented=true;}});assert.equal(prevented,false,'Text fields remain editable');
+ // Marker overlaps within one stroke keep consistent alpha; second stroke builds color.
+ a.reset(200,200);a.setView();$('smoothing').value=0;a.setBrush('marker',20,1);draw('brush',30,50,170,50);const markerAlpha=pixel(100,50)[3];assert.ok(markerAlpha>=139&&markerAlpha<=141);draw('brush',30,50,170,50);assert.ok(pixel(100,50)[3]>markerAlpha);
+
+ // Real PNG export must enlarge each source pixel without blending neighboring colors.
+ a.reset(16,16,true,true);a.setView();a.setColor('#ff0000');a.setBrush('ink',1,1);draw('brush',2,2,2,2);a.setColor('#0000ff');draw('brush',3,2,3,2);let exported;context.URL={createObjectURL:blob=>{exported=blob;return 'blob:test';},revokeObjectURL(){}};$('export-scale').value=8;$('export-format').value='png';$('download').onclick();for(let i=0;i<50&&!exported;i++)await new Promise(r=>setTimeout(r,10));assert.ok(exported,'PNG export completes');const exportedImage=await loadImage(Buffer.from(await exported.arrayBuffer())),out=createCanvas(exportedImage.width,exportedImage.height);out.getContext('2d').drawImage(exportedImage,0,0);assert.equal(out.width,128);assert.equal(out.height,128);assert.deepEqual(pixel(23,16,out),[255,0,0,255]);assert.deepEqual(pixel(24,16,out),[0,0,255,255]);assert.equal(pixel(15,16,out)[3],0);
+ // A layer transform must not transform later brush strokes a second time.
+ a.reset(200,200);a.setView();a.setBrush('ink',10,1);draw('brush',20,20,60,20);$('flip-layer').onclick();draw('brush',20,40,60,40);assert.equal(pixel(40,40)[3],255);assert.equal(pixel(160,40)[3],0);
+ console.log('PASS: 8x nearest-neighbor PNG dimensions, exact adjacent colors, transparency and drawing after a layer transform.');
+ console.log('PASS: setup-first workflow, small/non-square pixel canvases, binary-alpha pixel brush/eraser/line/rectangle/ellipse, pixel project round trip, pixel bounds, palm-first pen input, pen-up endpoint, selection suppression, editable text fields and consistent marker opacity.');
  console.log('PASS: stroke pixels, non-compounding opacity, erasing, undo/redo, shapes, bounded fill, layer compositing/opacity/duplicate/delete/merge, project round trip and validation, touch pinch cancellation, pointer cancellation, pen-only panning, stylus pressure, transparent full-resolution PNG, deferred touch fills, pen/palm interaction, flips and rotations.');
 })().catch(e=>{console.error(e);process.exitCode=1;});
