@@ -3733,8 +3733,9 @@ async function transport(request, url, env) {
         const r = await fetch('https://stream.aisstream.io/v0/stream', { headers: { upgrade: 'websocket' } });
         const ws = r.webSocket; if (!ws) throw new Error('aisstream.io refused the connection');
         ws.accept();
-        const ships = new Map();
-        ws.addEventListener('message', (ev) => { try { const d = JSON.parse(typeof ev.data === 'string' ? ev.data : new TextDecoder().decode(ev.data)), md = d.MetaData || {}, id = md.MMSI;
+        const ships = new Map(); let raw = 0, closed = '', sample = '';
+        ws.addEventListener('close', (ev) => { closed = ev.code + ' ' + ev.reason; });
+        ws.addEventListener('message', async (ev) => { raw++; try { const txt = typeof ev.data === 'string' ? ev.data : ev.data instanceof ArrayBuffer ? new TextDecoder().decode(ev.data) : await new Response(ev.data).text(); if (!sample) sample = txt.slice(0, 160); const d = JSON.parse(txt), md = d.MetaData || {}, id = md.MMSI;
           const s = ships.get(id) || { mmsi: id, imo: null, name: '', callsign: '', destination: '', type: null };
           s.name = (md.ShipName || s.name || '').trim(); s.lat = md.latitude; s.lon = md.longitude; s.seen = Date.parse(md.time_utc) || Date.now();
           const p = d.Message && d.Message.PositionReport; if (p) { s.speed_kn = p.Sog; s.heading = p.TrueHeading === 511 ? p.Cog : p.TrueHeading; }
@@ -3747,6 +3748,7 @@ async function transport(request, url, env) {
         try { ws.close(1000); } catch (e) {}
         let items = [...ships.values()];
         if (lc) items = items.filter((s) => String(s.mmsi) === lc || String(s.imo) === lc || s.name.toLowerCase().includes(lc) || s.callsign.toLowerCase() === lc || s.destination.toLowerCase().includes(lc));
+        if (!ships.size) return json({ mode, q, count: 0, source: 'aisstream.io', items: [], debug: { status: r.status, raw, closed, sample } });
         return done(items, 'aisstream.io (worldwide AIS, live sample)');
       }
       const [loc, meta] = await Promise.all([get('https://meri.digitraffic.fi/api/ais/v1/locations', { headers: { 'accept-encoding': 'gzip', 'digitraffic-user': 'Wezzet' } }), get('https://meri.digitraffic.fi/api/ais/v1/vessels', { headers: { 'accept-encoding': 'gzip', 'digitraffic-user': 'Wezzet' } })]);
