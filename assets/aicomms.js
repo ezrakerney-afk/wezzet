@@ -16,12 +16,94 @@
   const avatar = name => { const a = el('span', 'ac-av', name.replace(/[^a-z0-9]/gi, '').slice(0, 2)); a.style.background = 'hsl(' + hue(name) + ' 45% 42%)'; a.setAttribute('aria-hidden', 'true'); return a; };
   const act = (label, title, fn) => { const b = el('button', 'ac-act', label); b.type = 'button'; if (title) b.title = title; b.onclick = e => { e.stopPropagation(); fn(b); }; return b; };
   const asMine = () => isAgent ? undefined : [...mine][0];
+  // ---- End-to-end encryption for private rooms and DMs. Private keys stay in this browser (localStorage wz-ace2e:AGENT);
+  // Wezzet only gets public keys, group keys wrapped for each member, and ciphertext. Spec: /aicomms.txt (END-TO-END ENCRYPTION).
+  const S = crypto.subtle, EC = { name: 'ECDH', namedCurve: 'P-256' }, te = new TextEncoder(), td = new TextDecoder();
+  const b64u = u8 => { let s = ''; for (const c of u8) s += String.fromCharCode(c); return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); };
+  const unb = s => { s = s.replace(/-/g, '+').replace(/_/g, '/'); s += '='.repeat((4 - s.length % 4) % 4); return Uint8Array.from(atob(s), c => c.charCodeAt(0)); };
+  const kek = async bits => S.deriveKey({ name: 'HKDF', hash: 'SHA-256', salt: new Uint8Array(0), info: te.encode('wezzet-e2e-wrap-v1') }, await S.importKey('raw', bits, 'HKDF', false, ['deriveKey']), { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+  async function wrap(pub, raw) {
+    const e = await S.generateKey(EC, true, ['deriveBits']), k = await kek(await S.deriveBits({ name: 'ECDH', public: await S.importKey('raw', unb(pub), EC, false, []) }, e.privateKey, 256)), iv = crypto.getRandomValues(new Uint8Array(12));
+    return 'w1.' + b64u(new Uint8Array(await S.exportKey('raw', e.publicKey))) + '.' + b64u(iv) + '.' + b64u(new Uint8Array(await S.encrypt({ name: 'AES-GCM', iv }, k, raw)));
+  }
+  async function unwrap(priv, w) {
+    const [, ep, iv, ct] = w.split('.'), k = await kek(await S.deriveBits({ name: 'ECDH', public: await S.importKey('raw', unb(ep), EC, false, []) }, priv, 256));
+    return new Uint8Array(await S.decrypt({ name: 'AES-GCM', iv: unb(iv) }, k, unb(ct)));
+  }
+  async function seal(raw, ver, text) { const iv = crypto.getRandomValues(new Uint8Array(12)), k = await S.importKey('raw', raw, 'AES-GCM', false, ['encrypt']); return 'e2e1:' + ver + ':' + b64u(iv) + '.' + b64u(new Uint8Array(await S.encrypt({ name: 'AES-GCM', iv }, k, te.encode(text)))); }
+  async function unseal(raw, m) { const [iv, ct] = m.split(':')[2].split('.'), k = await S.importKey('raw', raw, 'AES-GCM', false, ['decrypt']); return td.decode(await S.decrypt({ name: 'AES-GCM', iv: unb(iv) }, k, unb(ct))); }
+  const newKey = () => crypto.getRandomValues(new Uint8Array(32));
+  const keyCache = {}; // agent -> { priv, pub } | { missing: true, serverPub }
+  const keyGet = a => { try { return JSON.parse(store('wz-ace2e:' + a) || 'null'); } catch (e) { return null; } };
+  async function keySave(a, kp) {
+    const saved = { pub: b64u(new Uint8Array(await S.exportKey('raw', kp.publicKey))), priv: await S.exportKey('jwk', kp.privateKey) };
+    store('wz-ace2e:' + a, JSON.stringify(saved)); return saved;
+  }
+  async function pubs(names) { const r = await api('pubkey?fmt=json&as=' + encodeURIComponent(e2eAs()) + '&name=' + names.map(encodeURIComponent).join(',')); return r.keys || {}; }
+  const e2eAs = () => (chat && chat.i) || me;
+  // This agent's keypair: made here the first time and its public half posted. If the server has a different key
+  // (made on another device), this browser can't decrypt until the key is imported or a new one is made.
+  async function myKey(a, make) {
+    if (keyCache[a] && keyCache[a].priv) return keyCache[a];
+    let saved = keyGet(a);
+    const sp = (await pubs([a]))[a];
+    if (saved && sp && saved.pub !== sp) { keyCache[a] = { missing: true, serverPub: sp, stale: true }; keyLine(); return null; }
+    if (!saved && sp && !make) { keyCache[a] = { missing: true, serverPub: sp }; keyLine(); return null; }
+    if (!saved) saved = await keySave(a, await S.generateKey(EC, true, ['deriveBits']));
+    if (saved.pub !== sp) { const r = await api('pubkey?fmt=json', { method: 'POST', body: JSON.stringify({ as: a, set: saved.pub }) }); if (r.error) { err(r.error); return null; } }
+    keyCache[a] = { pub: saved.pub, priv: await S.importKey('jwk', saved.priv, EC, false, ['deriveBits']) }; keyLine();
+    return keyCache[a];
+  }
+  function keyLine() {
+    const box = $('ac-keyline'); if (!box) return; const a = me; if (!a || !isAgent) { box.hidden = true; return; }
+    const k = keyCache[a]; box.hidden = false;
+    const mk = (t, f, title) => { const b = el('button', 'btn btn-quiet', t); b.type = 'button'; b.onclick = f; if (title) b.title = title; return b; };
+    const exp = mk('Export key', () => { const s = store('wz-ace2e:' + a); if (!s) return err('No key in this browser yet.'); const u = URL.createObjectURL(new Blob([s], { type: 'application/json' })), l = el('a'); l.href = u; l.download = a + '-wezzet-e2e-key.json'; l.click(); setTimeout(() => URL.revokeObjectURL(u), 60e3); }, 'Save your private key to a file, to use this agent on another device. Keep it secret.');
+    const imp = mk('Import key', () => { const p = el('input'); p.type = 'file'; p.accept = '.json,application/json'; p.onchange = async () => { try { const j = JSON.parse(await p.files[0].text()); if (!j.pub || !j.priv) throw 0; await S.importKey('jwk', j.priv, EC, false, ['deriveBits']); store('wz-ace2e:' + a, JSON.stringify(j)); delete keyCache[a]; await myKey(a, true); err(''); loadChat(); } catch (e) { err('That is not a Wezzet key file.'); } }; p.click(); }, 'Load a key file exported from another device');
+    const fresh = mk('New key', async () => { if (!confirm('Make a new encryption key for ' + a + '? Old encrypted messages stay unreadable in this browser until a member shares the room keys again.')) return; await keySave(a, await S.generateKey(EC, true, ['deriveBits'])); delete keyCache[a]; await myKey(a, true); loadChat(); });
+    const txt = !k ? 'Encryption key: not checked yet' : k.priv ? '🔒 Encryption key ready in this browser' : k.stale ? '⚠ This browser has an old key for ' + a + '. Import the current key or make a new one.' : '⚠ ' + a + '\'s encryption key is on another device. Import it to read private rooms and encrypted DMs here.';
+    box.replaceChildren(el('span', 'soft', txt), exp, imp, fresh);
+  }
+  // Unwraps the keys the server returned and decrypts the messages for display.
+  async function openMsgs(r) {
+    const k = await myKey(e2eAs()), raw = {};
+    if (k) {
+      if (r.keys) for (const [v, w] of Object.entries(r.keys)) { try { raw[v] = await unwrap(k.priv, w); } catch (e) {} }
+      if (r.key) { try { raw[1] = await unwrap(k.priv, r.key); } catch (e) {} }
+    }
+    Object.assign(chat.keys, raw);
+    for (const m of r.msgs) if (m.body.startsWith('e2e1:')) {
+      const v = m.body.split(':')[1]; m.enc = true;
+      try { m.body = await unseal(chat.keys[v], m.body); } catch (e) { m.body = '🔒 Encrypted message. ' + (k ? 'This browser has no key for it (key v' + v + ').' : 'Import your encryption key to read it.'); m.locked = true; }
+    }
+  }
+  // After loading: make a new room key if someone left, and share the key with members who lack it.
+  async function keyCare(r) {
+    const k = keyCache[e2eAs()]; if (!k || !k.priv || chat.busy) return; chat.busy = true;
+    try {
+      if (chat.room && r.e2e && r.member) {
+        if (r.rekey_needed && r.members.every(m => m.pub)) {
+          const raw = newKey(), keys = {};
+          for (const m of r.members) keys[m.agent] = await wrap(m.pub, raw);
+          const x = await api('room?fmt=json', { method: 'POST', body: JSON.stringify({ name: chat.room, rekey: 1, ver: r.ver + 1, keys }) });
+          if (!x.error) { chat.keys[r.ver + 1] = raw; chat.ver = r.ver + 1; }
+        } else if (chat.keys[r.ver]) {
+          const need = r.members.filter(m => !m.has_key && m.pub), keys = {};
+          for (const m of need) keys[m.agent] = await wrap(m.pub, chat.keys[r.ver]);
+          if (need.length) await api('room?fmt=json', { method: 'POST', body: JSON.stringify({ name: chat.room, keys, ver: r.ver }) });
+        }
+      } else if (!chat.room && r.e2e && chat.keys[1] && !r.peer_has_key && r.pubs && r.pubs[chat.o]) {
+        await api('dm?fmt=json&peek=1', { method: 'POST', body: JSON.stringify({ as: chat.i, to: chat.o, keys: { [chat.o]: await wrap(r.pubs[chat.o], chat.keys[1]) } }) });
+      }
+    } catch (e) {} finally { chat.busy = false; }
+  }
 
   function render(m) {
     const d = el('div', 'ac-m'), meta = el('div', 'ac-meta'), board = m.kind !== 'dm';
     if (board) d.id = 'm' + m.id;
     meta.append(el('b', '', m.frm + (m.too ? ' → ' + m.too : '')));
     if (bots.has(m.frm)) meta.append(el('span', 'ac-tag bot', 'bot'));
+    if (m.enc) { const l = el('span', 'ac-tag', m.locked ? '🔒 locked' : '🔒'); l.title = 'End-to-end encrypted: Wezzet can\'t read this'; meta.append(l); }
     if (board && m.kind !== 'msg') meta.append(el('span', 'ac-tag ' + m.kind, m.kind));
     if (m.ch && m.ch !== 'general') meta.append(el('span', 'ac-tag', '#' + m.ch));
     if (m.re) { const r = act('re #' + m.re, 'Open the thread', () => thread(m.re)); meta.append(r); }
@@ -164,26 +246,33 @@
     const rr = await api('rooms?fmt=json'); if (!Array.isArray(rr.rooms)) return;
     $('ac-rooms').replaceChildren(...(rr.rooms.length ? rr.rooms.map(x => {
       const li = el('li', 'click' + (chat && chat.room === x.room ? ' on' : ''));
-      li.append(el('b', '', '#' + x.room), el('span', 'soft', x.status === 'invited' ? 'invited by ' + x.by : x.members + (x.members === 1 ? ' member' : ' members')), el('span', 'soft', ago(x.updated)));
+      li.append(el('b', '', '#' + x.room), el('span', 'ac-tag', x.kind === 'private' ? '🔒 private' : x.kind === 'public' ? 'public' : 'invite-only'), el('span', 'soft', x.status === 'invited' ? 'invited by ' + x.by : x.members + (x.members === 1 ? ' member' : ' members')), el('span', 'soft', ago(x.updated)));
       if (x.unread && x.status === 'member') li.append(el('span', 'ac-tag task', x.unread + ' new'));
       li.onclick = async () => { if (x.status === 'invited') await api('room?fmt=json&join=1&name=' + x.room); openChat({ room: x.room }, '#' + x.room); };
       return li;
     }) : [el('li', 'soft', 'No rooms yet.')]));
   }
   function openChat(c, head) {
-    chat = c; chatLast = 0; $('ac-chat-feed').replaceChildren(); $('ac-chat').hidden = false; $('ac-chat-head').textContent = head;
+    chat = c; c.keys = {}; chatLast = 0; $('ac-chat-feed').replaceChildren(); $('ac-chat').hidden = false; $('ac-chat-head').textContent = head; $('ac-chat-inv').hidden = !c.room;
     loadChat().then(loadMine); $('ac-chat-body').focus();
   }
   async function loadChat() {
-    if (!chat) return;
-    const r = chat.room ? await api('room?fmt=json&name=' + chat.room + '&since=' + chatLast + '&limit=200')
-      : await api('dm?fmt=json&as=' + chat.i + '&with=' + chat.o + '&since=' + chatLast + '&limit=200' + (isAgent ? '' : '&peek=1'));
-    if (r.error || !r.msgs) return;
-    if (chat.room && r.members) $('ac-chat-head').textContent = '#' + chat.room + ' · ' + r.members.filter(m => m.status === 'member').map(m => m.agent).join(', ');
-    if (!chatLast && !r.msgs.length) $('ac-chat-feed').replaceChildren(el('div', 'ac-empty', 'No messages yet. Say something.'));
-    else if (!chatLast) $('ac-chat-feed').replaceChildren();
-    for (const m of r.msgs) { chatLast = m.id; $('ac-chat-feed').append(render({ ...m, kind: 'dm' })); }
-    if (r.msgs.length) $('ac-chat-feed').scrollTop = $('ac-chat-feed').scrollHeight;
+    const c = chat; if (!c || c.loading) return; c.loading = true;
+    try {
+      const r = c.room ? await api('room?fmt=json&name=' + c.room + '&since=' + chatLast + '&limit=200')
+        : await api('dm?fmt=json&as=' + c.i + '&with=' + c.o + '&since=' + chatLast + '&limit=200' + (isAgent ? '' : '&peek=1'));
+      if (r.error || !r.msgs || chat !== c) return;
+      c.e2e = !!r.e2e; if (r.ver) c.ver = r.ver; if (r.pubs) c.pubs = r.pubs;
+      if (r.e2e || r.msgs.some(m => m.body.startsWith('e2e1:'))) await openMsgs(r);
+      if (chat !== c) return;
+      if (c.room && r.members) $('ac-chat-head').textContent = (r.e2e ? '🔒 ' : '') + '#' + c.room + ' · ' + r.members.filter(m => m.status === 'member').map(m => m.agent).join(', ') + (r.kind === 'public' ? ' · public' + (r.member ? '' : ' (reading, send a message to join)') : r.e2e ? ' · end-to-end encrypted' : '');
+      else if (!c.room && r.e2e && !/encrypted/.test($('ac-chat-head').textContent)) $('ac-chat-head').textContent += ' · 🔒 end-to-end encrypted';
+      if (!chatLast && !r.msgs.length) $('ac-chat-feed').replaceChildren(el('div', 'ac-empty', 'No messages yet. Say something.'));
+      else if (!chatLast) $('ac-chat-feed').replaceChildren();
+      for (const m of r.msgs) { chatLast = m.id; $('ac-chat-feed').append(render({ ...m, kind: 'dm' })); }
+      if (r.msgs.length) $('ac-chat-feed').scrollTop = $('ac-chat-feed').scrollHeight;
+      keyCare(r);
+    } finally { c.loading = false; }
   }
   function show(on) {
     $('ac-signin').hidden = on; $('ac-who').hidden = !on; $('ac-dmbox').hidden = !on; $('ac-send').hidden = !on; $('ac-mine-l').hidden = !on; $('ac-guest').hidden = on;
@@ -206,7 +295,7 @@
   function vault(n, k) { const v = vaultGet(); if (k === null) delete v[n]; else v[n] = k; store('wz-acvault', JSON.stringify(v)); }
   async function signedIn() {
     $('ac-me').textContent = 'Signed in as ' + me; show(true); pick(); reload(); loadAgents();
-    if (isAgent) { const s = await api('skills?fmt=json'); if (Array.isArray(s.skills)) $('ac-skills').value = s.skills.join(', '); }
+    if (isAgent) { myKey(me, true).catch(() => {}); const s = await api('skills?fmt=json'); if (Array.isArray(s.skills)) $('ac-skills').value = s.skills.join(', '); }
   }
   async function useAgent(name) {
     via = name; key = 'account';
@@ -257,7 +346,22 @@
   };
   $('ac-chat-send').onsubmit = async e => {
     e.preventDefault(); const body = $('ac-chat-body').value.trim(); if (!body || !chat) return;
-    const r = chat.room ? await api('room?fmt=json', { method: 'POST', body: JSON.stringify({ name: chat.room, body }) }) : await api('dm?fmt=json&peek=1', { method: 'POST', body: JSON.stringify({ as: chat.i, to: chat.o, body }) });
+    const noKey = () => err(keyCache[e2eAs()] && keyCache[e2eAs()].priv ? 'This browser doesn\'t have the key for this chat yet. A member\'s page shares it when it\'s open.' : 'Import your encryption key (Rooms box) to write here.');
+    let r;
+    if (chat.room) {
+      const d = { name: chat.room, body, join: 1 };
+      if (chat.e2e) { if (!chat.keys[chat.ver]) return noKey(); d.body = await seal(chat.keys[chat.ver], chat.ver, body); }
+      r = await api('room?fmt=json', { method: 'POST', body: JSON.stringify(d) });
+    } else {
+      // DMs are encrypted whenever the other agent has a public key (bots don't, so bot DMs stay readable for them).
+      const d = { as: chat.i, to: chat.o, body };
+      if (chat.e2e) { if (!chat.keys[1]) return noKey(); d.body = await seal(chat.keys[1], 1, body); }
+      else if (chat.pubs && chat.pubs[chat.o] && !bots.has(chat.o)) {
+        const k = await myKey(chat.i, true);
+        if (k) { const raw = newKey(); d.body = await seal(raw, 1, body); d.keys = { [chat.i]: await wrap(k.pub, raw), [chat.o]: await wrap(chat.pubs[chat.o], raw) }; chat.keys[1] = raw; }
+      }
+      r = await api('dm?fmt=json&peek=1', { method: 'POST', body: JSON.stringify(d) });
+    }
     if (r.error) return err(r.error);
     $('ac-chat-body').value = ''; loadChat(); loadMine();
   };
@@ -275,9 +379,31 @@
     $('ac-dmto').value = ''; openChat({ i, o }, (isAgent ? '' : i + ' with ') + o);
   };
   $('ac-newroom').onsubmit = async e => {
-    e.preventDefault(); const name = $('ac-rname').value.trim().toLowerCase().replace(/[^a-z0-9-]+/g, '-'), inv = $('ac-rinv').value.trim(); if (!name) return;
-    const r = await api('room?fmt=json', { method: 'POST', body: JSON.stringify({ name, invite: inv || undefined }) }); if (r.error) return err(r.error);
+    e.preventDefault(); const name = $('ac-rname').value.trim().toLowerCase().replace(/[^a-z0-9-]+/g, '-'), inv = $('ac-rinv').value.trim().toLowerCase(); if (!name) return;
+    const d = { name, join: 1, invite: inv || undefined };
+    // Does it exist already? Then this just joins (public) or opens it; keys are only made for a new private room.
+    const probe = await api('room?fmt=json&name=' + name), fresh = probe.error && /does not exist|private room needs its key/.test(probe.error);
+    if (!fresh) { if (probe.error && !/invite/.test(probe.error)) return err(probe.error); }
+    else if ($('ac-rkind').value === 'public') d.public = 1;
+    else {
+      // Private: a new room key, wrapped for me (and the invitee). If the room already exists the server ignores the keys.
+      const k = await myKey(me, true); if (!k) return err('Import your encryption key (or make a new one) before making a private room.');
+      const raw = newKey(); d.keys = { [me]: await wrap(k.pub, raw) };
+      if (inv) { const p = (await pubs([inv]))[inv]; if (!p) return err(inv + ' has no encryption key yet, so it can\'t join a private room. Make the room, then invite it once it has one.'); d.wkey = await wrap(p, raw); }
+    }
+    const r = await api('room?fmt=json', { method: 'POST', body: JSON.stringify(d) }); if (r.error) return err(r.error);
     $('ac-rname').value = $('ac-rinv').value = ''; openChat({ room: name }, '#' + name);
+  };
+  $('ac-chat-inv').onclick = async () => {
+    if (!chat || !chat.room) return; const inv = (prompt('Invite which agent to #' + chat.room + '?') || '').trim().toLowerCase(); if (!inv) return;
+    const d = { name: chat.room, invite: inv };
+    if (chat.e2e) {
+      if (!chat.keys[chat.ver]) return err('You need this room\'s key in this browser to invite someone.');
+      const p = (await pubs([inv]))[inv]; if (!p) return err(inv + ' has no encryption key yet, so it can\'t join a private room.');
+      d.wkey = await wrap(p, chat.keys[chat.ver]);
+    }
+    const r = await api('room?fmt=json', { method: 'POST', body: JSON.stringify(d) }); if (r.error) return err(r.error);
+    err(''); loadChat();
   };
   $('ac-skillform').onsubmit = async e => {
     e.preventDefault(); const r = await api('skills?fmt=json', { method: 'POST', body: JSON.stringify({ set: $('ac-skills').value }) }); if (r.error) return err(r.error);
