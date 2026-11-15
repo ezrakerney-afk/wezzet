@@ -118,8 +118,6 @@
   // Looks at everything together, like an investigator would:
   // 1) one report per trail: moves that start from the same named wallet go into one report;
   // 2) nothing already reported, nothing stale (handled per item);
-  // 3) at most 2 "Report now" a day, best first, so the tip line keeps taking you seriously.
-  const DAILY = 2;
   async function triage() {
     const [a, h] = await Promise.all([api("alerts?sort=top&limit=200"), api("holdings")]);
     const alerts = (a.alerts || []).filter((x) => x.status !== "dismissed"), tri = new Map();
@@ -134,14 +132,12 @@
       v.ref = { alert_ids: recent.map((x) => x.id) }; v.title += " (" + recent.length + " moves on one trail)"; v.why += " The report covers every recent move on this trail, so it's one tip, not several.";
       for (const x of list.slice(1)) tri.set("a" + x.id, { ...tri.get("a" + x.id), level: "skip", word: "Same trail", why: "Part of a bigger trail. It's included in that trail's report." });
     }
-    const nowList = [...tri.values()].filter((v) => v.level === "now").sort((p, q) => (q.title.includes("exchange") - p.title.includes("exchange")) || (q.usd || 0) - (p.usd || 0));
-    const left = Math.max(0, DAILY - (a.sent24 || 0));
-    nowList.slice(left).forEach((v) => { v.level = "look"; v.word = "Daily limit"; v.why += " You've reached today's limit of " + DAILY + " reports. If it's still fresh tomorrow, it moves up."; });
     S.tri = tri;
     return [...tri.values()];
   }
   async function loadBell() {
-    const items = (await triage()).filter((v) => v.level !== "skip").sort((x, y) => (x.level === y.level ? (y.ts || 0) - (x.ts || 0) : x.level === "now" ? -1 : 1)).slice(0, 40);
+    const want = S.notify || "now";
+    const items = (await triage()).filter((v) => want === "all" ? v.level !== "skip" || !v.word : want === "look" ? v.level !== "skip" : v.level === "now").sort((x, y) => (x.level === y.level ? (y.ts || 0) - (x.ts || 0) : x.level === "now" ? -1 : 1)).slice(0, 40);
     const seen = bellSeen(), unread = items.filter((v) => (v.ts || 0) > seen).length;
     $("#tr-bell-n").hidden = !unread; $("#tr-bell-n").textContent = unread > 99 ? "99+" : unread;
     $("#tr-bell-empty").hidden = !!items.length;
@@ -160,6 +156,8 @@
     if (r.status === 401) { $("#tr-msg").textContent = "Chain Watch is in private beta. Sign in with an invited Wezzet account to open it."; $("#wz-account").hidden = false; return; }
     if (!r.ok) { $("#tr-msg").textContent = "Chain Watch is in private beta, so it's only open to invited accounts for now. It watches wallets named in FBI and Treasury notices and follows where stolen crypto moves."; $("#wz-account").hidden = true; return; }
     $("#tr-gate").hidden = true; $("#tr-app").hidden = false; $("#tr-run").hidden = false;
+    S.notify = ((await api("settings")).settings || {}).notify || "now"; $("#tr-notify").value = S.notify;
+    $("#tr-notify").onchange = async (e) => { S.notify = e.target.value; await api("settings", { notify: S.notify }); const f = $("#s-form"); if (f.elements.notify) f.elements.notify.value = S.notify; loadBell(); };
     await loadBell().catch(() => {});
     tab(location.hash.slice(1) || "overview");
     summary(); setInterval(() => { if (!document.hidden) { summary(); loadBell(); } }, 120000);
@@ -407,11 +405,11 @@
   }
   $("#s-form").onsubmit = async (e) => {
     e.preventDefault(); const f = e.target, d = { keys: {} };
-    for (const k of ["interval", "channel", "child_pct", "max_hops", "dormant_days", "keys_mode", "engine", "lookback_days"]) d[k] = f.elements[k].value;
+    for (const k of ["interval", "channel", "notify", "child_pct", "max_hops", "dormant_days", "keys_mode", "engine", "lookback_days"]) d[k] = f.elements[k].value;
     d.profile = {}; for (const k of ["name", "email", "phone", "country"]) d.profile[k] = f.elements["p_" + k].value.trim();
     d.paused = f.elements.paused.checked; d.auto_seed = f.elements.auto_seed.checked; d.ai_alerts = f.elements.ai_alerts.checked;
     $$("input[type=password]", f).forEach((i) => { if (i.value.trim()) d.keys[i.name.slice(2)] = i.value.trim(); });
-    if (show(await api("settings", d))) { await loadSettings(); status("Settings saved.", "good"); summary(); }
+    if (show(await api("settings", d))) { S.notify = d.notify; $("#tr-notify").value = d.notify; loadBell(); await loadSettings(); status("Settings saved.", "good"); summary(); }
   };
   $("#s-form").elements.paused.onchange = (e) => api("settings", { paused: e.target.checked }).then((r) => { if (show(r, e.target.checked ? "Paused. The watcher stops at its next check." : "Unpaused.")) summary(); });
 

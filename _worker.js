@@ -3871,7 +3871,7 @@ const TR_KEYS = ["etherscan", "tronscan", "trongrid", "claude", "telegram_token"
 const TR_TAGS = ["dispersal", "dex_swap", "bridge", "mixer", "exchange", "dormant_wake", "transfer", "inflow"];
 const TR_ALERT_ST = ["new", "seen", "dismissed", "promoted"];
 const TR_LEAD_ST = ["investigating", "ready", "submitted", "dropped"];
-const TR_DEFAULTS = { interval: "30", channel: "email", email: "", child_pct: "10", max_hops: "5", dormant_days: "30", paused: "0", keys_mode: "wezzet", engine: "wezzet", auto_seed: "1", lookback_days: "90", ai_alerts: "1" };
+const TR_DEFAULTS = { interval: "30", channel: "email", email: "", child_pct: "10", max_hops: "5", dormant_days: "30", paused: "0", keys_mode: "wezzet", engine: "wezzet", auto_seed: "1", lookback_days: "90", ai_alerts: "1", notify: "now" };
 const TR_EXPLORER = { eth: "https://etherscan.io/tx/", bsc: "https://bscscan.com/tx/", arb: "https://arbiscan.io/tx/", base: "https://basescan.org/tx/", polygon: "https://polygonscan.com/tx/", op: "https://optimistic.etherscan.io/tx/", avax: "https://snowtrace.io/tx/", btc: "https://mempool.space/tx/", tron: "https://tronscan.org/#/transaction/" };
 const trOut = (d, s = 200) => json(d, s, { "x-robots-tag": "noindex" });
 const trChain = (c) => { c = String(c || "").trim().toLowerCase(); return /^[a-z0-9]{2,12}$/.test(c) ? c : ""; };
@@ -4151,6 +4151,7 @@ async function trBrowser(request, env, p, d, q, sess) {
     if (d.engine !== undefined) stmts.push(trSet(DB, "engine", d.engine === "external" ? "external" : "wezzet"));
     if (d.auto_seed !== undefined) stmts.push(trSet(DB, "auto_seed", d.auto_seed ? 1 : 0));
     if (d.ai_alerts !== undefined) stmts.push(trSet(DB, "ai_alerts", d.ai_alerts ? 1 : 0));
+    if (d.notify !== undefined) stmts.push(trSet(DB, "notify", ["now", "look", "all"].includes(d.notify) ? d.notify : "now"));
     if (d.lookback_days !== undefined) stmts.push(trSet(DB, "lookback_days", trInt(d.lookback_days, 1, 3650, 90)));
     if (d.keys_mode !== undefined) stmts.push(trSet(DB, "keys_mode", d.keys_mode === "github" ? "github" : "wezzet"));
     if (d.profile && typeof d.profile === "object") {
@@ -4664,7 +4665,7 @@ async function trTick(env, force) {
         const usd = Math.round(m.amount * trPx(prices, m.asset));
         const r = await DB.prepare("INSERT OR IGNORE INTO tr_alerts (watch_id, chain, address, tx, ts, tag, amount, asset, counterparty, summary, status, created, usd, score) VALUES (?, ?, ?, ?, ?, 'inflow', ?, ?, ?, ?, 'new', ?, ?, ?)")
           .bind(w.id, w.chain, w.address, m.tx, m.ts, trFmt(m.amount), m.asset, m.from, `${w.label || "Watched address"} (${w.hop ? "hop " + w.hop : "seed"}) received ${trFmt(m.amount)} ${m.asset}${m.from ? " from " + trShort(m.from) : ""}. New money arriving can mean a fresh theft or funds being gathered before a move. Look at where it came from.`, now, usd, trScore("inflow", usd, m.asset)).run();
-        if (r.meta?.changes) fresh.push({ tag: "inflow", summary: `${w.label || "Watched address"} received ${trFmt(m.amount)} ${m.asset}`, id: r.meta.last_row_id });
+        if (r.meta?.changes) fresh.push({ tag: "inflow", usd, summary: `${w.label || "Watched address"} received ${trFmt(m.amount)} ${m.asset}`, id: r.meta.last_row_id });
       }
       if (moves.length) {
         const newest = Math.max(...moves.map((m) => m.ts));
@@ -4726,7 +4727,7 @@ async function trTick(env, force) {
             const usd = m.call ? 0 : Math.round(m.amount * trPx(prices, m.asset));
             const r = await DB.prepare("INSERT OR IGNORE INTO tr_alerts (watch_id, chain, address, tx, ts, tag, amount, asset, counterparty, summary, status, created, usd, score) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'new', ?, ?, ?)")
               .bind(w.id, w.chain, w.address, m.tx, m.ts, tag, m.call ? "" : trFmt(m.amount), m.call ? "" : m.asset, to, summary, now, usd, trScore(tag, usd, m.asset)).run();
-            if (r.meta?.changes) fresh.push({ tag, summary, id: r.meta.last_row_id });
+            if (r.meta?.changes) fresh.push({ tag, usd, summary, id: r.meta.last_row_id });
           }
           first = false;
         }
@@ -4759,7 +4760,11 @@ async function trTick(env, force) {
     } catch {}
   }
   fresh.sort((x, y) => (TR_SCORE[y.tag] || 0) - (TR_SCORE[x.tag] || 0));
-  if (fresh.length) await trNotify(env, s, fresh).catch(() => {});
+  // Notify only for what the owner chose: by default just moves worth reporting (same rule as the page's "Report now").
+  const worth = (f) => (f.tag === "exchange" && f.usd >= 250000) || (f.tag === "bridge" && f.usd >= 2e6);
+  const look = (f) => worth(f) || (f.usd >= 100000 && trScore(f.tag, f.usd, "") >= 55);
+  const notify = s.notify === "all" ? fresh : fresh.filter(s.notify === "look" ? look : worth);
+  if (notify.length) await trNotify(env, s, notify).catch(() => {});
   return { checked: batch.length, calls: C.calls, alerts: fresh.length, seeded, errors };
 }
 

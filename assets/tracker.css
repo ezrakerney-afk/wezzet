@@ -199,3 +199,4 @@ body .tr .tr-h3{font-family:inherit!important;font-size:.8rem!important;font-wei
 .tr-steps{margin-top:6px}.tr-steps summary{cursor:pointer;font-size:.84rem;font-weight:600}.tr-steps ol{margin:6px 0 0;padding-left:20px;font-size:.86rem;color:var(--ink-soft)}.tr-steps li{margin:3px 0}
 .tr-fields dl{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;margin:6px 0 0;font-size:.84rem}.tr-fields dt{color:var(--ink-soft)}.tr-fields dd{margin:0;min-width:0}.tr-copyval{border:1px solid var(--line);background:var(--surface,var(--bg));color:var(--ink);border-radius:6px;padding:2px 6px;font:inherit;font-size:.8rem;cursor:pointer;text-align:left;overflow-wrap:anywhere;max-width:100%}
 @media (max-width:600px){.tr-fields dl{grid-template-columns:1fr}}
+.tr-bellhead select{font-size:.8rem;padding:4px 6px;min-height:0;max-width:60%}

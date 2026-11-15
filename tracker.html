@@ -15,7 +15,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400..700&display=swap">
 <link rel="stylesheet" href="/assets/site.css?v=8">
 <link rel="stylesheet" href="/assets/skin.css?v=4">
-<link rel="stylesheet" href="/assets/tracker.css?v=13">
+<link rel="stylesheet" href="/assets/tracker.css?v=14">
 </head>
 <body>
 <header class="site-header">
@@ -33,9 +33,9 @@
           <div class="tr-bellwrap" id="tr-bellwrap" hidden>
             <button type="button" class="tr-bell" id="tr-bell" aria-label="Notifications" aria-expanded="false" aria-controls="tr-bellpanel"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 16V11a6 6 0 1 1 12 0v5l2 2H4l2-2Zm4 5h4"/></svg><span class="n" id="tr-bell-n" hidden></span></button>
             <div class="tr-bellpanel" id="tr-bellpanel" hidden>
-              <div class="tr-bellhead"><b>Notifications</b><span class="tr-sm">Only things worth acting on</span></div>
+              <div class="tr-bellhead"><b>Notifications</b><select id="tr-notify" aria-label="Which notifications"><option value="now">Only worth reporting</option><option value="look">Worth reporting + worth a look</option><option value="all">Everything new</option></select></div>
               <ol id="tr-bell-list"></ol>
-              <p class="tr-empty" id="tr-bell-empty">Nothing worth reporting right now. You'll get a notification here when there is.</p>
+              <p class="tr-empty" id="tr-bell-empty">Nothing worth reporting right now. You'll get a notification here when there is. Change what shows up with the menu above.</p>
             </div>
           </div>
           <div class="tr-h1" role="heading" aria-level="1">Chain Watch</div>
@@ -238,6 +238,7 @@
           <div class="tr-card">
             <h2 class="tr-h2">Alerts</h2>
             <div class="tr-grid">
+              <label class="wide">Notify me about<select name="notify"><option value="now">Only things worth reporting (recommended)</option><option value="look">Worth reporting and worth a look</option><option value="all">Every new alert</option></select></label>
               <label class="wide">Tell me about new alerts by<select name="channel"><option value="email">Browser notification</option><option value="telegram">Telegram</option><option value="both">Browser notification and Telegram</option><option value="page">This page only</option></select></label>
               <label class="wide tr-check"><span><input type="checkbox" name="ai_alerts"> Write an AI summary for new alerts</span><small>Explains the whole trail in two or three sentences. Uses your Claude key if one is saved, otherwise WezzetAI. Only public blockchain facts are sent. An AI can be wrong: check the transaction before you act.</small></label>
             </div>
@@ -296,7 +297,7 @@
   </div>
 </footer>
 <script src="/assets/account.js?v=3" defer></script>
-<script src="/assets/tracker.js?v=16" defer></script>
+<script src="/assets/tracker.js?v=17" defer></script>
 <script src="/assets/ui.js?v=1" defer></script>
 <script src="/assets/theme.js?v=5" defer></script>
 </body>
