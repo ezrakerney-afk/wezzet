@@ -3746,7 +3746,7 @@ async function transport(request, url, env) {
         ws.send(JSON.stringify(sub));
         await new Promise((ok) => setTimeout(ok, /^\d{9}$/.test(q) ? 8000 : 4000));
         try { ws.close(1000); } catch (e) {}
-        let items = [...ships.values()];
+        let items = [...ships.values()].filter((s) => s.mmsi && s.lat != null);
         if (lc) items = items.filter((s) => String(s.mmsi) === lc || String(s.imo) === lc || s.name.toLowerCase().includes(lc) || s.callsign.toLowerCase() === lc || s.destination.toLowerCase().includes(lc));
         if (!ships.size) return json({ mode, q, count: 0, source: 'aisstream.io', items: [], debug: { status: r.status, raw, closed, sample } });
         return done(items, 'aisstream.io (worldwide AIS, live sample)');
