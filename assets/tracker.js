@@ -145,6 +145,17 @@
   $("#f-view").onclick = (e) => { const b = e.target.closest("button[data-v]"); if (!b || !S.flow) return; S.fView = b.dataset.v; $$("#f-view button").forEach((x) => x.classList.toggle("on", x === b)); drawFlow(); };
   $("#f-tag").onchange = () => S.flow && drawFlow();
 
+  $("#a-list").addEventListener("click", async (e) => {
+    const b = e.target.closest("button[data-explain]"); if (!b) return;
+    e.preventDefault(); b.disabled = true; b.textContent = "Thinking…";
+    const r = await api("alerts/explain", { id: Number(b.dataset.explain) });
+    if (!show(r)) { b.disabled = false; b.textContent = "Explain with AI"; return; }
+    const a = S.alerts.find((x) => x.id == b.dataset.explain); if (a) a.ai = r.ai;
+    const body = b.closest(".body"), old = $(".ai", body), p = el("p", { className: "ai" }, el("b", { textContent: "AI summary " }), r.ai);
+    if (old) old.replaceWith(p); else $(".meta", body).before(p);
+    b.disabled = false; b.textContent = "Redo AI summary";
+  });
+
   async function loadAlerts() {
     const q = new URLSearchParams(); if ($("#a-tag").value) q.set("tag", $("#a-tag").value); if (S.aView) q.set("status", S.aView);
     const [r, l] = await Promise.all([api("alerts?" + q), api("leads")]);
@@ -156,7 +167,8 @@
       el("div", { className: "body" },
         el("div", { className: "top" }, tagChip(a.tag), el("span", { className: "amt", textContent: [a.amount, a.asset].filter(Boolean).join(" ") }), a.status !== "new" ? el("span", { className: "tr-chip", textContent: a.status }) : "", el("span", { className: "time", textContent: when(a.ts), title: new Date(a.ts).toISOString() })),
         a.summary ? el("p", { className: "sum", textContent: a.summary }) : "",
-        el("div", { className: "meta" }, el("span", {}, chain(a.chain), el("span", { className: "mono", textContent: short(a.address), title: a.address }), a.counterparty ? el("span", { className: "mono", textContent: " → " + short(a.counterparty), title: a.counterparty }) : ""), el("span", {}, "tx ", txLink(a)))))) : [el("div", { className: "tr-card tr-empty", textContent: S.aView === "new" ? "No new alerts. You're caught up." : "No alerts here." })]));
+        a.ai ? el("p", { className: "ai" }, el("b", { textContent: "AI summary " }), a.ai) : "",
+        el("div", { className: "meta" }, el("span", {}, chain(a.chain), el("span", { className: "mono", textContent: short(a.address), title: a.address }), a.counterparty ? el("span", { className: "mono", textContent: " → " + short(a.counterparty), title: a.counterparty }) : ""), el("span", {}, "tx ", txLink(a)), el("button", { type: "button", className: "tr-link", dataset: { explain: a.id }, textContent: a.ai ? "Redo AI summary" : "Explain with AI" }))))) : [el("div", { className: "tr-card tr-empty", textContent: S.aView === "new" ? "No new alerts. You're caught up." : "No alerts here." })]));
     selBar("#a-sel", $("#a-list"));
   }
   $("#a-tag").onchange = loadAlerts; seg("#a-view", "aView", loadAlerts);
@@ -200,13 +212,13 @@
     $$("[data-k]", f).forEach((s) => { const v = r.keys[s.dataset.k]; s.textContent = v ? "✓ " + v[0].toUpperCase() + v.slice(1) : "Not set"; s.className = v ? "set" : ""; });
     $$("input[type=password]", f).forEach((i) => (i.value = ""));
     S.keysSet = Object.values(r.keys).some(Boolean);
-    f.elements.auto_seed.checked = r.settings.auto_seed !== "0";
+    f.elements.auto_seed.checked = r.settings.auto_seed !== "0"; f.elements.ai_alerts.checked = r.settings.ai_alerts !== "0";
     $("#t-state").textContent = r.token ? "✓ A token is " + r.token + "." : "No token yet.";
   }
   $("#s-form").onsubmit = async (e) => {
     e.preventDefault(); const f = e.target, d = { keys: {} };
     for (const k of ["interval", "channel", "child_pct", "max_hops", "dormant_days", "keys_mode", "engine", "lookback_days"]) d[k] = f.elements[k].value;
-    d.paused = f.elements.paused.checked; d.auto_seed = f.elements.auto_seed.checked;
+    d.paused = f.elements.paused.checked; d.auto_seed = f.elements.auto_seed.checked; d.ai_alerts = f.elements.ai_alerts.checked;
     $$("input[type=password]", f).forEach((i) => { if (i.value.trim()) d.keys[i.name.slice(2)] = i.value.trim(); });
     if (show(await api("settings", d))) { await loadSettings(); status("Settings saved.", "good"); summary(); }
   };

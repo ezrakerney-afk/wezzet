@@ -12,7 +12,7 @@
 <script>try{(function(t){if(t==="dark"||t==="light")document.documentElement.dataset.theme=t})(localStorage.getItem("wz-theme"))}catch(e){}</script>
 <link rel="stylesheet" href="/assets/site.css?v=7">
 <link rel="stylesheet" href="/assets/skin.css?v=2">
-<link rel="stylesheet" href="/assets/tracker.css?v=4">
+<link rel="stylesheet" href="/assets/tracker.css?v=5">
 </head>
 <body>
 <header class="site-header">
@@ -150,6 +150,7 @@
             <h2 class="tr-h2">Alerts</h2>
             <div class="tr-grid">
               <label class="wide">Tell me about new alerts by<select name="channel"><option value="email">Browser notification</option><option value="telegram">Telegram</option><option value="both">Browser notification and Telegram</option><option value="page">This page only</option></select></label>
+              <label class="wide tr-check"><span><input type="checkbox" name="ai_alerts"> Write an AI summary for new alerts</span><small>Explains the whole trail in two or three sentences. Uses your Claude key if one is saved, otherwise WezzetAI. Only public blockchain facts are sent. An AI can be wrong: check the transaction before you act.</small></label>
             </div>
             <p class="tr-help" style="margin:10px 0 0">Browser notifications use the same switch as Messages: turn notifications on once in <a href="/chat">Messages</a> on each device. Telegram needs the bot token and chat ID below.</p>
           </div>
@@ -180,7 +181,7 @@
   </div>
 </main>
 <script src="/assets/account.js?v=3" defer></script>
-<script src="/assets/tracker.js?v=4" defer></script>
+<script src="/assets/tracker.js?v=5" defer></script>
 <script src="/assets/theme.js?v=4" defer></script>
 </body>
 </html>

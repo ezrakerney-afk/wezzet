@@ -112,3 +112,5 @@ body .tr .tr-lead h3{font-family:inherit!important;font-size:.72rem!important;fo
 .tr-fend{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;font-size:.9rem}
 .tr-fend.t-exchange b,.tr-fend.t-mixer b{color:var(--bad)}
 .tr-link{border:0;background:none;padding:0;font:inherit;font-size:.78rem;color:var(--ink-soft);text-decoration:underline;cursor:pointer}
+.tr-alert .ai{margin:2px 0 6px;padding:8px 10px;border-left:3px solid var(--accent);background:color-mix(in srgb,var(--accent) 7%,transparent);border-radius:0 8px 8px 0;font-size:.9rem}
+.tr-alert .ai b{font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);margin-right:4px}
