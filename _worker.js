@@ -4016,16 +4016,22 @@ async function toolStats(request, env) {
 // Flights: OpenSky Network. Trains: Transitous (MOTIS, open transit data). Ships: Digitraffic AIS (Baltic/Nordic waters).
 // Airports, ports, stations and railways: OpenStreetMap via Overpass (the data behind OpenRailwayMap).
 // OpenSky sign-in for the flight tracker: a short-lived token from the account's API client, kept in memory until it nears expiry.
-let skyTok = { v: '', exp: 0 };
+let skyTok = { v: '', exp: 0, err: '', retry: 0 };
 async function skyAuth(env) {
-  if (!env.OPENSKY_CLIENT_ID || !env.OPENSKY_CLIENT_SECRET) return null;
+  const id = (env.OPENSKY_CLIENT_ID || '').trim(), secret = (env.OPENSKY_CLIENT_SECRET || '').trim();
+  if (!id || !secret) { skyTok.err = id ? 'OPENSKY_CLIENT_SECRET is missing' : secret ? 'OPENSKY_CLIENT_ID is missing' : ''; return null; }
   if (skyTok.v && Date.now() < skyTok.exp) return skyTok.v;
-  const r = await fetch('https://auth.opensky-network.org/auth/realms/opensky-network/protocol/openid-connect/token', { method: 'POST', signal: AbortSignal.timeout(6000),
-    headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ grant_type: 'client_credentials', client_id: env.OPENSKY_CLIENT_ID, client_secret: env.OPENSKY_CLIENT_SECRET }) });
-  if (!r.ok) return null;
-  const j = await r.json();
-  if (!j.access_token) return null;
-  skyTok = { v: j.access_token, exp: Date.now() + Math.max(60, (j.expires_in || 1800) - 120) * 1000 };
+  if (Date.now() < skyTok.retry) return null; // a sign-in that just failed is not retried for a minute, so it cannot slow every search
+  const fail = (why) => { skyTok = { v: '', exp: 0, err: why, retry: Date.now() + 60000 }; return null; };
+  let r;
+  try {
+    r = await fetch('https://auth.opensky-network.org/auth/realms/opensky-network/protocol/openid-connect/token', { method: 'POST', signal: AbortSignal.timeout(5000),
+      headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ grant_type: 'client_credentials', client_id: id, client_secret: secret }) });
+  } catch (e) { return fail('OpenSky sign-in did not answer (' + (e && e.name || 'error') + ')'); }
+  if (!r.ok) { const j = await r.json().catch(() => ({})); return fail('OpenSky refused the sign-in (HTTP ' + r.status + (j.error ? ', ' + String(j.error).slice(0, 40) : '') + ')'); }
+  const j = await r.json().catch(() => ({}));
+  if (!j.access_token) return fail('OpenSky sign-in reply had no token');
+  skyTok = { v: j.access_token, exp: Date.now() + Math.max(60, (j.expires_in || 1800) - 120) * 1000, err: '', retry: 0 };
   return skyTok.v;
 }
 
@@ -4058,8 +4064,9 @@ async function transport(request, url, env) {
         return { ac: out, via: 'OpenSky' };
       });
       const first = (tries) => Promise.any(tries).catch(() => null);
-      const reply = (items, via, note) => json({ mode, q, count: items.length, source: via || 'adsb.lol, adsb.fi and OpenSky', opensky: tok ? 'signed in' : env.OPENSKY_CLIENT_ID ? 'account set, not signed in for this search' : 'no account', note: note || '', items: items.slice(0, limit) }, 200, { 'cache-control': 'public, max-age=20' });
-      const DOWN = () => json({ error: 'The live flight sources did not answer in time. Try again in a moment.' }, 503);
+      const reply = (items, via, note) => json({ mode, q, count: items.length, source: via || 'adsb.lol, adsb.fi and OpenSky', opensky: skyState(), note: note || '', items: items.slice(0, limit) }, 200, { 'cache-control': 'public, max-age=20' });
+      const skyState = () => tok ? 'signed in' : skyTok.err ? 'not signed in: ' + skyTok.err : env.OPENSKY_CLIENT_ID ? 'account set, answered before sign-in finished' : 'no account';
+      const DOWN = () => json({ error: 'The live flight sources did not answer in time. Try again in a moment.', opensky: skyState() }, 503);
       const code = q.toUpperCase().replace(/[\s-]/g, '');
       if (/^[0-9A-F]{6}$/.test(code) && /\d/.test(code)) {
         const h = code.toLowerCase(), r = await first([get(AIR + 'hex/' + h).then(list('adsb.lol')), get(FI + 'v2/hex/' + h).then(list('adsb.fi')), sky('?icao24=' + h)]);
