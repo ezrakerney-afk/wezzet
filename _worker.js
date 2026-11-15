@@ -3772,7 +3772,11 @@ async function transport(request, url, env) {
       const shape = (a, from) => { const km = from && a.lat != null ? Math.round(111.2 * Math.hypot(a.lat - from[0], (a.lon - from[1]) * Math.cos(from[0] * Math.PI / 180))) : null;
         return { id: a.hex, callsign: (a.flight || '').trim(), reg: a.r || '', type: a.t || '', lat: a.lat ?? null, lon: a.lon ?? null, ground: a.alt_baro === 'ground', alt_m: typeof a.alt_baro === 'number' ? Math.round(a.alt_baro * 0.3048) : null,
           speed_kmh: a.gs == null ? null : Math.round(a.gs * 1.852), heading: a.track == null ? null : Math.round(a.track), squawk: a.squawk || '', dist_km: km }; };
-      const ask = (path) => get(AIR + path).then((d) => d.ac || []).catch(() => []);
+      // Two public sources with the same data format; whichever answers first wins. If both fail, say so instead of showing an empty list.
+      const FI = 'https://opendata.adsb.fi/api/';
+      let down = false;
+      const ask = (path) => { const fi = path.startsWith('point/') ? 'v3/lat/' + path.split('/')[1] + '/lon/' + path.split('/')[2] + '/dist/' + path.split('/')[3] : 'v2/' + path.replace(/^reg\//, 'registration/');
+        return Promise.any([get(AIR + path), get(FI + fi)]).then((d) => d.ac || []).catch(() => { down = true; return []; }); };
       const code = q.toUpperCase().replace(/[\s-]/g, '');
       if (/^[0-9A-F]{6}$/.test(code) && /\d/.test(code)) { const ac = await ask('hex/' + code.toLowerCase()); if (ac.length) return done(ac.map((x) => shape(x)), 'adsb.lol'); }
       if (/\d/.test(code) && /^[A-Z0-9]{3,8}$/.test(code)) {
@@ -3781,7 +3785,8 @@ async function transport(request, url, env) {
         const alt = IATA[code.slice(0, 2)] && /^\d/.test(code.slice(2)) ? IATA[code.slice(0, 2)] + code.slice(2) : '';
         const hits = (await Promise.all([ask('callsign/' + code), alt ? ask('callsign/' + alt) : [], ask('reg/' + encodeURIComponent(q.toUpperCase().trim()))])).flat();
         const seen = new Set(), items = hits.filter((x) => !seen.has(x.hex) && seen.add(x.hex)).map((x) => shape(x));
-        return done(items, 'adsb.lol', items.length ? '' : 'No aircraft is broadcasting that flight number right now. It may not be in the air yet. You can also search an airport, like JFK.');
+        if (down && !items.length) return json({ error: 'The live flight sources did not answer in time. Try again in a moment.' }, 502);
+        return done(items, 'adsb.lol and adsb.fi', items.length ? '' : 'No aircraft is broadcasting that flight number right now. It may not be in the air yet. You can also search an airport, like JFK.');
       }
       // Anything else is a place: find the airport, then list what is flying within 150 km of it.
       let at = [51.47, -0.4543], where = 'London Heathrow';
@@ -3791,8 +3796,9 @@ async function transport(request, url, env) {
         at = [f.geometry.coordinates[1], f.geometry.coordinates[0]]; where = f.properties.name || q;
       }
       const ac = await ask(`point/${at[0].toFixed(3)}/${at[1].toFixed(3)}/80`);
+      if (down) return json({ error: 'The live flight sources did not answer in time. Try again in a moment.' }, 502);
       const items = ac.filter((x) => x.lat != null).map((x) => shape(x, at)).sort((x, y) => x.dist_km - y.dist_km);
-      return done(items, 'adsb.lol', (items.length ? 'Aircraft within 150 km of ' : 'Nothing is flying near ') + where + (q ? '.' : '. Search a flight number, registration or airport to look elsewhere.'));
+      return done(items, 'adsb.lol and adsb.fi', (items.length ? 'Aircraft within 150 km of ' : 'Nothing is flying near ') + where + (q ? '.' : '. Search a flight number, registration or airport to look elsewhere.'));
     }
     if (mode === 'ships') {
       if (env.AISSTREAM_KEY) {
