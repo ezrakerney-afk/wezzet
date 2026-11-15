@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Live transport tracker: flights, trains and ships | Wezzet</title>
-<meta name="description" content="Search live flights by flight number, trains by station and number, ships by name, MMSI or IMO, plus airports, ports, stations and railways worldwide. Free, no sign-in.">
+<meta name="description" content="Search live flights by flight number, trains by station and number, ships by name, MMSI or IMO, plus airports, ports and stations worldwide. Free, no sign-in.">
 <link rel="canonical" href="https://wezzet.com/transport">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Wezzet">
@@ -41,6 +41,7 @@
 .tt td{padding:9px 12px;border-bottom:1px solid var(--line);white-space:nowrap}
 .tt tr:hover td{background:color-mix(in srgb,var(--accent) 6%,transparent)}
 .tt td a{color:var(--accent)}.tt .empty{padding:40px;text-align:center;color:var(--ink-soft)}
+.tt-wait{opacity:.45;transition:opacity .15s}.tt-bar button:disabled{opacity:.6;cursor:progress}
 .tt .src{font-size:.8rem;color:var(--ink-soft);margin-top:14px}
 </style>
 </head>
@@ -52,12 +53,12 @@
 <main id="main" class="tt"><div class="wrap">
   <div class="breadcrumb"><a href="/">Workspace</a><span>/</span><span>Transport tracker</span></div>
   <h1>Live transport tracker</h1>
-  <p class="lede">Flights, trains and ships around the world, plus airports, ports, stations and railways. Data is fetched live when you search; nothing is stored.</p>
+  <p class="lede">Flights, trains and ships around the world, plus airports, ports and stations. Data is fetched live when you search; nothing is stored.</p>
   <div class="tt-tabs" role="tablist" id="tabs"></div>
   <form class="tt-bar" id="f"><input id="q" autocomplete="off" aria-label="Search"><select id="lim" aria-label="Results"><option>50</option><option selected>100</option><option>200</option></select><button>Search</button></form>
   <p class="tt-meta" id="meta" aria-live="polite"></p>
   <div class="tt-card"><table><thead id="th"></thead><tbody id="tb"></tbody></table><div class="empty" id="empty">Pick a type and search.</div></div>
-  <p class="src">Sources: OpenSky Network (flights), Transitous (trains), aisstream.io (ships worldwide), OpenStreetMap via Overpass (airports, ports, stations, railways, the same data as OpenRailwayMap). API: <code>/api/transport?mode=flights&amp;q=UAL</code></p>
+  <p class="src">Sources: adsb.lol (flights), Transitous (trains), aisstream.io (ships worldwide), OpenStreetMap (airports, ports, stations). API: <code>/api/transport?mode=flights&amp;q=UA123</code></p>
 </div></main>
 
 <footer class="site-footer">
@@ -71,7 +72,7 @@
     <div class="wz-foot-base"><span>© 2026 Wezzet</span><span>Press <kbd>Ctrl K</kbd> to search every tool</span></div>
   </div>
 </footer>
-<script src="/assets/transport.js?v=1" defer></script>
+<script src="/assets/transport.js?v=2" defer></script>
 <script src="/assets/ui.js?v=1" defer></script>
 <script src="/assets/theme.js?v=5" defer></script>
 </body>

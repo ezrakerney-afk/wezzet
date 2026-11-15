@@ -4,13 +4,12 @@
   const t = (ts) => ts ? new Date(typeof ts === "number" && ts < 1e12 ? ts * 1e3 : ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "";
   const map = (r) => r.lat != null ? "https://www.openstreetmap.org/?mlat=" + r.lat + "&mlon=" + r.lon + "#map=9/" + r.lat + "/" + r.lon : "";
   const M = {
-    flights: { label: "Flights", ph: "Flight callsign (UAL123, BAW), ICAO24 hex or country. Empty = all", cols: [["callsign", "Flight"], ["country", "Country"], ["alt_m", "Altitude (m)"], ["speed_kmh", "Speed (km/h)"], ["heading", "Heading"], ["ground", "On ground"], ["squawk", "Squawk"], ["seen", "Seen", t], ["map", "Map"]] },
+    flights: { label: "Flights", auto: 1, ph: "Flight number (UA123), registration (N12345) or airport (JFK, Tokyo)", cols: [["callsign", "Flight"], ["reg", "Registration"], ["type", "Type"], ["alt_m", "Altitude (m)"], ["speed_kmh", "Speed (km/h)"], ["heading", "Heading"], ["dist_km", "Distance (km)"], ["ground", "On ground"], ["map", "Map"]] },
     trains: { label: "Trains", ph: "Station or city (Berlin Hbf, Zürich, Paris Gare de Lyon)", need: 1, cols: [["number", "Train"], ["line", "Line"], ["to", "To"], ["departs", "Departs", t], ["scheduled", "Scheduled", t], ["track", "Track"], ["operator", "Operator"], ["kind", "Type"]] },
-    ships: { label: "Ships", ph: "Ship name, MMSI, IMO, callsign or destination port. Empty = all", cols: [["name", "Ship"], ["mmsi", "MMSI"], ["imo", "IMO"], ["destination", "Destination"], ["speed_kn", "Speed (kn)"], ["heading", "Heading"], ["seen", "Seen", t], ["map", "Map"]] },
+    ships: { label: "Ships", auto: 1, ph: "Ship name, 9-digit MMSI, IMO, callsign or destination. Leave empty for a live sample", cols: [["name", "Ship"], ["mmsi", "MMSI"], ["imo", "IMO"], ["destination", "Destination"], ["speed_kn", "Speed (kn)"], ["heading", "Heading"], ["seen", "Seen", t], ["map", "Map"]] },
     airports: { label: "Airports", ph: "Airport name, code or city (JFK, Heathrow, Narita)", need: 2, cols: [["name", "Airport"], ["city", "City"], ["country", "Country"], ["map", "Map"]] },
     ports: { label: "Ship ports", ph: "Port name (Rotterdam, Singapore)", need: 2, cols: [["name", "Port"], ["city", "City"], ["country", "Country"], ["map", "Map"]] },
     stations: { label: "Stations", ph: "Station name", need: 2, cols: [["name", "Station"], ["city", "City"], ["country", "Country"], ["map", "Map"]] },
-    railways: { label: "Railways", ph: "Railway or train route name/number (ICE 3, Eurostar, Trans-Siberian)", need: 2, cols: [["name", "Route"], ["code", "Number"], ["operator", "Operator"], ["from", "From"], ["to", "To"], ["osm", "Details"]] },
   };
   let mode = "flights", rows = [], sort = null, dir = 1;
   const tabs = $("tabs");
@@ -18,7 +17,8 @@
   function pick(k) {
     mode = k; rows = []; sort = null;
     tabs.querySelectorAll("button").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.k === k)));
-    $("q").placeholder = M[k].ph; $("meta").textContent = ""; $("meta").className = "tt-meta"; draw();
+    $("q").placeholder = M[k].ph; $("q").value = ""; $("meta").textContent = ""; $("meta").className = "tt-meta"; $("empty").textContent = "Pick a type and search."; draw();
+    if (M[k].auto && typeof search === "function") search();
     try { history.replaceState(null, "", "#" + k); } catch (e) {}
   }
   function draw() {
@@ -42,19 +42,26 @@
     }
     $("empty").hidden = rows.length > 0;
   }
-  $("f").addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const q = $("q").value.trim(), m = $("meta");
-    if (M[mode].need && q.length < M[mode].need) { m.textContent = "Type something to search " + M[mode].label.toLowerCase() + "."; return; }
-    m.className = "tt-meta"; m.textContent = "Fetching live data…";
+  let ctl = null;
+  async function search() {
+    const q = $("q").value.trim(), m = $("meta"), btn = $("f").querySelector("button");
+    if (M[mode].need && q.length < M[mode].need) { m.className = "tt-meta"; m.textContent = "Type something to search " + M[mode].label.toLowerCase() + "."; return; }
+    if (ctl) ctl.abort();
+    const mine = (ctl = new AbortController()), asked = mode, timer = setTimeout(() => mine.abort(), 15000);
+    m.className = "tt-meta"; m.textContent = mode === "ships" ? "Listening for ships… a few seconds" : "Fetching live data…"; btn.disabled = true; $("tb").classList.add("tt-wait");
     try {
-      const r = await fetch("/api/transport?" + new URLSearchParams({ mode, q, limit: $("lim").value }));
-      const j = await r.json();
+      const r = await fetch("/api/transport?" + new URLSearchParams({ mode, q, limit: $("lim").value }), { signal: mine.signal });
+      const j = await r.json().catch(() => ({ error: "The live source didn't answer. Try again in a minute." }));
+      if (asked !== mode) return;
       if (!r.ok) throw new Error(j.error || "Search failed.");
-      rows = j.items; draw();
-      m.textContent = j.count + " found" + (j.count > rows.length ? ", showing " + rows.length : "") + " · " + j.source + " · " + new Date().toLocaleTimeString();
-      $("empty").textContent = "Nothing matched.";
-    } catch (err) { m.className = "tt-meta bad"; m.textContent = err.message; }
-  });
+      rows = j.items; sort = null; draw();
+      m.textContent = (j.note ? j.note + " " : "") + j.count + " found" + (j.count > rows.length ? ", showing " + rows.length : "") + " · " + j.source + " · " + new Date().toLocaleTimeString();
+      $("empty").textContent = j.note || "Nothing matched.";
+    } catch (err) {
+      if (asked !== mode || (err.name === "AbortError" && ctl !== mine)) return;
+      m.className = "tt-meta bad"; m.textContent = err.name === "AbortError" ? "That took too long, so it was stopped. Try again." : err.message;
+    } finally { clearTimeout(timer); if (ctl === mine) { btn.disabled = false; $("tb").classList.remove("tt-wait"); } }
+  }
+  $("f").addEventListener("submit", (e) => { e.preventDefault(); search(); });
   pick(M[location.hash.slice(1)] ? location.hash.slice(1) : "flights");
 })();

@@ -3761,18 +3761,38 @@ async function transport(request, url, env) {
   const q = (url.searchParams.get('q') || '').trim().slice(0, 80), mode = url.searchParams.get('mode') || 'flights';
   const limit = Math.min(200, Math.max(1, +url.searchParams.get('limit') || 100));
   const H = { 'user-agent': 'Wezzet transport tracker (+https://wezzet.com/transport)', accept: 'application/json' };
-  const get = async (u, o = {}) => { const r = await fetch(u, { ...o, headers: { ...H, ...(o.headers || {}) }, cf: { cacheTtl: 30 } }); if (!r.ok) throw new Error(new URL(u).host + ' answered ' + r.status); return r.json(); };
-  const done = (items, source) => json({ mode, q, count: items.length, source, items: items.slice(0, limit) }, 200, { 'cache-control': 'public, max-age=30' });
+  const get = async (u, o = {}) => { const r = await fetch(u, { ...o, headers: { ...H, ...(o.headers || {}) }, cf: { cacheTtl: 30 }, signal: AbortSignal.timeout(8000) }); if (!r.ok) throw new Error(new URL(u).host + ' answered ' + r.status); return r.json(); };
+  const done = (items, source, note) => json({ mode, q, count: items.length, source, note: note || '', items: items.slice(0, limit) }, 200, { 'cache-control': 'public, max-age=20' });
   const bbox = () => { const b = (url.searchParams.get('bbox') || '').split(',').map(Number); return b.length === 4 && b.every(isFinite) ? b : null; };
   const lc = q.toLowerCase();
   try {
     if (mode === 'flights') {
-      const b = bbox(); let u = 'https://opensky-network.org/api/states/all';
-      if (b) u += '?lamin=' + b[1] + '&lomin=' + b[0] + '&lamax=' + b[3] + '&lomax=' + b[2];
-      const d = await get(u);
-      let items = (d.states || []).map((s) => ({ id: s[0], callsign: (s[1] || '').trim(), country: s[2], lon: s[5], lat: s[6], alt_m: s[7] ?? s[13], ground: s[8], speed_kmh: s[9] == null ? null : Math.round(s[9] * 3.6), heading: s[10], vrate: s[11], squawk: s[14], seen: s[4] }));
-      if (lc) items = items.filter((f) => f.callsign.toLowerCase().includes(lc.replace(/\s/g, '')) || f.id === lc || (f.country || '').toLowerCase().includes(lc));
-      return done(items, 'OpenSky Network');
+      // adsb.lol: live aircraft by callsign, registration or hex code, or everything near an airport.
+      const AIR = 'https://api.adsb.lol/v2/';
+      const shape = (a, from) => { const km = from && a.lat != null ? Math.round(111.2 * Math.hypot(a.lat - from[0], (a.lon - from[1]) * Math.cos(from[0] * Math.PI / 180))) : null;
+        return { id: a.hex, callsign: (a.flight || '').trim(), reg: a.r || '', type: a.t || '', lat: a.lat ?? null, lon: a.lon ?? null, ground: a.alt_baro === 'ground', alt_m: typeof a.alt_baro === 'number' ? Math.round(a.alt_baro * 0.3048) : null,
+          speed_kmh: a.gs == null ? null : Math.round(a.gs * 1.852), heading: a.track == null ? null : Math.round(a.track), squawk: a.squawk || '', dist_km: km }; };
+      const ask = (path) => get(AIR + path).then((d) => d.ac || []).catch(() => []);
+      const code = q.toUpperCase().replace(/[\s-]/g, '');
+      if (/^[0-9A-F]{6}$/.test(code) && /\d/.test(code)) { const ac = await ask('hex/' + code.toLowerCase()); if (ac.length) return done(ac.map((x) => shape(x)), 'adsb.lol'); }
+      if (/\d/.test(code) && /^[A-Z0-9]{3,8}$/.test(code)) {
+        // People type UA123; aircraft broadcast UAL123. Try both, and the registration too.
+        const IATA = { AA: 'AAL', UA: 'UAL', DL: 'DAL', WN: 'SWA', B6: 'JBU', AS: 'ASA', NK: 'NKS', F9: 'FFT', AC: 'ACA', WS: 'WJA', BA: 'BAW', VS: 'VIR', U2: 'EZY', FR: 'RYR', LH: 'DLH', AF: 'AFR', KL: 'KLM', IB: 'IBE', VY: 'VLG', AZ: 'ITY', LX: 'SWR', OS: 'AUA', SK: 'SAS', AY: 'FIN', TP: 'TAP', TK: 'THY', W6: 'WZZ', EI: 'EIN', EK: 'UAE', QR: 'QTR', EY: 'ETD', SV: 'SVA', AI: 'AIC', '6E': 'IGO', SQ: 'SIA', CX: 'CPA', QF: 'QFA', NZ: 'ANZ', JL: 'JAL', NH: 'ANA', KE: 'KAL', OZ: 'AAR', CA: 'CCA', MU: 'CES', CZ: 'CSN', TG: 'THA', MH: 'MAS', ET: 'ETH', LA: 'LAN', AM: 'AMX', CM: 'CMP', FX: 'FDX', '5X': 'UPS' };
+        const alt = IATA[code.slice(0, 2)] && /^\d/.test(code.slice(2)) ? IATA[code.slice(0, 2)] + code.slice(2) : '';
+        const hits = (await Promise.all([ask('callsign/' + code), alt ? ask('callsign/' + alt) : [], ask('reg/' + encodeURIComponent(q.toUpperCase().trim()))])).flat();
+        const seen = new Set(), items = hits.filter((x) => !seen.has(x.hex) && seen.add(x.hex)).map((x) => shape(x));
+        return done(items, 'adsb.lol', items.length ? '' : 'No aircraft is broadcasting that flight number right now. It may not be in the air yet. You can also search an airport, like JFK.');
+      }
+      // Anything else is a place: find the airport, then list what is flying within 150 km of it.
+      let at = [51.47, -0.4543], where = 'London Heathrow';
+      if (q) {
+        const g = await get('https://photon.komoot.io/api/?limit=1&osm_tag=aeroway:aerodrome&q=' + encodeURIComponent(q)).catch(() => null), f = g && g.features && g.features[0];
+        if (!f) return done([], 'adsb.lol', 'No airport found for that. Try an airport code or city (JFK, Tokyo), or a flight number (UA123).');
+        at = [f.geometry.coordinates[1], f.geometry.coordinates[0]]; where = f.properties.name || q;
+      }
+      const ac = await ask(`point/${at[0].toFixed(3)}/${at[1].toFixed(3)}/80`);
+      const items = ac.filter((x) => x.lat != null).map((x) => shape(x, at)).sort((x, y) => x.dist_km - y.dist_km);
+      return done(items, 'adsb.lol', (items.length ? 'Aircraft within 150 km of ' : 'Nothing is flying near ') + where + (q ? '.' : '. Search a flight number, registration or airport to look elsewhere.'));
     }
     if (mode === 'ships') {
       if (env.AISSTREAM_KEY) {
@@ -3791,12 +3811,14 @@ async function transport(request, url, env) {
         const sub = { APIKey: env.AISSTREAM_KEY, BoundingBoxes: [[[-90, -180], [90, 180]]], FilterMessageTypes: ['PositionReport', 'ShipStaticData'] };
         if (/^\d{9}$/.test(q)) sub.FiltersShipMMSI = [q];
         ws.send(JSON.stringify(sub));
-        await new Promise((ok) => setTimeout(ok, /^\d{9}$/.test(q) ? 8000 : 4000));
+        // Listen only as long as needed: stop as soon as the asked-for ship reports, or the list is full.
+        const one = /^\d{9}$/.test(q), max = one ? 6000 : lc ? 5000 : 2500, t0 = Date.now();
+        while (Date.now() - t0 < max) { await new Promise((ok) => setTimeout(ok, 250)); if (one ? [...ships.values()].some((x) => x.lat != null) : !lc && ships.size >= limit) break; }
         try { ws.close(1000); } catch (e) {}
         let items = [...ships.values()].filter((s) => s.mmsi && s.lat != null);
         if (lc) items = items.filter((s) => String(s.mmsi) === lc || String(s.imo) === lc || s.name.toLowerCase().includes(lc) || s.callsign.toLowerCase() === lc || s.destination.toLowerCase().includes(lc));
         if (!ships.size) return json({ mode, q, count: 0, source: 'aisstream.io', items: [], debug: { status: r.status, raw, closed, sample } });
-        return done(items, 'aisstream.io (worldwide AIS, live sample)');
+        return done(items, 'aisstream.io (worldwide AIS, live sample)', items.length ? (lc ? '' : 'Ships that reported their position in the last few seconds. Search a 9-digit MMSI to find one ship.') : lc ? 'No matching ship reported in the last few seconds. Ships only send their name every few minutes, so a 9-digit MMSI number works best.' : '');
       }
       const [loc, meta] = await Promise.all([get('https://meri.digitraffic.fi/api/ais/v1/locations', { headers: { 'accept-encoding': 'gzip', 'digitraffic-user': 'Wezzet' } }), get('https://meri.digitraffic.fi/api/ais/v1/vessels', { headers: { 'accept-encoding': 'gzip', 'digitraffic-user': 'Wezzet' } })]);
       const m = new Map((meta || []).map((v) => [v.mmsi, v]));
@@ -3820,18 +3842,7 @@ async function transport(request, url, env) {
       const items = (d.features || []).map((f) => { const p = f.properties; return { name: p.name || '', code: '', operator: '', city: p.city || p.county || p.state || '', country: p.country || '', lat: f.geometry.coordinates[1], lon: f.geometry.coordinates[0], osm: 'https://www.openstreetmap.org/' + ({ N: 'node', W: 'way', R: 'relation' }[p.osm_type] || 'node') + '/' + p.osm_id }; });
       return done(items, 'OpenStreetMap (Photon)');
     }
-    if (mode === 'railways') {
-      if (q.length < 2) return json({ error: 'Type at least 2 letters.' }, 400);
-      const e = q.replace(/[\\"]/g, '');
-      const sel = { airports: `nwr["aeroway"="aerodrome"]["iata"~"^${e}$",i];nwr["aeroway"="aerodrome"]["icao"~"^${e}$",i];nwr["aeroway"="aerodrome"]["name"~"${e}",i]["iata"];`,
-        
-        stations: `node["railway"="station"]["name"~"${e}",i];`,
-        railways: `relation["route"~"^(train|railway)$"]["name"~"${e}",i];relation["route"="train"]["ref"="${e}"];` }[mode];
-      const d = await get('https://overpass-api.de/api/interpreter', { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: 'data=' + encodeURIComponent(`[out:json][timeout:25];(${sel});out center tags 120;`) });
-      const items = (d.elements || []).map((x) => { const t = x.tags || {}; return { name: t.name || t['name:en'] || '', code: t.iata || t.icao || t.ref || t['uic_ref'] || t['seamark:harbour:category'] || '', operator: t.operator || t.network || '', country: t['addr:country'] || t['is_in:country'] || '', from: t.from || '', to: t.to || '', lat: x.lat ?? (x.center && x.center.lat), lon: x.lon ?? (x.center && x.center.lon), osm: 'https://www.openstreetmap.org/' + x.type + '/' + x.id }; });
-      return done(items, 'OpenStreetMap (Overpass)');
-    }
-    return json({ error: 'mode must be flights, trains, ships, airports, ports, stations or railways' }, 400);
+    return json({ error: 'mode must be flights, trains, ships, airports, ports or stations' }, 400);
   } catch (err) { return json({ error: 'The live source is busy or unreachable right now (' + err.message + '). Try again in a minute.' }, 502); }
 }
 
