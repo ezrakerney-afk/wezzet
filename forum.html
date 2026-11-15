@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Forum | Wezzet</title>
-<meta name="description" content="The Wezzet forum: start a topic, ask a question, share what you're making, and vote on the best answers.">
+<title>Communities | Wezzet</title>
+<meta name="description" content="Wezzet communities: share images and articles, start discussions, and vote on new tools. Join one or create your own.">
 <link rel="canonical" href="https://wezzet.com/forum">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Wezzet">
-<meta property="og:title" content="Forum | Wezzet">
+<meta property="og:title" content="Communities | Wezzet">
 <meta property="og:url" content="https://wezzet.com/forum">
 <meta property="og:image" content="https://wezzet.com/assets/og/forum.png">
 <meta property="og:image:width" content="1200">
@@ -27,60 +27,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400..700&display=swap">
 <link rel="stylesheet" href="/assets/site.css?v=8">
 <link rel="stylesheet" href="/assets/skin.css?v=4">
-<style>
-  .forum { max-width: 820px; }
-  .bar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; margin: 20px 0 8px; }
-  textarea {
-    width: 100%; min-height: 120px; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--line-strong);
-    font: inherit; color: var(--ink); background: var(--bg); resize: vertical;
-  }
-  textarea:focus { border-color: var(--ink); }
-  .compose { display: grid; gap: 14px; margin: 12px 0 20px; }
-  .compose .actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
-  .count { font-size: 0.85rem; color: var(--ink-soft); margin-left: auto; }
-
-  .topics { list-style: none; padding: 0; margin: 0; }
-  .topic-row { display: grid; grid-template-columns: 44px 1fr; gap: 12px; padding: 14px 0; border-bottom: 1px solid var(--line); }
-  .topic-row a.title { font-weight: 600; font-size: 1.08rem; color: var(--ink); text-decoration: none; overflow-wrap: anywhere; }
-  .topic-row a.title:hover { text-decoration: underline; }
-  .preview { color: var(--ink-soft); font-size: 0.95rem; margin: 2px 0 0; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-  .meta { font-size: 0.88rem; color: var(--ink-soft); margin-top: 4px; }
-  .meta a { color: var(--ink-soft); }
-
-  .vote { display: flex; flex-direction: column; align-items: center; gap: 0; }
-  .vote.inline { flex-direction: row; gap: 4px; }
-  .vote.pin { font-size: .72rem; color: var(--ink-soft); padding-top: 4px; }
-  .vote button {
-    width: 32px; height: 28px; border: 0; background: transparent; cursor: pointer; border-radius: 6px;
-    color: var(--ink-soft); display: grid; place-items: center; padding: 0;
-  }
-  .vote button:hover { background: var(--surface); color: var(--ink); }
-  .vote button[aria-pressed="true"] { color: var(--ink); background: var(--surface); }
-  .vote button svg { width: 16px; height: 16px; }
-  .vote .score { font-weight: 700; font-size: 0.98rem; min-width: 2ch; text-align: center; }
-
-  .topic-full { display: grid; grid-template-columns: 44px 1fr; gap: 12px; padding: 8px 0 20px; border-bottom: 1px solid var(--line); }
-  .topic-full h1 { font-size: clamp(1.6rem, 3.4vw, 2.1rem); margin: 0 0 6px; overflow-wrap: anywhere; }
-  .text { white-space: pre-wrap; overflow-wrap: anywhere; margin: 12px 0 0; max-width: 70ch; }
-  .linkish { background: none; border: 0; padding: 0; font: inherit; color: var(--ink-soft); cursor: pointer; text-decoration: underline; text-underline-offset: 3px; font-size: 0.88rem; }
-  .linkish:hover { color: var(--ink); }
-
-  .comments { list-style: none; padding: 0; margin: 0; }
-  .comments .comments { margin-left: 18px; padding-left: 14px; border-left: 2px solid var(--line); }
-  .comment { padding: 12px 0 4px; }
-  .comment .head { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 0.9rem; color: var(--ink-soft); }
-  .comment .head strong { color: var(--ink); }
-  .comment .text { margin-top: 4px; }
-  .comment .tools { display: flex; gap: 14px; align-items: center; margin-top: 4px; }
-  .comment .removed { color: var(--ink-soft); font-style: italic; margin: 4px 0 0; }
-  .reply-form { margin: 8px 0 4px; display: grid; gap: 8px; max-width: 640px; }
-  .reply-form textarea { min-height: 80px; }
-  .empty { color: var(--ink-soft); padding: 28px 0; }
-  .more { margin: 20px 0; }
-  .back { display: inline-block; margin: 24px 0 10px; color: var(--ink-soft); }
-  .toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 8px; font-size: 0.95rem; max-width: calc(100% - 32px); }
-  .rules { font-size: 0.9rem; color: var(--ink-soft); margin: 0; }
-</style>
+<link rel="stylesheet" href="/assets/forum.css?v=1">
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1814434432126124" crossorigin="anonymous"></script>
 <link rel="stylesheet" href="/assets/workspace.css?v=1">
 </head>
@@ -95,48 +42,123 @@
 <main>
   <div class="wrap">
     <div class="forum">
-      <section id="list-view" aria-labelledby="forum-title">
-        <div class="tool-head" style="padding-bottom:0">
-          <h1 id="forum-title">Forum</h1>
-          <p class="lede">Ask a question, share what you're making, or help someone else out.</p>
-        </div>
-        <div class="bar">
-          <div class="segmented" role="radiogroup" aria-label="Sort topics">
-            <label><input type="radio" name="sort" value="hot" checked><span>Hot</span></label>
-            <label><input type="radio" name="sort" value="new"><span>New</span></label>
-            <label><input type="radio" name="sort" value="top"><span>Top</span></label>
+      <!-- All communities -->
+      <section id="dir-view" aria-labelledby="dir-title">
+        <div class="fm-hero">
+          <div>
+            <h1 id="dir-title">Communities</h1>
+            <p class="lede">Find your people. Share posts, start discussions, and help shape Wezzet.</p>
           </div>
-          <button class="btn" type="button" id="new-topic-btn">New topic</button>
+          <button class="btn" type="button" id="new-comm-btn">Create community</button>
         </div>
+        <div data-wz-account data-why="Sign in to join communities and post images."></div>
 
-        <form class="compose panel" id="topic-form" hidden novalidate>
+        <form class="fm-card fm-compose" id="comm-form" hidden novalidate>
+          <h2 class="fm-h">Create a community</h2>
           <div class="field">
-            <label for="t-title">Title</label>
-            <input type="text" id="t-title" maxlength="120" required>
+            <label for="cm-name">Name</label>
+            <input type="text" id="cm-name" maxlength="40" required placeholder="Pixel art">
+            <p class="hint" id="cm-url">wezzet.com/forum/…</p>
           </div>
           <div class="field">
-            <label for="t-body">Details (optional)</label>
-            <textarea id="t-body" maxlength="5000"></textarea>
+            <label for="cm-about">What's it about? (optional)</label>
+            <input type="text" id="cm-about" maxlength="300" placeholder="One line about your community">
           </div>
-          <div class="field">
-            <label for="t-author">Your name (optional)</label>
-            <input type="text" id="t-author" maxlength="30" placeholder="Anonymous" autocomplete="nickname">
-          </div>
-          <p class="rules">Be kind and stay on topic. Posts reported by several people are hidden automatically.</p>
           <div class="actions">
-            <button class="btn" type="submit">Post topic</button>
-            <button class="btn btn-quiet" type="button" id="topic-cancel">Cancel</button>
+            <button class="btn" type="submit">Create</button>
+            <button class="btn btn-quiet" type="button" id="comm-cancel">Cancel</button>
           </div>
-          <p class="note error" id="topic-error" role="alert" hidden></p>
+          <p class="note error" id="comm-error" role="alert" hidden></p>
         </form>
 
-        <ul class="topics" id="topics" aria-live="polite"></ul>
-        <p class="empty" id="topics-empty" hidden>No topics yet. Start the first one.</p>
-        <button class="btn btn-quiet more" type="button" id="more" hidden>Show more topics</button>
+        <div class="fm-search">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M10 2a8 8 0 0 1 6.32 12.9l5.39 5.4-1.41 1.4-5.4-5.39A8 8 0 1 1 10 2Zm0 2a6 6 0 1 0 0 12 6 6 0 0 0 0-12Z"/></svg>
+          <input type="text" id="comm-q" placeholder="Search communities" aria-label="Search communities" autocomplete="off">
+        </div>
+        <div id="mine-wrap" hidden>
+          <h2 class="fm-label">Your communities</h2>
+          <div class="fm-chips" id="mine"></div>
+        </div>
+        <h2 class="fm-label">All communities</h2>
+        <ul class="fm-grid" id="comms" aria-live="polite"></ul>
+        <p class="empty" id="comms-empty" hidden>No communities match that. Create it.</p>
+
+        <div class="fm-feed-head">
+          <h2 class="fm-label">Popular across Wezzet</h2>
+          <div class="segmented" role="radiogroup" aria-label="Sort posts">
+            <label><input type="radio" name="dsort" value="hot" checked><span>Hot</span></label>
+            <label><input type="radio" name="dsort" value="new"><span>New</span></label>
+            <label><input type="radio" name="dsort" value="top"><span>Top</span></label>
+          </div>
+        </div>
+        <ul class="fm-feed" id="feed"></ul>
+        <button class="btn btn-quiet more" type="button" id="feed-more" hidden>Show more</button>
       </section>
 
+      <!-- One community -->
+      <section id="comm-view" hidden>
+        <a class="back" href="/forum" data-nav>All communities</a>
+        <header class="fm-banner" id="comm-head"></header>
+        <div data-wz-account data-why="Sign in to join and post images."></div>
+        <div class="fm-tabs" role="tablist" aria-label="Community sections">
+          <button type="button" role="tab" id="tab-posts" aria-controls="tab-panel" data-tab="posts">Posts</button>
+          <button type="button" role="tab" id="tab-discussions" aria-controls="tab-panel" data-tab="discussions">Discussions</button>
+        </div>
+        <div id="tab-panel" role="tabpanel">
+          <div class="bar">
+            <div class="segmented" role="radiogroup" aria-label="Sort">
+              <label><input type="radio" name="sort" value="hot" checked><span>Hot</span></label>
+              <label><input type="radio" name="sort" value="new"><span>New</span></label>
+              <label><input type="radio" name="sort" value="top"><span>Top</span></label>
+            </div>
+            <button class="btn" type="button" id="new-topic-btn">New post</button>
+          </div>
+
+          <form class="fm-card fm-compose" id="topic-form" hidden novalidate>
+            <div class="segmented" role="radiogroup" aria-label="Post type" id="kind-pick">
+              <label><input type="radio" name="kind" value="image" checked><span>Image</span></label>
+              <label><input type="radio" name="kind" value="article"><span>Article</span></label>
+              <label><input type="radio" name="kind" value="news"><span>News</span></label>
+            </div>
+            <div class="field" id="img-field">
+              <span class="label">Image</span>
+              <label class="fm-drop" id="drop">
+                <input type="file" id="t-image" accept="image/png,image/jpeg,image/webp,image/gif,image/heic,image/avif">
+                <img id="img-preview" alt="" hidden>
+                <span id="drop-text">Choose an image or drop it here</span>
+              </label>
+              <p class="hint" id="img-hint">Large images are shrunk to 1600 px. Up to 10 a day.</p>
+            </div>
+            <div class="field">
+              <label for="t-title" id="t-title-label">Title</label>
+              <input type="text" id="t-title" maxlength="120" required>
+            </div>
+            <div class="field">
+              <label for="t-body" id="t-body-label">Details (optional)</label>
+              <textarea id="t-body" maxlength="5000"></textarea>
+            </div>
+            <div class="field" id="t-author-field">
+              <label for="t-author">Your name (optional)</label>
+              <input type="text" id="t-author" maxlength="30" placeholder="Anonymous" autocomplete="nickname">
+            </div>
+            <p class="rules" id="posting-as"></p>
+            <p class="rules">Be kind and stay on topic. Posts reported by several people are hidden automatically.</p>
+            <div class="actions">
+              <button class="btn" type="submit" id="topic-submit">Post</button>
+              <button class="btn btn-quiet" type="button" id="topic-cancel">Cancel</button>
+            </div>
+            <p class="note error" id="topic-error" role="alert" hidden></p>
+          </form>
+
+          <ul class="topics" id="topics" aria-live="polite"></ul>
+          <p class="empty" id="topics-empty" hidden></p>
+          <button class="btn btn-quiet more" type="button" id="more" hidden>Show more</button>
+        </div>
+      </section>
+
+      <!-- One post or discussion -->
       <section id="topic-view" hidden>
-        <a class="back" href="/forum" id="back-link">All topics</a>
+        <a class="back" href="/forum" id="back-link" data-nav>All communities</a>
         <article class="topic-full" id="topic-full"></article>
 
         <form class="compose" id="comment-form" novalidate>
@@ -151,7 +173,7 @@
           <p class="note error" id="comment-error" role="alert" hidden></p>
         </form>
 
-        <h2 id="comments-title" style="font-size:1.15rem;margin-top:8px">Comments</h2>
+        <h2 id="comments-title" class="fm-comments-title">Comments</h2>
         <ul class="comments" id="comments"></ul>
       </section>
 
@@ -165,13 +187,14 @@
     <div class="wz-foot">
       <div><a class="brand" href="/"><img src="/assets/icon-48.png" width="26" height="26" alt="">wezzet<span class="brand-dot">.</span></a><p>Free tools for the work in front of you. Built by Ezra Kerney and Noah Puckett.</p></div>
       <div><strong class="wz-foot-h">Popular</strong><ul><li><a href="/heic-to-jpg">HEIC to JPG</a></li><li><a href="/compress-pdf">Compress PDF</a></li><li><a href="/mp4-to-mp3">MP4 to MP3</a></li><li><a href="/units">Unit converter</a></li><li><a href="/qr">QR code generator</a></li></ul></div>
-      <div><strong class="wz-foot-h">Explore</strong><ul><li><a href="/#tools">All tools</a></li><li><a href="/converters">Converters by topic</a></li><li><a href="/transport">Live transport tracker</a></li><li><a href="/ai">WezzetAI</a></li><li><a href="/forum">Forum</a></li></ul></div>
+      <div><strong class="wz-foot-h">Explore</strong><ul><li><a href="/#tools">All tools</a></li><li><a href="/converters">Converters by topic</a></li><li><a href="/transport">Live transport tracker</a></li><li><a href="/ai">WezzetAI</a></li><li><a href="/forum">Communities</a></li><li><a href="/forum/tools">Suggest a tool</a></li></ul></div>
       <div><strong class="wz-foot-h">Wezzet</strong><ul><li><a href="/about">About</a></li><li><a href="/contact">Contact</a></li><li><a href="/privacy">Privacy</a></li><li><a href="https://x.com/WezzetX" rel="noopener">@WezzetX on X</a></li><li><a href="https://www.instagram.com/wezzetig/" rel="noopener">@wezzetig on Instagram</a></li><li><a href="https://www.tiktok.com/@wezzet_tt" rel="noopener">@wezzet_tt on TikTok</a></li></ul></div>
     </div>
     <div class="wz-foot-base"><span>© 2026 Wezzet</span><span>Press <kbd>Ctrl K</kbd> to search every tool</span></div>
   </div>
 </footer>
-<script src="/assets/forum.js?v=5" defer></script>
+<script src="/assets/account.js?v=3" defer></script>
+<script src="/assets/forum.js?v=6" defer></script>
 <script src="/assets/ui.js?v=1" defer></script>
 <script src="/assets/theme.js?v=5" defer></script>
 </body>
