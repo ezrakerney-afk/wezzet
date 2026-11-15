@@ -8,7 +8,7 @@
   const when = (t) => (t ? new Date(t).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "");
   const ago = (t) => { const m = Math.round((Date.now() - t) / 60000); return m < 1 ? "just now" : m < 90 ? m + " min ago" : m < 2880 ? Math.round(m / 60) + " h ago" : Math.round(m / 1440) + " days ago"; };
   const short = (a) => (a && a.length > 20 ? a.slice(0, 10) + "…" + a.slice(-8) : a || "");
-  const TAGS = { dispersal: "Dispersal", dex_swap: "DEX swap", bridge: "Bridge", mixer: "Mixer", exchange: "Exchange", dormant_wake: "Dormant wake", transfer: "Transfer" };
+  const TAGS = { dispersal: "Dispersal", dex_swap: "DEX swap", bridge: "Bridge", mixer: "Mixer", exchange: "Exchange", dormant_wake: "Dormant wake", transfer: "Transfer", inflow: "Money in" };
   const status = (t, kind) => { const s = $("#tr-status"); s.textContent = t || ""; s.className = "tr-note" + (kind === true ? " err" : kind ? " " + kind : ""); };
   const show = (r, okText) => { if (r.error) status(r.error, true); else status(okText || "", okText ? "good" : ""); return !r.error; };
   const picked = (body) => $$("input[data-id]:checked", body).map((i) => Number(i.dataset.id));
@@ -27,7 +27,7 @@
     if (r.status === 401) { $("#tr-msg").textContent = "Chain Watch is in private beta. Sign in with an invited Wezzet account to open it."; $("#wz-account").hidden = false; return; }
     if (!r.ok) { $("#tr-msg").textContent = "Chain Watch is in private beta, so it's only open to invited accounts for now. It watches wallets named in FBI and Treasury notices and follows where stolen crypto moves."; $("#wz-account").hidden = true; return; }
     $("#tr-gate").hidden = true; $("#tr-app").hidden = false; $("#tr-run").hidden = false;
-    tab(location.hash.slice(1) || "watch");
+    tab(location.hash.slice(1) || "overview");
     summary();
   }
   document.addEventListener("wz-account", () => location.reload());
@@ -43,7 +43,7 @@
     if (pct < 100 && w.total) $("#st-watch-s").textContent = "First check " + pct + "% done (" + (w.checked || 0) + " of " + w.total + ")";
     set("money", w.usd ? usd(w.usd) : "–", w.freeze ? usd(w.freeze) + " freezable at " + (w.freeze_n || 0) + " addresses" : w.checked ? "Balances fill in as addresses are checked" : "Waiting for the first check", w.freeze ? "hot" : "");
     opps();
-    set("alerts", a.new || 0, (a.day || 0) + " in the last 24 h", a.new ? "hot" : "");
+    set("alerts", a.new || 0, a.new_usd >= 1 ? usd(a.new_usd) + " moved, " + (a.day || 0) + " in 24 h" : (a.day || 0) + " in the last 24 h", a.new ? "hot" : "");
     set("leads", l.open || 0, (l.ready || 0) + " ready, " + (l.submitted || 0) + " submitted");
     const t = last && (last.finished || last.started), stale = t && Date.now() - t > 2 * r.interval * 60000;
     const state = r.paused ? "off" : !last ? "" : stale || last.errors ? "warn" : "ok";
@@ -71,22 +71,30 @@
   async function opps() {
     const r = await api("holdings"); if (r.error) return;
     const list = r.holdings.filter((h) => h.bal_usd >= 1000).slice(0, 6);
-    $("#tr-opps").hidden = !list.length;
+    $("#tr-opps-empty").hidden = !!list.length;
     $("#tr-opps-list").replaceChildren(...list.map((h) => el("li", {},
       el("div", { className: "amt" }, el("b", { textContent: usd(h.bal_usd) }), h.freeze_usd >= 1000 ? el("span", { className: "tr-chip t-exchange", textContent: usd(h.freeze_usd) + " freezable" + (h.frozen === 0 ? ", not frozen yet" : "") }) : h.frozen === 1 ? el("span", { className: "tr-chip", textContent: "Already frozen" }) : ""),
       el("div", { className: "who" }, chain(h.chain), el("span", { className: "mono", textContent: short(h.address), title: h.address }), el("span", { className: "tr-sm", textContent: (h.label || "") + (h.source ? " · " + h.source : "") + (h.hop ? " · hop " + h.hop : "") + " · " + (h.balance || "") + (h.last_activity ? " · last moved " + ago(h.last_activity) : "") })),
       el("button", { type: "button", className: "btn btn-quiet", textContent: "Make lead", onclick: async (e) => { e.target.disabled = true; if (show(await api("watch/lead", { id: h.id }), "Lead created with the facts filled in. Check it in Leads before you send anything.")) summary(); } }))));
   }
 
+  const scoreChip = (a) => (a.score ? el("span", { className: "tr-score" + (a.score >= 80 ? " hi" : a.score >= 55 ? " mid" : ""), textContent: a.score, title: "Priority score, 0 to 100" }) : "");
+  async function loadOverview() {
+    const r = await api("alerts?status=new&sort=top&limit=6"); if (r.error) return;
+    S.explorer = r.explorer;
+    $("#ov-alerts-empty").hidden = !!r.alerts.length;
+    $("#ov-alerts").replaceChildren(...r.alerts.map((a) => el("li", {}, scoreChip(a), el("div", {}, el("div", { className: "top" }, tagChip(a.tag), el("b", { textContent: a.usd >= 1 ? usd(a.usd) : [a.amount, a.asset].filter(Boolean).join(" ") }), el("span", { className: "tr-sm", textContent: when(a.ts) })), el("p", { textContent: a.ai || a.summary || "" })))));
+  }
+
   function tab(name) {
-    if (!$(`[data-pane="${name}"]`)) name = "watch";
+    if (!$(`[data-pane="${name}"]`)) name = "overview";
     $$(".tr-tabs button").forEach((b) => { b.classList.toggle("on", b.dataset.tab === name); b.setAttribute("aria-selected", b.dataset.tab === name); });
     $$("[data-pane]").forEach((p) => (p.hidden = p.dataset.pane !== name));
     history.replaceState(null, "", "#" + name); status("");
-    ({ watch: loadWatch, flow: loadFlow, alerts: loadAlerts, leads: loadLeads, settings: loadSettings, runs: loadRuns })[name]();
+    ({ overview: loadOverview, watch: loadWatch, flow: loadFlow, alerts: loadAlerts, leads: loadLeads, settings: loadSettings, runs: loadRuns })[name]();
   }
   $(".tr-tabs").onclick = (e) => { const b = e.target.closest("button[data-tab]"); if (b) tab(b.dataset.tab); };
-  $("#tr-stats").onclick = (e) => { const b = e.target.closest("[data-go]"); if (b) tab(b.dataset.go); };
+  $("#tr-app").addEventListener("click", (e) => { const b = e.target.closest("[data-go]"); if (b) tab(b.dataset.go); });
   const seg = (id, key, fn) => ($(id).onclick = (e) => { const b = e.target.closest("button"); if (!b) return; $$("button", $(id)).forEach((x) => x.classList.toggle("on", x === b)); S[key] = b.dataset.v; fn(); });
   const selBar = (bar, body) => { const n = picked(body).length; $(bar).hidden = !n; $(bar + "-n").textContent = n + " selected"; };
 
@@ -174,7 +182,7 @@
   });
 
   async function loadAlerts() {
-    const q = new URLSearchParams(); if ($("#a-tag").value) q.set("tag", $("#a-tag").value); if (S.aView) q.set("status", S.aView);
+    const q = new URLSearchParams(); if ($("#a-tag").value) q.set("tag", $("#a-tag").value); if (S.aView) q.set("status", S.aView); if (S.aSort) q.set("sort", S.aSort);
     const [r, l] = await Promise.all([api("alerts?" + q), api("leads")]);
     if (!show(r)) return;
     S.alerts = r.alerts; S.explorer = r.explorer;
@@ -182,13 +190,13 @@
     $("#a-list").replaceChildren(...(S.alerts.length ? S.alerts.map((a) => el("label", { className: "tr-alert" + (a.status === "new" ? " is-new" : "") },
       el("input", { type: "checkbox", dataset: { id: a.id }, ariaLabel: "Select alert" }),
       el("div", { className: "body" },
-        el("div", { className: "top" }, tagChip(a.tag), el("span", { className: "amt", textContent: [a.amount, a.asset].filter(Boolean).join(" ") }), a.status !== "new" ? el("span", { className: "tr-chip", textContent: a.status }) : "", el("span", { className: "time", textContent: when(a.ts), title: new Date(a.ts).toISOString() })),
+        el("div", { className: "top" }, scoreChip(a), tagChip(a.tag), el("span", { className: "amt", textContent: [a.amount, a.asset].filter(Boolean).join(" ") }), a.usd >= 1 ? el("span", { className: "tr-sm", textContent: "about " + usd(a.usd) }) : "", a.status !== "new" ? el("span", { className: "tr-chip", textContent: a.status }) : "", el("span", { className: "time", textContent: when(a.ts), title: new Date(a.ts).toISOString() })),
         a.summary ? el("p", { className: "sum", textContent: a.summary }) : "",
         a.ai ? el("p", { className: "ai" }, el("b", { textContent: "AI summary " }), a.ai) : "",
         el("div", { className: "meta" }, el("span", {}, chain(a.chain), el("span", { className: "mono", textContent: short(a.address), title: a.address }), a.counterparty ? el("span", { className: "mono", textContent: " → " + short(a.counterparty), title: a.counterparty }) : ""), el("span", {}, "tx ", txLink(a)), el("button", { type: "button", className: "tr-link", dataset: { explain: a.id }, textContent: a.ai ? "Redo AI summary" : "Explain with AI" }))))) : [el("div", { className: "tr-card tr-empty", textContent: S.aView === "new" ? "No new alerts. You're caught up." : "No alerts here." })]));
     selBar("#a-sel", $("#a-list"));
   }
-  $("#a-tag").onchange = loadAlerts; seg("#a-view", "aView", loadAlerts);
+  $("#a-tag").onchange = loadAlerts; seg("#a-view", "aView", loadAlerts); seg("#a-sort", "aSort", loadAlerts);
   $("#a-list").onchange = () => selBar("#a-sel", $("#a-list"));
   const alertStatus = async (st) => { const ids = picked($("#a-list")); if (ids.length && show(await api("alerts/status", { ids, status: st }), ids.length + " marked " + st + ".")) { const m = $("#tr-status").textContent; await loadAlerts(); status(m, "good"); summary(); } };
 

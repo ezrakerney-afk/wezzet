@@ -11,7 +11,7 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     // Chain Watch: check a few watched addresses in the background, at most once every two minutes.
-    if (env.TRACKER_OWNER && env.DB && Date.now() > trNextTry) { trNextTry = Date.now() + 60e3; ctx.waitUntil(trTick(env).catch((e) => trLogError(env, e))); }
+    if (env.TRACKER_OWNER && env.DB && Date.now() > trNextTry) { trNextTry = Date.now() + 30e3; ctx.waitUntil(trTick(env).catch((e) => trLogError(env, e))); }
     // One canonical host: www.wezzet.com permanently redirects to wezzet.com so Google indexes a single copy.
     if (url.hostname.startsWith("www.")) { url.hostname = url.hostname.slice(4); return Response.redirect(url.toString(), 301); }
     if (url.pathname === "/api/tool-stats") return toolStats(request, env);
@@ -3812,7 +3812,7 @@ const TR_SCHEMA = [
 ];
 let trReady = false;
 const TR_KEYS = ["etherscan", "tronscan", "trongrid", "claude", "telegram_token", "telegram_chat"];
-const TR_TAGS = ["dispersal", "dex_swap", "bridge", "mixer", "exchange", "dormant_wake", "transfer"];
+const TR_TAGS = ["dispersal", "dex_swap", "bridge", "mixer", "exchange", "dormant_wake", "transfer", "inflow"];
 const TR_ALERT_ST = ["new", "seen", "dismissed", "promoted"];
 const TR_LEAD_ST = ["investigating", "ready", "submitted", "dropped"];
 const TR_DEFAULTS = { interval: "30", channel: "email", email: "", child_pct: "10", max_hops: "5", dormant_days: "30", paused: "0", keys_mode: "wezzet", engine: "wezzet", auto_seed: "1", lookback_days: "90", ai_alerts: "1" };
@@ -3832,6 +3832,7 @@ async function trInit(env) {
   try { await env.DB.prepare("ALTER TABLE tr_watch ADD COLUMN checked INTEGER").run(); } catch {}
   for (const c of ["balance TEXT", "bal_usd REAL", "freeze_usd REAL", "bal_at INTEGER", "frozen INTEGER"]) { try { await env.DB.prepare("ALTER TABLE tr_watch ADD COLUMN " + c).run(); } catch {} }
   try { await env.DB.prepare("ALTER TABLE tr_alerts ADD COLUMN ai TEXT").run(); } catch {}
+  for (const c of ["usd REAL", "score INTEGER"]) { try { await env.DB.prepare("ALTER TABLE tr_alerts ADD COLUMN " + c).run(); } catch {} }
   trReady = true;
 }
 async function trSettings(DB) {
@@ -3858,7 +3859,7 @@ async function trBrowser(request, env, p, d, q, sess) {
   if (p === "/summary") {
     const [w, a, l, r, st] = await DB.batch([
       DB.prepare("SELECT COUNT(*) total, SUM(parent_id IS NULL) seeds, SUM(paused) paused, SUM(checked IS NOT NULL) checked, SUM(bal_usd) usd, SUM(freeze_usd) freeze, SUM(freeze_usd >= 1000) freeze_n, SUM(bal_usd >= 1000) holding_n FROM tr_watch"),
-      DB.prepare("SELECT SUM(status = 'new') new, COUNT(*) total, SUM(created > ?) day FROM tr_alerts").bind(now - 86400e3),
+      DB.prepare("SELECT SUM(status = 'new') new, COUNT(*) total, SUM(created > ?) day, SUM(CASE WHEN status = 'new' THEN usd END) new_usd, MAX(CASE WHEN status = 'new' THEN score END) top FROM tr_alerts").bind(now - 86400e3),
       DB.prepare("SELECT SUM(status IN ('investigating', 'ready')) open, SUM(status = 'ready') ready, SUM(status = 'submitted') submitted FROM tr_leads"),
       DB.prepare("SELECT started, finished, errors FROM tr_runs ORDER BY id DESC LIMIT 1"),
       DB.prepare("SELECT k, v FROM tr_settings WHERE k IN ('interval', 'paused', 'token_hash', 'channel', 'engine', 'seeds_at', 'seeds_updated')"),
@@ -3945,7 +3946,7 @@ async function trBrowser(request, env, p, d, q, sess) {
     if (TR_TAGS.includes(q.get("tag"))) { where.push("tag = ?"); args.push(q.get("tag")); }
     if (TR_ALERT_ST.includes(q.get("status"))) { where.push("status = ?"); args.push(q.get("status")); }
     const before = Number(q.get("before")); if (before > 0) { where.push("id < ?"); args.push(before); }
-    const rows = (await DB.prepare(`SELECT * FROM tr_alerts ${where.length ? "WHERE " + where.join(" AND ") : ""} ORDER BY id DESC LIMIT 200`).bind(...args).all()).results;
+    const rows = (await DB.prepare(`SELECT * FROM tr_alerts ${where.length ? "WHERE " + where.join(" AND ") : ""} ORDER BY ${q.get("sort") === "top" ? "COALESCE(score, 0) DESC, " : ""}id DESC LIMIT ${Math.min(200, Math.max(1, Number(q.get("limit")) || 200))}`).bind(...args).all()).results;
     const counts = (await DB.prepare("SELECT status, COUNT(*) n FROM tr_alerts GROUP BY status").all()).results;
     return trOut({ alerts: rows, counts, explorer: TR_EXPLORER });
   }
@@ -4101,6 +4102,7 @@ async function trDraft(DB, lead) {
   L.push("", "WHY THIS SEEMS NEW", "- [Explain why this movement isn't already in a public notice.]");
   if (lead.notes) L.push("", "NOTES", lead.notes);
   L.push("", "FLOW MAP", "- [Attach a screenshot of the flow map here.]");
+  L.push("", "WHERE TO SEND THIS (pick what fits, send it yourself)", "- FBI: ic3.gov or tips.fbi.gov. Best when funds can still be frozen.", "- Rewards for Justice: rewardsforjustice.net (North Korea page). Pays for information that disrupts DPRK money laundering.", "- The exchange's compliance or law-enforcement contact, when funds are landing there right now.", "- Lazarus Bounty (lazarusbounty.com) when the funds trace back to the Bybit theft.");
   L.push("", "This tip is from a private individual using public on-chain data only. No funds were touched and no one was contacted.");
   return L.join("\n");
 }
@@ -4193,7 +4195,7 @@ async function tlLimitN(env, who, action, max, win) {
    is checked in the background of ordinary site traffic, at most once every TR_GAP. Read-only public APIs only:
    Etherscan (when a key is saved) or Blockscout for EVM chains, Blockstream / mempool.space for Bitcoin,
    TronGrid for USDT on Tron, THORChain Midgard to find the far side of a cross-chain swap. */
-const TR_GAP = 120e3, TR_BATCH = 6, TR_MAX_WATCH = 3000;
+const TR_GAP = 60e3, TR_BATCH = 6, TR_MAX_WATCH = 3000;
 let trNextTry = 0;
 const TR_SCOUT = { eth: "eth.blockscout.com", base: "base.blockscout.com", arb: "arbitrum.blockscout.com", op: "optimism.blockscout.com", polygon: "polygon.blockscout.com" };
 const TR_CHAINID = { eth: 1, bsc: 56, arb: 42161, base: 8453, polygon: 137, op: 10, avax: 43114 };
@@ -4288,9 +4290,10 @@ async function trEvm(w, C) {
   const q = (action) => trGet(`${base}module=account&action=${action}&address=${w.address}&startblock=${since + 1}&endblock=999999999&sort=desc&page=1&offset=25`, C);
   const list = (d) => { if (Array.isArray(d.result)) return d.result; if (/no transactions|no token transfers/i.test(d.message || "") || d.result === null) return []; throw new Error("explorer: " + String(d.result || d.message).slice(0, 80)); };
   const [txs, toks] = await Promise.all([q("txlist").then(list), w.chain === "eth" ? q("tokentx").then(list) : []]);
-  const moves = []; let top = since;
+  const moves = [], ins = []; let top = since;
   for (const t of txs) {
     top = Math.max(top, Number(t.blockNumber) || 0);
+    if ((t.to || "").toLowerCase() === addr && t.isError !== "1" && Number(t.value) / 1e18 >= 10 * (TR_MIN[TR_NATIVE[w.chain]] || 1)) ins.push({ tx: t.hash, ts: Number(t.timeStamp) * 1000, from: t.from, amount: Number(t.value) / 1e18, asset: TR_NATIVE[w.chain] || "ETH" });
     if ((t.from || "").toLowerCase() !== addr || t.isError === "1" || !t.to) continue;
     const amount = Number(t.value) / 1e18;
     moves.push({ tx: t.hash, ts: Number(t.timeStamp) * 1000, to: t.to, amount, asset: TR_NATIVE[w.chain] || "ETH", call: amount === 0 && t.input && t.input !== "0x" });
@@ -4298,20 +4301,25 @@ async function trEvm(w, C) {
   for (const t of toks) {
     top = Math.max(top, Number(t.blockNumber) || 0);
     const sym = TR_TOKENS[(t.contractAddress || "").toLowerCase()];
+    if (sym && (t.to || "").toLowerCase() === addr) { const amt = Number(t.value) / 10 ** (Number(t.tokenDecimal) || 18); if (amt >= 10 * (TR_MIN[sym] || 1)) ins.push({ tx: t.hash, ts: Number(t.timeStamp) * 1000, from: t.from, amount: amt, asset: sym }); }
     if ((t.from || "").toLowerCase() !== addr || !sym || !t.to) continue;
     moves.push({ tx: t.hash, ts: Number(t.timeStamp) * 1000, to: t.to, amount: Number(t.value) / 10 ** (Number(t.tokenDecimal) || 18), asset: sym });
   }
-  return { moves, marker: top > since ? "b:" + top : null };
+  return { moves, ins, marker: top > since ? "b:" + top : null };
 }
 async function trBtc(w, C) {
   let txs;
   try { txs = await trGet(`https://blockstream.info/api/address/${w.address}/txs`, C); }
   catch { txs = await trGet(`https://mempool.space/api/address/${w.address}/txs`, C); }
-  const moves = [];
+  const moves = [], ins = [];
   for (const t of txs) {
     if (t.txid === w.last_seen_tx) break;
     if (!t.status || !t.status.confirmed) continue;
-    if (!t.vin.some((i) => i.prevout && i.prevout.scriptpubkey_address === w.address)) continue;
+    if (!t.vin.some((i) => i.prevout && i.prevout.scriptpubkey_address === w.address)) {
+      const got = t.vout.filter((o) => o.scriptpubkey_address === w.address).reduce((n, o) => n + o.value, 0) / 1e8;
+      if (got >= 10 * TR_MIN.BTC) ins.push({ tx: t.txid, ts: t.status.block_time * 1000, from: (t.vin[0] && t.vin[0].prevout && t.vin[0].prevout.scriptpubkey_address) || "", amount: got, asset: "BTC" });
+      continue;
+    }
     const outs = t.vout.filter((o) => o.scriptpubkey_address && o.scriptpubkey_address !== w.address);
     if (!outs.length) continue;
     const counts = {}; for (const o of t.vout) counts[o.value] = (counts[o.value] || 0) + 1;
@@ -4321,7 +4329,7 @@ async function trBtc(w, C) {
       outs: outs.slice(0, 8).map((o) => ({ to: o.scriptpubkey_address, amount: o.value / 1e8 })), fan: outs.length });
   }
   const newest = txs.find((t) => t.status && t.status.confirmed);
-  return { moves, marker: newest && newest.txid !== w.last_seen_tx ? newest.txid : null };
+  return { moves, ins, marker: newest && newest.txid !== w.last_seen_tx ? newest.txid : null };
 }
 async function trTron(w, C) {
   const since = Number(String(w.last_seen_tx || "").replace(/^t:/, "")) || 0;
@@ -4425,6 +4433,16 @@ async function trSaveBalance(DB, w, list, prices, C) {
   await DB.prepare("UPDATE tr_watch SET balance = ?, bal_usd = ?, freeze_usd = ?, bal_at = ?, frozen = ? WHERE id = ?").bind(text, Math.round(usd), Math.round(freeze), Date.now(), frozen, w.id).run();
 }
 
+// How much an alert is worth a look, 0 to 100: what happened, then how much money.
+const TR_SCORE = { exchange: 80, bridge: 60, mixer: 55, dormant_wake: 50, dispersal: 45, inflow: 45, dex_swap: 35, transfer: 25 };
+const trPx = (prices, a) => (TR_STABLE[a] ? 1 : a === "WETH" || a === "stETH" || a === "mETH" ? prices.ETH : a === "WBTC" ? prices.BTC : prices[a] || 0);
+function trScore(tag, usd, asset) {
+  let n = TR_SCORE[tag] || 20;
+  n += usd >= 1e6 ? 15 : usd >= 1e5 ? 11 : usd >= 1e4 ? 7 : usd >= 1e3 ? 3 : 0;
+  if (tag === "exchange" && TR_FREEZE[asset]) n += 5; // a stablecoin at an exchange can be frozen twice over
+  return Math.min(100, n);
+}
+
 async function trSeedImport(env) {
   const r = await env.ASSETS.fetch(new Request("https://wezzet.com/assets/tracker-seeds.json"));
   if (!r.ok) throw new Error("seed list missing");
@@ -4461,14 +4479,16 @@ async function trTick(env, force) {
   const interval = (Number(s.interval) || 30) * 60e3, maxHops = Number(s.max_hops) || 5, pct = (Number(s.child_pct) || 10) / 100;
   const dormant = (Number(s.dormant_days) || 30) * 864e5, lookback = (Number(s.lookback_days) || 90) * 864e5;
   // Recently active addresses first (every interval), then everything else, oldest check first.
-  const hot = (await DB.prepare("SELECT * FROM tr_watch WHERE paused = 0 AND COALESCE(checked, 0) < ? AND (last_activity > ? OR (parent_id IS NOT NULL AND added > ?)) ORDER BY COALESCE(checked, 0) LIMIT ?").bind(now - interval, now - 14 * 864e5, now - 14 * 864e5, TR_BATCH - 2).all()).results;
+  const hot = (await DB.prepare("SELECT * FROM tr_watch WHERE paused = 0 AND COALESCE(checked, 0) < ? AND (last_activity > ? OR (parent_id IS NOT NULL AND added > ?) OR bal_usd >= 1000) ORDER BY COALESCE(checked, 0) LIMIT ?").bind(now - interval, now - 14 * 864e5, now - 14 * 864e5, TR_BATCH - 2).all()).results;
   // Tron's free API (TronGrid without a key) answers "too many requests" past about one address per round, so mix chains.
   const tronCap = C.keys.trongrid ? 4 : 1;
   const skip = hot.length ? "AND id NOT IN (" + hot.map((x) => x.id).join(",") + ")" : "";
   const due = now - Math.min(interval, 10 * 60e3);
+  // Empty wallets that haven't moved in 90 days only need a look every 6 hours, which leaves more room for the live ones.
+  const slow = `AND (bal_at IS NULL OR COALESCE(bal_usd, 0) >= 100 OR COALESCE(last_activity, 0) > ${now - 90 * 864e5} OR COALESCE(checked, 0) < ${now - 6 * 3600e3})`;
   const tronLeft = Math.max(0, tronCap - hot.filter((x) => x.chain === "tron").length);
-  const tronRows = tronLeft ? (await DB.prepare(`SELECT * FROM tr_watch WHERE paused = 0 AND chain = 'tron' AND COALESCE(checked, 0) < ? ${skip} ORDER BY COALESCE(checked, 0) LIMIT ?`).bind(due, tronLeft).all()).results : [];
-  const otherRows = (await DB.prepare(`SELECT * FROM tr_watch WHERE paused = 0 AND chain <> 'tron' AND COALESCE(checked, 0) < ? ${skip} ORDER BY COALESCE(checked, 0) LIMIT ?`).bind(due, TR_BATCH).all()).results;
+  const tronRows = tronLeft ? (await DB.prepare(`SELECT * FROM tr_watch WHERE paused = 0 AND chain = 'tron' AND COALESCE(checked, 0) < ? ${skip} ${slow} ORDER BY COALESCE(checked, 0) LIMIT ?`).bind(due, tronLeft).all()).results : [];
+  const otherRows = (await DB.prepare(`SELECT * FROM tr_watch WHERE paused = 0 AND chain <> 'tron' AND COALESCE(checked, 0) < ? ${skip} ${slow} ORDER BY COALESCE(checked, 0) LIMIT ?`).bind(due, TR_BATCH).all()).results;
   const rest = [...tronRows, ...otherRows].slice(0, Math.max(0, TR_BATCH - hot.length));
   const batch = [...hot, ...rest];
   if (!batch.length) return { checked: 0, alerts: 0, seeded };
@@ -4480,12 +4500,20 @@ async function trTick(env, force) {
   let tronQueue = Promise.resolve();
   const tronNext = (w) => (tronQueue = tronQueue.catch(() => {}).then(() => new Promise((r) => setTimeout(r, 1100))).then(() => trTron(w, C)));
   const results = await Promise.allSettled(batch.map((w) => (w.chain === "btc" ? trBtc(w, C) : w.chain === "tron" ? tronNext(w) : trEvm(w, C))));
+  const prices = await trPrices(DB, C);
   for (let i = 0; i < batch.length; i++) {
     const w = batch[i], res = results[i];
     if (res.status === "rejected" && / 429$/.test(String(res.reason && res.reason.message))) { await DB.prepare("UPDATE tr_watch SET checked = ? WHERE id = ?").bind(now - interval + 5 * 60e3, w.id).run(); }
     if (res.status === "rejected") { errors.push(`${w.chain} ${trShort(w.address)}: ${String(res.reason && res.reason.message || res.reason).slice(0, 90)}`); continue; }
     const { moves, marker } = res.value;
     try {
+      // Money arriving: a big deposit into a watched wallet can mean a new theft or funds being gathered before a move.
+      for (const m of (res.value.ins || []).filter((m) => m.ts > Math.max(w.added - 48 * 36e5, now - 14 * 864e5)).sort((a, b) => b.amount - a.amount).slice(0, 2)) {
+        const usd = Math.round(m.amount * trPx(prices, m.asset));
+        const r = await DB.prepare("INSERT OR IGNORE INTO tr_alerts (watch_id, chain, address, tx, ts, tag, amount, asset, counterparty, summary, status, created, usd, score) VALUES (?, ?, ?, ?, ?, 'inflow', ?, ?, ?, ?, 'new', ?, ?, ?)")
+          .bind(w.id, w.chain, w.address, m.tx, m.ts, trFmt(m.amount), m.asset, m.from, `${w.label || "Watched address"} (${w.hop ? "hop " + w.hop : "seed"}) received ${trFmt(m.amount)} ${m.asset}${m.from ? " from " + trShort(m.from) : ""}. New money arriving can mean a fresh theft or funds being gathered before a move. Look at where it came from.`, now, usd, trScore("inflow", usd, m.asset)).run();
+        if (r.meta?.changes) fresh.push({ tag: "inflow", summary: `${w.label || "Watched address"} received ${trFmt(m.amount)} ${m.asset}`, id: r.meta.last_row_id });
+      }
       if (moves.length) {
         const newest = Math.max(...moves.map((m) => m.ts));
         const woke = w.last_activity && newest - w.last_activity > dormant;
@@ -4543,8 +4571,9 @@ async function trTick(env, force) {
             const where = lab.name ? `${lab.name} (${trShort(to)})` : (m.fan > 1 ? `${m.fan} addresses, the largest ` : "") + trShort(to);
             const why = { bridge: "This looks like a cross-chain move.", dex_swap: "This looks like a token swap.", mixer: "This looks like a mixer, where the trail usually ends.", exchange: "This looks like an exchange, which can freeze funds and knows the account holder. Report fast.", dormant_wake: `The address had been quiet for ${Math.round((newest - w.last_activity) / 864e5)} days.`, dispersal: (fan >= 5 ? `It paid ${fan} different addresses in this batch.` : even ? `It split the funds into ${even} near-equal payments, a common way to break up a trail.` : `It has paid ${day} different addresses within a day.`) + (kids.length ? " The largest receivers are now on the watchlist." : ""), transfer: kids.length ? "The receiver is now on the watchlist." : "" }[tag] || "";
             const summary = `${w.label || "Watched address"} (${w.hop ? "hop " + w.hop : "seed"}) ${what} ${where}. ${why}${extra}`.trim();
-            const r = await DB.prepare("INSERT OR IGNORE INTO tr_alerts (watch_id, chain, address, tx, ts, tag, amount, asset, counterparty, summary, status, created) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'new', ?)")
-              .bind(w.id, w.chain, w.address, m.tx, m.ts, tag, m.call ? "" : trFmt(m.amount), m.call ? "" : m.asset, to, summary, now).run();
+            const usd = m.call ? 0 : Math.round(m.amount * trPx(prices, m.asset));
+            const r = await DB.prepare("INSERT OR IGNORE INTO tr_alerts (watch_id, chain, address, tx, ts, tag, amount, asset, counterparty, summary, status, created, usd, score) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'new', ?, ?, ?)")
+              .bind(w.id, w.chain, w.address, m.tx, m.ts, tag, m.call ? "" : trFmt(m.amount), m.call ? "" : m.asset, to, summary, now, usd, trScore(tag, usd, m.asset)).run();
             if (r.meta?.changes) fresh.push({ tag, summary, id: r.meta.last_row_id });
           }
           first = false;
@@ -4558,7 +4587,6 @@ async function trTick(env, force) {
   try {
     const due = batch.filter((w, i) => results[i].status === "fulfilled" && (!w.bal_at || now - w.bal_at > 864e5 || results[i].value.moves.length));
     if (due.length) {
-      const prices = await trPrices(DB, C);
       const nonTron = due.filter((w) => w.chain !== "tron"), tron = due.filter((w) => w.chain === "tron").slice(0, 1);
       const got = await Promise.allSettled(nonTron.map((w) => trBalances(w, C)));
       for (let i = 0; i < nonTron.length; i++) if (got[i].status === "fulfilled" && got[i].value) await trSaveBalance(DB, nonTron[i], got[i].value, prices, C);
@@ -4572,12 +4600,13 @@ async function trTick(env, force) {
       const key = s["key:claude"] ? await acUnseal(env, s["key:claude"]) : "";
       if (key || env.AI || env.WEZZETAI_URL) {
         // The alerts that matter most first, and only a few per round so the round stays fast.
-        const rank = { exchange: 0, mixer: 1, bridge: 2, dispersal: 3, dormant_wake: 4, dex_swap: 5, transfer: 6 };
+        const rank = { exchange: 0, mixer: 1, bridge: 2, dispersal: 3, inflow: 3, dormant_wake: 4, dex_swap: 5, transfer: 6 };
         const pick = fresh.filter((f) => f.id).sort((x, y) => rank[x.tag] - rank[y.tag]).slice(0, Math.max(0, Math.min(4, 46 - C.calls)));
         await Promise.allSettled(pick.map(async (f) => { const a = await DB.prepare("SELECT * FROM tr_alerts WHERE id = ?").bind(f.id).first(); if (!a) return; C.calls++; f.ai = await trExplain(env, DB, a, key); }));
       }
     } catch {}
   }
+  fresh.sort((x, y) => (TR_SCORE[y.tag] || 0) - (TR_SCORE[x.tag] || 0));
   if (fresh.length) await trNotify(env, s, fresh).catch(() => {});
   return { checked: batch.length, calls: C.calls, alerts: fresh.length, seeded, errors };
 }
