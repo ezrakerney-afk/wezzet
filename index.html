@@ -68,7 +68,7 @@
       } catch (e) {}
     </script>
     <link rel="stylesheet" href="/assets/site.css?v=7" />
-    <link rel="stylesheet" href="/assets/dashboard.css?v=7" />
+    <link rel="stylesheet" href="/assets/dashboard.css?v=8" />
     <link rel="stylesheet" href="/assets/home.css?v=2" />
   </head>
   <body class="dashboard home-page">
@@ -81,7 +81,10 @@
         </a>
         <div class="home-account">
           <button class="theme-toggle" aria-label="Switch theme" type="button">◐</button>
-          <a id="account-link" class="account-link" href="/signin">Sign in <span aria-hidden="true">→</span></a>
+          <div class="account-wrap">
+            <a id="account-link" class="account-link" href="/signin">Sign in <span aria-hidden="true">→</span></a>
+            <div id="account-menu" class="account-menu" hidden></div>
+          </div>
         </div>
       </div>
     </header>
@@ -1117,7 +1120,7 @@
     <script src="/assets/account.js?v=3" defer></script>
     <script src="/assets/home-catalog.js?v=1" defer></script>
     <script src="/assets/home-stats.js?v=2" defer></script>
-    <script src="/assets/dashboard.js?v=5" defer></script>
+    <script src="/assets/dashboard.js?v=6" defer></script>
     <script src="/assets/theme.js?v=4" defer></script>
   </body>
 </html>

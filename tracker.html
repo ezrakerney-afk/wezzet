@@ -12,7 +12,7 @@
 <script>try{(function(t){if(t==="dark"||t==="light")document.documentElement.dataset.theme=t})(localStorage.getItem("wz-theme"))}catch(e){}</script>
 <link rel="stylesheet" href="/assets/site.css?v=7">
 <link rel="stylesheet" href="/assets/skin.css?v=2">
-<link rel="stylesheet" href="/assets/tracker.css?v=1">
+<link rel="stylesheet" href="/assets/tracker.css?v=2">
 </head>
 <body>
 <header class="site-header">
@@ -22,101 +22,145 @@
   </div>
 </header>
 <main>
-  <div class="wrap">
-    <div class="tr-top"><div class="tr-h1" role="heading" aria-level="1">Chain Watch</div><p class="hint" id="tr-last"></p></div>
-    <div id="tr-gate">
-      <p class="hint" id="tr-msg">Loading…</p>
-      <div id="wz-account" data-why="Sign in to continue." hidden></div>
+  <div class="wrap tr">
+    <div class="tr-head">
+      <div>
+        <p class="tr-eyebrow">Private · Read-only</p>
+        <div class="tr-h1" role="heading" aria-level="1">Chain Watch</div>
+        <p class="tr-sub">Follows wallets named in public FBI and OFAC notices, flags where the money moves, and drafts tips for you to send yourself.</p>
+      </div>
+      <div class="tr-pill" id="tr-health" hidden><span class="dot"></span><span id="tr-last"></span></div>
     </div>
-    <div id="tr-app" hidden>
-      <nav class="tr-tabs" role="tablist">
-        <button type="button" data-tab="watch" class="on">Watchlist</button><button type="button" data-tab="alerts">Alerts</button><button type="button" data-tab="leads">Leads</button><button type="button" data-tab="settings">Settings</button><button type="button" data-tab="runs">Run log</button>
-      </nav>
-      <p class="tr-note" id="tr-status" aria-live="polite"></p>
 
-      <section data-pane="watch">
-        <details class="tr-box"><summary>Add an address</summary>
-          <form id="w-add" class="tr-grid">
-            <input type="hidden" name="id">
-            <label>Chain<input type="text" name="chain" placeholder="eth, btc, tron…" list="tr-chains" required></label>
+    <div id="tr-gate" class="tr-card tr-gate">
+      <p id="tr-msg">Loading…</p>
+      <div id="wz-account" data-why="Sign in with your Wezzet account." hidden></div>
+    </div>
+
+    <div id="tr-app" hidden>
+      <div class="tr-stats" id="tr-stats">
+        <button type="button" class="tr-stat" data-go="watch"><span class="k">Watching</span><b id="st-watch">–</b><span class="s" id="st-watch-s"></span></button>
+        <button type="button" class="tr-stat" data-go="alerts"><span class="k">New alerts</span><b id="st-alerts">–</b><span class="s" id="st-alerts-s"></span></button>
+        <button type="button" class="tr-stat" data-go="leads"><span class="k">Open leads</span><b id="st-leads">–</b><span class="s" id="st-leads-s"></span></button>
+        <button type="button" class="tr-stat" data-go="runs"><span class="k">Watcher</span><b id="st-run">–</b><span class="s" id="st-run-s"></span></button>
+      </div>
+      <div class="tr-setup" id="tr-setup" hidden></div>
+
+      <nav class="tr-tabs" role="tablist" aria-label="Sections">
+        <button type="button" role="tab" data-tab="watch">Watchlist</button><button type="button" role="tab" data-tab="alerts">Alerts <span class="n" id="tab-alerts-n" hidden></span></button><button type="button" role="tab" data-tab="leads">Leads</button><button type="button" role="tab" data-tab="runs">Run log</button><button type="button" role="tab" data-tab="settings">Settings</button>
+      </nav>
+      <p class="tr-note" id="tr-status" role="status" aria-live="polite"></p>
+
+      <section data-pane="watch" hidden>
+        <p class="tr-intro">Seed addresses you added from public notices, plus the child addresses the watcher found by following the money.</p>
+        <div class="tr-tools">
+          <button class="btn" type="button" data-open="w-add-box">+ Add address</button>
+          <button class="btn btn-quiet" type="button" data-open="w-import-box">Bulk paste</button>
+          <button class="btn btn-quiet" type="button" data-act="w-csv">Export CSV</button>
+        </div>
+        <form id="w-add" class="tr-card tr-form" data-box="w-add-box" hidden>
+          <h2 class="tr-h2" id="w-add-title">Add an address</h2>
+          <input type="hidden" name="id">
+          <div class="tr-grid">
+            <label>Chain<input type="text" name="chain" placeholder="eth, btc, tron…" list="tr-chains" required autocomplete="off"></label>
             <label class="wide">Address<input type="text" name="address" spellcheck="false" autocomplete="off" required></label>
             <label>Label<input type="text" name="label" placeholder="Bybit hacker 1"></label>
             <label>Source notice<input type="text" name="source" placeholder="FBI PSA250226"></label>
-            <label class="wide">Source URL<input type="text" name="source_url" placeholder="https://…"></label>
-            <div class="btn-row"><button class="btn" type="submit">Save</button><button class="btn btn-quiet" type="reset">Clear</button></div>
-          </form>
-        </details>
-        <details class="tr-box"><summary>Bulk paste</summary>
-          <form id="w-import" class="tr-grid">
-            <label class="wide full">One address per line (optionally "address, chain")<textarea name="text" rows="6" spellcheck="false"></textarea></label>
-            <label>Default chain<input type="text" name="chain" list="tr-chains" placeholder="eth"></label>
+            <label class="wide">Source link<input type="text" name="source_url" placeholder="https://…"></label>
+          </div>
+          <div class="btn-row"><button class="btn" type="submit">Save address</button><button class="btn btn-quiet" type="button" data-close>Cancel</button></div>
+        </form>
+        <form id="w-import" class="tr-card tr-form" data-box="w-import-box" hidden>
+          <h2 class="tr-h2">Bulk paste</h2>
+          <p class="tr-help">One address per line. Add a chain after a comma to override the default, like <code>bc1q…, btc</code>.</p>
+          <label class="tr-full">Addresses<textarea name="text" rows="6" spellcheck="false"></textarea></label>
+          <div class="tr-grid">
+            <label>Default chain<input type="text" name="chain" list="tr-chains" placeholder="eth" autocomplete="off"></label>
             <label>Label<input type="text" name="label"></label>
             <label>Source notice<input type="text" name="source"></label>
-            <label class="wide">Source URL<input type="text" name="source_url" placeholder="https://…"></label>
-            <div class="btn-row"><button class="btn" type="submit">Import</button></div>
-          </form>
-        </details>
+            <label class="wide">Source link<input type="text" name="source_url" placeholder="https://…"></label>
+          </div>
+          <div class="btn-row"><button class="btn" type="submit">Import</button><button class="btn btn-quiet" type="button" data-close>Cancel</button></div>
+        </form>
         <div class="tr-bar">
-          <input type="text" id="w-filter" placeholder="Filter by address, label, chain…">
-          <label class="tr-chk"><input type="checkbox" id="w-kids"> Show children</label>
-          <button class="btn btn-quiet" type="button" data-act="w-pause">Pause</button><button class="btn btn-quiet" type="button" data-act="w-resume">Unpause</button><button class="btn btn-quiet" type="button" data-act="w-delete">Delete</button><button class="btn btn-quiet" type="button" data-act="w-csv">CSV</button>
+          <input type="search" id="w-filter" placeholder="Search address, label, chain or notice">
+          <div class="tr-seg" id="w-view"><button type="button" data-v="seeds" class="on">Seeds</button><button type="button" data-v="all">All</button><button type="button" data-v="kids">Children</button><button type="button" data-v="paused">Paused</button></div>
         </div>
-        <div class="tr-scroll"><table class="plain tr-table"><thead><tr><th><input type="checkbox" data-all="w"></th><th>Address</th><th>Chain</th><th>Label</th><th>Source</th><th>Added</th><th>Origin</th><th>Last activity</th><th></th></tr></thead><tbody id="w-rows"></tbody></table></div>
+        <div class="tr-sel" id="w-sel" hidden><span id="w-sel-n"></span><button class="btn btn-quiet" type="button" data-act="w-pause">Pause</button><button class="btn btn-quiet" type="button" data-act="w-resume">Unpause</button><button class="btn btn-quiet tr-danger" type="button" data-act="w-delete">Delete</button></div>
+        <div class="tr-scroll tr-card tr-flush"><table class="tr-table"><thead><tr><th class="c"><input type="checkbox" data-all="w" aria-label="Select all"></th><th>Address</th><th>Label and source</th><th>Origin</th><th>Last activity</th><th></th></tr></thead><tbody id="w-rows"></tbody></table></div>
       </section>
 
       <section data-pane="alerts" hidden>
+        <p class="tr-intro">Movements the watcher flagged, newest first. Tick the ones that matter and promote them to a lead.</p>
         <div class="tr-bar">
-          <select id="a-tag"><option value="">All tags</option><option>dispersal</option><option>dex_swap</option><option>bridge</option><option>mixer</option><option>exchange</option><option>dormant_wake</option></select>
-          <select id="a-status"><option value="">All statuses</option><option>new</option><option>seen</option><option>dismissed</option><option>promoted</option></select>
-          <button class="btn btn-quiet" type="button" data-act="a-seen">Mark seen</button><button class="btn btn-quiet" type="button" data-act="a-dismiss">Dismiss</button><button class="btn" type="button" data-act="a-promote">Promote to lead</button>
-          <select id="a-lead"><option value="">as a new lead</option></select>
+          <div class="tr-seg" id="a-view"><button type="button" data-v="new" class="on">New</button><button type="button" data-v="">All</button><button type="button" data-v="seen">Seen</button><button type="button" data-v="promoted">Promoted</button><button type="button" data-v="dismissed">Dismissed</button></div>
+          <select id="a-tag" aria-label="Filter by tag"><option value="">Any tag</option><option value="dispersal">Dispersal</option><option value="dex_swap">DEX swap</option><option value="bridge">Bridge</option><option value="mixer">Mixer</option><option value="exchange">Exchange</option><option value="dormant_wake">Dormant wake</option></select>
         </div>
-        <div class="tr-scroll"><table class="plain tr-table"><thead><tr><th><input type="checkbox" data-all="a"></th><th>Time</th><th>Address</th><th>Tag</th><th>Amount</th><th>Tx</th><th>Summary</th><th>Status</th></tr></thead><tbody id="a-rows"></tbody></table></div>
+        <div class="tr-sel" id="a-sel" hidden><span id="a-sel-n"></span><button class="btn" type="button" data-act="a-promote">Promote to lead</button><select id="a-lead" aria-label="Which lead"><option value="">as a new lead</option></select><button class="btn btn-quiet" type="button" data-act="a-seen">Mark seen</button><button class="btn btn-quiet" type="button" data-act="a-dismiss">Dismiss</button></div>
+        <div id="a-list" class="tr-alerts"></div>
       </section>
 
       <section data-pane="leads" hidden>
+        <p class="tr-intro">Alerts you promoted. Add notes, then build a tip draft to copy into Rewards for Justice, the FBI or an exchange. Nothing is ever sent from here.</p>
         <div id="l-list"></div>
       </section>
 
-      <section data-pane="settings" hidden>
-        <form id="s-form" class="tr-grid">
-          <h2 class="full">Watcher</h2>
-          <label>Check every<select name="interval"><option value="15">15 min</option><option value="30">30 min</option><option value="60">60 min</option></select></label>
-          <label>Alerts by<select name="channel"><option value="email">Email</option><option value="telegram">Telegram</option><option value="both">Both</option><option value="page">This page only</option></select></label>
-          <label class="wide">Alert email<input type="text" name="email" inputmode="email" autocomplete="off"></label>
-          <label>Follow children above (% of balance)<input type="text" name="child_pct" inputmode="numeric"></label>
-          <label>Max hops<input type="text" name="max_hops" inputmode="numeric"></label>
-          <label>Dormant after (days)<input type="text" name="dormant_days" inputmode="numeric"></label>
-          <label>API keys live in<select name="keys_mode"><option value="wezzet">Wezzet (sent to the watcher)</option><option value="github">GitHub secrets only</option></select></label>
-          <label class="tr-chk full"><input type="checkbox" name="paused"> <b>Pause everything</b> (the watcher stops without calling any APIs)</label>
-          <h2 class="full">API keys</h2>
-          <p class="hint full">Write-only. Saved keys are encrypted and never shown again. Leave a box empty to keep the saved key.</p>
-          <label>Etherscan<input type="password" name="k_etherscan" autocomplete="off"><small data-k="etherscan"></small></label>
-          <label>Tronscan<input type="password" name="k_tronscan" autocomplete="off"><small data-k="tronscan"></small></label>
-          <label>Claude<input type="password" name="k_claude" autocomplete="off"><small data-k="claude"></small></label>
-          <label>Telegram bot token<input type="password" name="k_telegram_token" autocomplete="off"><small data-k="telegram_token"></small></label>
-          <label>Telegram chat id<input type="password" name="k_telegram_chat" autocomplete="off"><small data-k="telegram_chat"></small></label>
-          <div class="btn-row full"><button class="btn" type="submit">Save settings</button></div>
-        </form>
-        <div class="tr-box">
-          <h2>Watcher token</h2>
-          <p class="hint">The watcher sends this as <code>Authorization: Bearer …</code>. Only a hash is kept, so it's shown once. A new token stops the old one.</p>
-          <p id="t-state" class="hint"></p>
-          <button class="btn btn-quiet" type="button" data-act="t-new">Generate new token</button>
-          <pre id="t-out" class="tr-pre" hidden></pre>
-        </div>
+      <section data-pane="runs" hidden>
+        <p class="tr-intro">Each time the watcher checks the chains, it logs a run here.</p>
+        <div class="tr-card tr-runbox"><span class="dot" id="r-dot"></span><p id="r-sum" class="tr-big"></p></div>
+        <div class="tr-scroll tr-card tr-flush"><table class="tr-table"><thead><tr><th>Started</th><th>Took</th><th class="r">Checked</th><th class="r">API calls</th><th class="r">Alerts</th><th>Errors</th></tr></thead><tbody id="r-rows"></tbody></table></div>
       </section>
 
-      <section data-pane="runs" hidden>
-        <p id="r-sum" class="tr-big"></p>
-        <div class="tr-scroll"><table class="plain tr-table"><thead><tr><th>Started</th><th>Took</th><th>Checked</th><th>API calls</th><th>Alerts</th><th>Errors</th></tr></thead><tbody id="r-rows"></tbody></table></div>
+      <section data-pane="settings" hidden>
+        <form id="s-form">
+          <div class="tr-card tr-pause">
+            <div><h2 class="tr-h2">Pause everything</h2><p class="tr-help">The watcher stops at its next check and makes no API calls until you turn this off.</p></div>
+            <label class="tr-switch"><input type="checkbox" name="paused"><span></span></label>
+          </div>
+          <div class="tr-card">
+            <h2 class="tr-h2">Checking</h2>
+            <div class="tr-grid">
+              <label>Check every<select name="interval"><option value="15">15 minutes</option><option value="30">30 minutes</option><option value="60">60 minutes</option></select></label>
+              <label>Follow children above<span class="tr-unit"><input type="text" name="child_pct" inputmode="numeric"><i>% of balance</i></span></label>
+              <label>Max hops<input type="text" name="max_hops" inputmode="numeric"></label>
+              <label>Dormant after<span class="tr-unit"><input type="text" name="dormant_days" inputmode="numeric"><i>days</i></span></label>
+            </div>
+          </div>
+          <div class="tr-card">
+            <h2 class="tr-h2">Alerts</h2>
+            <div class="tr-grid">
+              <label>Send alerts by<select name="channel"><option value="email">Email</option><option value="telegram">Telegram</option><option value="both">Email and Telegram</option><option value="page">This page only</option></select></label>
+              <label class="wide">Alert email<input type="text" name="email" inputmode="email" autocomplete="off" placeholder="you@example.com"></label>
+            </div>
+          </div>
+          <div class="tr-card">
+            <h2 class="tr-h2">API keys</h2>
+            <p class="tr-help">Keys are encrypted and never shown again. Leave a box empty to keep the saved key.</p>
+            <div class="tr-grid">
+              <label class="tr-full">Keys live in<select name="keys_mode"><option value="wezzet">Wezzet (sent to the watcher when it checks in)</option><option value="github">GitHub secrets only (Wezzet keeps none)</option></select></label>
+              <label>Etherscan<input type="password" name="k_etherscan" autocomplete="off"><small data-k="etherscan"></small></label>
+              <label>Tronscan<input type="password" name="k_tronscan" autocomplete="off"><small data-k="tronscan"></small></label>
+              <label>Claude<input type="password" name="k_claude" autocomplete="off"><small data-k="claude"></small></label>
+              <label>Telegram bot token<input type="password" name="k_telegram_token" autocomplete="off"><small data-k="telegram_token"></small></label>
+              <label>Telegram chat ID<input type="password" name="k_telegram_chat" autocomplete="off"><small data-k="telegram_chat"></small></label>
+            </div>
+          </div>
+          <div class="tr-save"><button class="btn" type="submit">Save settings</button></div>
+        </form>
+        <div class="tr-card">
+          <h2 class="tr-h2">Watcher token</h2>
+          <p class="tr-help">The watcher script uses this to talk to Wezzet. Put it in the chain-watch repo as the <code>WEZZET_TOKEN</code> secret. It's shown once, and making a new one stops the old one.</p>
+          <p id="t-state" class="tr-keyline"></p>
+          <button class="btn btn-quiet" type="button" data-act="t-new">Generate new token</button>
+          <div id="t-box" class="tr-token" hidden><code id="t-out"></code><button class="btn" type="button" data-act="t-copy">Copy</button></div>
+        </div>
       </section>
       <datalist id="tr-chains"><option value="eth"><option value="bsc"><option value="arb"><option value="base"><option value="polygon"><option value="op"><option value="avax"><option value="btc"><option value="tron"></datalist>
     </div>
   </div>
 </main>
 <script src="/assets/account.js?v=3" defer></script>
-<script src="/assets/tracker.js?v=1" defer></script>
+<script src="/assets/tracker.js?v=2" defer></script>
 <script src="/assets/theme.js?v=4" defer></script>
 </body>
 </html>

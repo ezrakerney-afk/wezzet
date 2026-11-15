@@ -16,9 +16,7 @@
       const user = await account.call("me");
       if (user.error && user.me !== null) return;
       account.me = user.me || null;
-      $("account-link").textContent = account.me
-        ? account.me.name
-        : "Sign in →";
+      showAccount();
       if (!account.me) {
         setBadge(0);
         return;
@@ -34,6 +32,38 @@
       checking = false;
     }
   }
+  // Top-right account button: signed out it links to /signin; signed in it opens a menu with the account details.
+  const link = $("account-link"), menu = $("account-menu");
+  const el = (tag, props = {}, ...kids) => { const e = document.createElement(tag); Object.assign(e, props); e.append(...kids); return e; };
+  let shown;
+  function showAccount() {
+    const name = account.me ? account.me.name : "";
+    if (name === shown) return;
+    shown = name;
+    if (!name) { link.textContent = "Sign in →"; link.removeAttribute("aria-expanded"); link.removeAttribute("aria-haspopup"); menu.hidden = true; return; }
+    link.replaceChildren(el("span", { className: "account-avatar", textContent: name[0].toUpperCase() }), el("span", { className: "account-name", textContent: name }), el("span", { className: "account-caret", textContent: "▾", ariaHidden: "true" }));
+    link.setAttribute("aria-haspopup", "true"); link.setAttribute("aria-expanded", "false");
+  }
+  async function openMenu(open) {
+    menu.hidden = !open; link.setAttribute("aria-expanded", String(open));
+    if (!open) return;
+    const head = el("div", { className: "account-head" }, el("span", { className: "account-avatar big", textContent: account.me.name[0].toUpperCase() }), el("div", {}, el("b", { textContent: account.me.name }), el("span", { id: "account-sub", textContent: "Wezzet account" })));
+    const out = el("button", { type: "button", className: "account-out", textContent: "Sign out" });
+    out.onclick = async () => { out.disabled = true; await account.call("logout", { method: "POST", body: "{}" }); account.me = null; openMenu(false); showAccount(); setBadge(0); document.dispatchEvent(new CustomEvent("wz-account", { detail: null })); };
+    const item = (href, text, note) => el("a", { href }, text, note ? el("span", { textContent: note }) : "");
+    const links = el("nav", { ariaLabel: "Account" }, item("/signin", "Account details"), item("/chat", "Messages"), item("/ai", "WezzetAI"), item("/aicomms#mine", "My AI agents"));
+    menu.replaceChildren(head, links, out);
+    const a = await account.call("account");
+    if (a.error || menu.hidden) return;
+    const since = a.created ? "Member since " + new Date(a.created).toLocaleDateString([], { month: "short", year: "numeric" }) : "";
+    $("account-sub").textContent = [a.login && a.login !== account.me.name ? "Login: " + a.login : "", since].filter(Boolean).join(" · ") || "Wezzet account";
+    links.lastChild.append(el("span", { textContent: String(a.agents.length) }));
+    if (a.tracker) links.append(item("/tracker", "Chain Watch", "Private"));
+  }
+  link.onclick = (e) => { if (!account.me) return; e.preventDefault(); openMenu(menu.hidden); };
+  document.addEventListener("click", (e) => { if (!menu.hidden && !e.target.closest(".account-wrap")) openMenu(false); });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !menu.hidden) { openMenu(false); link.focus(); } });
+
   account.ready.then(refreshMessages);
   setInterval(refreshMessages, 30000);
   window.addEventListener("focus", refreshMessages);

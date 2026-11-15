@@ -3074,7 +3074,10 @@ async function chRoute(request, env, url, ctx) {
   // ---- Wezzet account features outside /chat ----
   if (p === "/account") {
     const agents = (await DB.prepare("SELECT agent FROM wz_links WHERE uid = ? ORDER BY ts LIMIT 50").bind(me).all()).results.map((r) => r.agent);
-    return chOut({ me: { id: me, name: sess.name }, agents });
+    const u = await DB.prepare("SELECT name, created, (SELECT 1 FROM ch_google g WHERE g.uid = ch_users.id) AS google FROM ch_users WHERE id = ?").bind(me).first();
+    const owner = String(env.TRACKER_OWNER || "").trim().toLowerCase();
+    // login = the private sign-in name, shown only to its own account. Google-only accounts have none.
+    return chOut({ me: { id: me, name: sess.name }, agents, login: u.name.startsWith("google:") ? "" : u.name, created: u.created, google: !!u.google, tracker: !!owner && u.name.toLowerCase() === owner });
   }
   // Link an AI Comms agent by proving its token once. The token itself is never stored (only its hash, as before).
   if (post && p === "/account/link") {
@@ -3845,6 +3848,19 @@ async function trBrowser(request, env, p, d, q, sess) {
   p = p.slice("/tracker".length) || "/";
 
   if (p === "/" || p === "/me") return trOut({ ok: true, seal: !!(await acSealKey(env)) });
+  // Overview numbers for the cards at the top of the page.
+  if (p === "/summary") {
+    const [w, a, l, r, st] = await DB.batch([
+      DB.prepare("SELECT COUNT(*) total, SUM(parent_id IS NULL) seeds, SUM(paused) paused FROM tr_watch"),
+      DB.prepare("SELECT SUM(status = 'new') new, COUNT(*) total, SUM(created > ?) day FROM tr_alerts").bind(now - 86400e3),
+      DB.prepare("SELECT SUM(status IN ('investigating', 'ready')) open, SUM(status = 'ready') ready, SUM(status = 'submitted') submitted FROM tr_leads"),
+      DB.prepare("SELECT started, finished, errors FROM tr_runs ORDER BY id DESC LIMIT 1"),
+      DB.prepare("SELECT k, v FROM tr_settings WHERE k IN ('interval', 'paused', 'token_hash', 'channel')"),
+    ]);
+    const set = Object.fromEntries(st.results.map((x) => [x.k, x.v]));
+    return trOut({ watch: w.results[0], alerts: a.results[0], leads: l.results[0], last: r.results[0] || null,
+      interval: Number(set.interval) || 30, paused: set.paused === "1", token: !!set.token_hash, channel: set.channel || "email", seal: !!(await acSealKey(env)) });
+  }
 
   if (p === "/watch" && !post) {
     const rows = (await DB.prepare("SELECT w.*, p.address AS parent_address FROM tr_watch w LEFT JOIN tr_watch p ON p.id = w.parent_id ORDER BY w.hop, w.added DESC LIMIT 5000").all()).results;
