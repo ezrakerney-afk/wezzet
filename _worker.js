@@ -3785,7 +3785,7 @@ async function transport(request, url, env) {
         const alt = IATA[code.slice(0, 2)] && /^\d/.test(code.slice(2)) ? IATA[code.slice(0, 2)] + code.slice(2) : '';
         const hits = (await Promise.all([ask('callsign/' + code), alt ? ask('callsign/' + alt) : [], ask('reg/' + encodeURIComponent(q.toUpperCase().trim()))])).flat();
         const seen = new Set(), items = hits.filter((x) => !seen.has(x.hex) && seen.add(x.hex)).map((x) => shape(x));
-        if (down && !items.length) return json({ error: 'The live flight sources did not answer in time. Try again in a moment.' }, 502);
+        if (down && !items.length) return json({ error: 'The live flight sources did not answer in time. Try again in a moment.' }, 503);
         return done(items, 'adsb.lol and adsb.fi', items.length ? '' : 'No aircraft is broadcasting that flight number right now. It may not be in the air yet. You can also search an airport, like JFK.');
       }
       // Anything else is a place: find the airport, then list what is flying within 150 km of it.
@@ -3795,10 +3795,15 @@ async function transport(request, url, env) {
         if (!f) return done([], 'adsb.lol', 'No airport found for that. Try an airport code or city (JFK, Tokyo), or a flight number (UA123).');
         at = [f.geometry.coordinates[1], f.geometry.coordinates[0]]; where = f.properties.name || q;
       }
-      const ac = await ask(`point/${at[0].toFixed(3)}/${at[1].toFixed(3)}/80`);
-      if (down) return json({ error: 'The live flight sources did not answer in time. Try again in a moment.' }, 502);
+      // 40 nautical miles (about 75 km) keeps the reply small. OpenSky joins the race here: it answers area questions quickly.
+      const pt = `${at[0].toFixed(3)}/${at[1].toFixed(3)}/40`, dLat = 0.67, dLon = 0.67 / Math.max(0.2, Math.cos(at[0] * Math.PI / 180));
+      const list = (d) => { if (!d || !Array.isArray(d.ac)) throw new Error('bad reply'); return d.ac; };
+      const sky = get(`https://opensky-network.org/api/states/all?lamin=${(at[0] - dLat).toFixed(3)}&lomin=${(at[1] - dLon).toFixed(3)}&lamax=${(at[0] + dLat).toFixed(3)}&lomax=${(at[1] + dLon).toFixed(3)}`)
+        .then((d) => { if (!d || !('states' in d)) throw new Error('bad reply'); return (d.states || []).map((v) => ({ hex: v[0], flight: v[1], lat: v[6], lon: v[5], alt_baro: v[8] ? 'ground' : v[7] == null ? null : v[7] / 0.3048, gs: v[9] == null ? null : v[9] / 0.5144, track: v[10], squawk: v[14] })); });
+      const ac = await Promise.any([get(AIR + 'point/' + pt).then(list), get(FI + 'v3/lat/' + pt.split('/')[0] + '/lon/' + pt.split('/')[1] + '/dist/40').then(list), sky]).catch(() => { down = true; return []; });
+      if (down) return json({ error: 'The live flight sources did not answer in time. Try again in a moment.' }, 503);
       const items = ac.filter((x) => x.lat != null).map((x) => shape(x, at)).sort((x, y) => x.dist_km - y.dist_km);
-      return done(items, 'adsb.lol and adsb.fi', (items.length ? 'Aircraft within 150 km of ' : 'Nothing is flying near ') + where + (q ? '.' : '. Search a flight number, registration or airport to look elsewhere.'));
+      return done(items, 'adsb.lol, adsb.fi and OpenSky', (items.length ? 'Aircraft within 75 km of ' : 'Nothing is flying near ') + where + (q ? '.' : '. Search a flight number, registration or airport to look elsewhere.'));
     }
     if (mode === 'ships') {
       if (env.AISSTREAM_KEY) {
@@ -3849,7 +3854,7 @@ async function transport(request, url, env) {
       return done(items, 'OpenStreetMap (Photon)');
     }
     return json({ error: 'mode must be flights, trains, ships, airports, ports or stations' }, 400);
-  } catch (err) { return json({ error: 'The live source is busy or unreachable right now (' + err.message + '). Try again in a minute.' }, 502); }
+  } catch (err) { return json({ error: 'The live source is busy or unreachable right now (' + err.message + '). Try again in a minute.' }, 503); }
 }
 
 /* ---------- Chain Watch tracker (/tracker): private, owner-only, READ-ONLY ----------
