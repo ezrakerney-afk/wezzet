@@ -42,17 +42,29 @@
     const txt = kind === "alert" ? (x.summary || "") + " " + (x.wsrc || "") : (x.source || "") + " " + (x.label || "");
     const bybit = /Bybit|PSA250226|TraderTraitor/i.test(txt), dprk = bybit || /DPRK|Lazarus|North Korea/i.test(txt);
     const dests = bybit ? ["bounty", "fbi", "rfj"] : dprk ? ["fbi", "rfj"] : ["fbi"];
+    // Report now is rare on purpose: a tip line that gets noise starts ignoring the sender. Only fresh, big, actionable moves,
+    // and the label expires once acting on it would no longer help.
+    const H = 3600e3, age = Date.now() - (kind === "alert" ? x.ts : x.bal_at || 0);
     if (kind === "alert") {
       const u = x.usd || 0, sc = x.score || 0;
-      const level = (x.tag === "exchange" && u >= 5000) || sc >= 80 ? "now" : sc >= 55 || u >= 100000 ? "look" : "skip";
-      return { level, dests, title: (x.usd >= 1 ? usd(x.usd) + " " : (x.amount || "") + " " + (x.asset || "") + " ") + (TAGS[x.tag] || "movement").toLowerCase() + " on " + x.chain, why: (WHY[x.tag] || WHY.transfer) + (level === "skip" ? " On its own this isn't worth a report yet; the watcher keeps following it." : ""), ts: x.ts, key: "a" + x.id, ref: { alert_id: x.id } };
+      let level = "skip", word = "", note = " On its own this isn't worth a report yet; the watcher keeps following it.";
+      if (x.reported) { word = "Reported"; note = " You already reported this."; }
+      else if ((x.tag === "exchange" && u >= 50000 && age < 48 * H) || (["bridge", "mixer", "dormant_wake"].includes(x.tag) && u >= 1e6 && age < 24 * H)) { level = "now"; note = " Fresh and big enough to be worth an investigator's time."; }
+      else if (u >= 25000 && sc >= 55 && age < 7 * 24 * H) { level = "look"; note = " Check it on the explorer first; report only if it leads to an exchange or a big freezable balance."; }
+      else if (u >= 25000 && sc >= 55) { word = "Expired"; note = " This happened " + ago(x.ts) + ", so the money has most likely moved on. Too old to report on its own."; }
+      return { level, word, dests, title: (x.usd >= 1 ? usd(x.usd) + " " : (x.amount || "") + " " + (x.asset || "") + " ") + (TAGS[x.tag] || "movement").toLowerCase() + " on " + x.chain, why: (WHY[x.tag] || WHY.transfer) + note, ts: x.ts, key: "a" + x.id, ref: { alert_id: x.id } };
     }
-    const f = x.freeze_usd || 0;
-    const level = x.frozen === 1 ? "skip" : f >= 10000 ? "now" : f >= 1000 || x.bal_usd >= 100000 ? "look" : "skip";
-    const why = x.frozen === 1 ? "Already frozen by the issuer, so the money can't move. Nothing to report." : f >= 1000 ? usd(f) + " in USDT or USDC is sitting here and is not frozen yet. Tether and Circle freeze these when the FBI asks, so a report can lock it in place." : "A large balance is sitting at a named wallet. Coins like BTC, ETH and TRX can't be frozen by an issuer, so it's mainly worth reporting if it moves to an exchange. The watcher will tell you.";
-    return { level, dests, title: usd(x.bal_usd) + " sitting at " + x.chain + " " + short(x.address), why, ts: x.bal_at, key: "w" + x.id, ref: { watch_id: x.id } };
+    const f = x.freeze_usd || 0, fresh = age < 24 * H;
+    let level = "skip", word = "";
+    if (x.reported) word = "Reported";
+    else if (x.frozen === 1) word = "Frozen";
+    else if (f >= 100000 && x.frozen === 0 && fresh) level = "now";
+    else if (f >= 10000) level = "look";
+    else if (f >= 1000 || x.bal_usd >= 100000) level = "skip";
+    const why = x.reported ? "You already reported this address." : x.frozen === 1 ? "Already frozen by the issuer, so the money can't move. Nothing to report." : f >= 1000 ? usd(f) + " in USDT or USDC is sitting here" + (x.frozen === 0 ? " and is confirmed not frozen" : "") + ". Tether and Circle freeze these when the FBI asks, so a report can lock it in place." + (level === "now" ? "" : f >= 100000 && !fresh ? " The balance was last checked " + ago(x.bal_at) + ", so wait for a fresh check before reporting." : " Under $100k it's usually not worth a report on its own.") : "A large balance is sitting at a named wallet. Coins like BTC, ETH and TRX can't be frozen by an issuer, so it's only worth reporting if it moves to an exchange. The watcher will tell you.";
+    return { level, word, dests, title: usd(x.bal_usd) + " sitting at " + x.chain + " " + short(x.address), why, ts: x.bal_at, key: "w" + x.id, ref: { watch_id: x.id } };
   }
-  const verdict = (v) => el("span", { className: "tr-verdict " + v.level, textContent: VWORD[v.level] });
+  const verdict = (v) => el("span", { className: "tr-verdict " + v.level, textContent: v.word || VWORD[v.level] });
   const repBtn = (v, label) => el("button", { type: "button", className: "btn tr-rep" + (v.level === "now" ? "" : " btn-quiet"), textContent: label || "Report", onclick: (e) => { e.preventDefault(); e.stopPropagation(); openReport(v); } });
 
   async function openReport(v) {

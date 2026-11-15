@@ -3928,7 +3928,7 @@ async function trBrowser(request, env, p, d, q, sess) {
 
   // Biggest balances still sitting at watched addresses. Stablecoins (USDT/USDC) can be frozen by their issuer.
   if (p === "/holdings" && !post) {
-    const rows = (await DB.prepare("SELECT id, chain, address, label, source, source_url, hop, balance, bal_usd, freeze_usd, frozen, bal_at, last_activity FROM tr_watch WHERE bal_usd >= 100 ORDER BY (CASE WHEN frozen = 1 THEN 0 ELSE freeze_usd END) DESC, bal_usd DESC LIMIT 100").all()).results;
+    const rows = (await DB.prepare("SELECT id, chain, address, label, source, source_url, hop, balance, bal_usd, freeze_usd, frozen, bal_at, last_activity, (SELECT 1 FROM tr_leads WHERE tr_leads.status = 'submitted' AND instr(tr_leads.notes, tr_watch.address) > 0) AS reported FROM tr_watch WHERE bal_usd >= 100 ORDER BY (CASE WHEN frozen = 1 THEN 0 ELSE freeze_usd END) DESC, bal_usd DESC LIMIT 100").all()).results;
     return trOut({ holdings: rows });
   }
   // Turn a holding into a lead with the facts already filled in.
@@ -4028,7 +4028,7 @@ async function trBrowser(request, env, p, d, q, sess) {
     if (TR_TAGS.includes(q.get("tag"))) { where.push("tag = ?"); args.push(q.get("tag")); }
     if (TR_ALERT_ST.includes(q.get("status"))) { where.push("status = ?"); args.push(q.get("status")); }
     const before = Number(q.get("before")); if (before > 0) { where.push("id < ?"); args.push(before); }
-    const rows = (await DB.prepare(`SELECT *, (SELECT source || ' ' || COALESCE(label, '') FROM tr_watch WHERE tr_watch.id = tr_alerts.watch_id) AS wsrc FROM tr_alerts ${where.length ? "WHERE " + where.join(" AND ") : ""} ORDER BY ${q.get("sort") === "top" ? "COALESCE(score, 0) DESC, " : ""}id DESC LIMIT ${Math.min(200, Math.max(1, Number(q.get("limit")) || 200))}`).bind(...args).all()).results;
+    const rows = (await DB.prepare(`SELECT *, (SELECT source || ' ' || COALESCE(label, '') FROM tr_watch WHERE tr_watch.id = tr_alerts.watch_id) AS wsrc, (SELECT 1 FROM tr_leads WHERE tr_leads.status = 'submitted' AND EXISTS (SELECT 1 FROM json_each(tr_leads.alert_ids) WHERE value = tr_alerts.id)) AS reported FROM tr_alerts ${where.length ? "WHERE " + where.join(" AND ") : ""} ORDER BY ${q.get("sort") === "top" ? "COALESCE(score, 0) DESC, " : ""}id DESC LIMIT ${Math.min(200, Math.max(1, Number(q.get("limit")) || 200))}`).bind(...args).all()).results;
     const counts = (await DB.prepare("SELECT status, COUNT(*) n FROM tr_alerts GROUP BY status").all()).results;
     return trOut({ alerts: rows, counts, explorer: TR_EXPLORER });
   }
