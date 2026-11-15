@@ -51,6 +51,26 @@
   .pic-menu button { border: 0; background: none; text-align: left; padding: 9px 10px; border-radius: 8px; font: inherit; color: var(--ink); cursor: pointer; }
   .pic-menu button:hover { background: var(--line); } .pic-menu .danger { color: var(--bad); }
   #leave-btn:hover { color: var(--bad); }
+  body.chat-page .side h2 { font-family: var(--font-sans, system-ui, sans-serif); font-weight: 700; font-size: .72rem; line-height: 1.3; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-soft); margin: 0 0 6px 8px; }
+  body.chat-page .side h2 .icon-btn { margin-left: auto; }
+  body.chat-page .pane-head h2 { font-size: 1.5rem; margin: 0; line-height: 1.1; }
+  body.chat-page .profile h3 { font-size: 1.15rem; margin: 10px 0 4px; }
+  body.chat-page .profile h4 { font-family: var(--font-sans, system-ui, sans-serif); }
+  .on-strip { padding: 12px 10px 10px; border-bottom: 1px solid var(--line); }
+  body.chat-page .side .on-strip h2 { display: flex; align-items: center; justify-content: flex-start; gap: 8px; margin: 0 0 8px 6px; color: var(--ink); }
+  body.chat-page .side .on-strip.empty h2 { margin-bottom: 0; color: var(--ink-soft); }
+  .side .on-strip h2 { display: flex; align-items: center; gap: 8px; margin: 0 0 8px 6px; }
+  .on-strip h2 .dot { width: 8px; height: 8px; border-radius: 50%; background: #2eb67d; box-shadow: 0 0 0 3px rgba(46, 182, 125, .22); animation: on-pulse 2.4s ease-in-out infinite; }
+  .on-strip.empty h2 .dot { background: var(--line-strong); box-shadow: none; animation: none; }
+  .on-strip.empty h2 { margin-bottom: 0; }
+  .side .on-strip ul { display: flex; gap: 2px; overflow-x: auto; scrollbar-width: thin; padding-bottom: 2px; }
+  .on-strip li { flex: none; }
+  .on-strip button { display: grid; justify-items: center; gap: 5px; width: 60px; padding: 6px 2px; border: 0; border-radius: 12px; background: none; color: var(--ink); font: inherit; font-size: .72rem; cursor: pointer; }
+  .on-strip button:hover { background: var(--line); }
+  .on-strip .nm { max-width: 56px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .on-strip .more { align-self: center; padding: 0 8px; font-size: .8rem; color: var(--ink-soft); }
+  @keyframes on-pulse { 50% { box-shadow: 0 0 0 6px rgba(46, 182, 125, 0); } }
+  @media (prefers-reduced-motion: reduce) { .on-strip h2 .dot { animation: none; } }
   .av-wrap { position: relative; display: inline-flex; }
   .av-wrap .dot { position: absolute; right: -1px; bottom: -1px; width: 11px; height: 11px; border-radius: 50%; border: 2px solid var(--surface); background: var(--line-strong); }
   .av-wrap .dot.on { background: #2eb67d; }
@@ -207,6 +227,10 @@
 
     <div class="chat-app" id="app" hidden>
       <aside class="side">
+        <div class="on-strip" id="on-strip" aria-live="polite">
+          <h2><span class="dot" aria-hidden="true"></span><span id="on-count">Checking who's online…</span></h2>
+          <ul id="on-row" aria-label="People online now"></ul>
+        </div>
         <div class="side-scroll">
           <div id="ch-wrap" hidden><h2>Channels</h2><ul id="channels"></ul></div>
           <div id="req-wrap" hidden><h2>Friend requests</h2><ul id="requests"></ul></div>
@@ -273,7 +297,7 @@
     <div class="wz-foot-base"><span>© 2026 Wezzet</span><span>Press <kbd>Ctrl K</kbd> to search every tool</span></div>
   </div>
 </footer>
-<script src="/assets/chat.js?v=7" defer></script>
+<script src="/assets/chat.js?v=9" defer></script>
 <script src="/assets/ui.js?v=1" defer></script>
 <script src="/assets/theme.js?v=5" defer></script>
 </body>

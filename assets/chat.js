@@ -115,8 +115,19 @@
     if (!rooms.dms.length) { const li = document.createElement("li"); li.className = "req"; li.innerHTML = '<span class="nm"><small>No conversations yet</small></span>'; $("dms").append(li); }
     const friends = new Set(rooms.dms.map((d) => d.name));
     const on = (rooms.online || []).filter((n) => !friends.has(n));
-    $("on-wrap").hidden = !on.length;
+    $("on-wrap").hidden = true; // the strip at the top of the list shows everyone online now
     $("online").replaceChildren(...on.map((n) => row(n, "", [["Message", "dm"]])));
+    // Who is online right now: a row of faces at the top of the list. Click one to see their profile, message or call.
+    const here = rooms.people || [];
+    for (const x of here) known[x.name] = { id: x.uid, av: x.av };
+    $("on-count").textContent = here.length ? here.length + (here.length === 1 ? " person online" : " people online") : "No one else is online";
+    $("on-strip").classList.toggle("empty", !here.length);
+    $("on-row").replaceChildren(...here.slice(0, 40).map((x) => {
+      const li = document.createElement("li"), b = document.createElement("button"), nm = document.createElement("span");
+      b.type = "button"; b.title = x.name + " is online"; nm.className = "nm"; nm.textContent = x.name;
+      b.append(withDot(avatar(x.name), true), nm); b.onclick = () => profile(x.name); li.append(b); return li;
+    }));
+    if (here.length > 40) { const li = document.createElement("li"); li.className = "more"; li.textContent = "+" + (here.length - 40); $("on-row").append(li); }
     $("blk-wrap").hidden = !rooms.blocks.length;
     $("blocks").replaceChildren(...rooms.blocks.map((n) => row(n, "", [["Unblock", "unblock"]])));
     badge(); mark(); head();

@@ -3158,13 +3158,14 @@ async function chRoute(request, env, url, ctx) {
     const requests = fr.filter((x) => x.status === "pending").map((x) => ({ name: x.name, incoming: x.by !== me }));
     const blocks = (await DB.prepare(`SELECT ${CH_NAME} AS name FROM ch_blocks b JOIN ch_users u ON u.id = b.blocked WHERE b.uid = ?`).bind(me).all()).results.map((x) => x.name);
     // Everyone seen in the last 2 minutes, minus me and anyone blocked either way.
-    const online = (await DB.prepare(`SELECT ${CH_NAME} AS name FROM ch_users u WHERE u.seen > ? AND u.id <> ? AND u.banned = 0
-      AND u.id NOT IN (SELECT blocked FROM ch_blocks WHERE uid = ?) AND u.id NOT IN (SELECT uid FROM ch_blocks WHERE blocked = ?) ORDER BY u.seen DESC LIMIT 100`).bind(now - 120e3, me, me, me).all()).results.map((x) => x.name);
+    const people = (await DB.prepare(`SELECT ${CH_NAME} AS name, u.id AS uid, COALESCE(u.av, 0) AS av FROM ch_users u WHERE u.seen > ? AND u.id <> ? AND u.banned = 0
+      AND u.id NOT IN (SELECT blocked FROM ch_blocks WHERE uid = ?) AND u.id NOT IN (SELECT uid FROM ch_blocks WHERE blocked = ?) ORDER BY u.seen DESC LIMIT 100`).bind(now - 120e3, me, me, me).all()).results;
+    const online = people.map((x) => x.name);
     const groups = (await DB.prepare(`SELECT g.id, g.name, (SELECT COUNT(*) FROM ch_members WHERE gid = g.id) AS n,
       (SELECT COUNT(*) FROM ch_msgs m WHERE m.room = 'g:' || g.id AND m.uid <> ? AND m.hidden = 0 AND m.id > COALESCE((SELECT last FROM ch_reads WHERE uid = ? AND room = 'g:' || g.id), 0)) AS unread
       FROM ch_groups g JOIN ch_members x ON x.gid = g.id AND x.uid = ? ORDER BY g.updated DESC LIMIT 100`).bind(me, me, me).all()).results;
     const av = (await DB.prepare("SELECT av FROM ch_users WHERE id = ?").bind(me).first())?.av || 0;
-    return chOut({ channels: ch, dms, groups, requests, blocks, online, av });
+    return chOut({ channels: ch, dms, groups, requests, blocks, online, people, av });
   }
 
   // One poll returns new messages for the open room plus any call signals for me.
