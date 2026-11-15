@@ -3873,6 +3873,14 @@ async function trBrowser(request, env, p, d, q, sess) {
     const rows = (await DB.prepare("SELECT w.*, p.address AS parent_address FROM tr_watch w LEFT JOIN tr_watch p ON p.id = w.parent_id ORDER BY w.hop, w.added DESC LIMIT 5000").all()).results;
     return trOut({ watch: rows });
   }
+  // Flow map: the watch tree plus every place the money reached a service, mixer, bridge or swap.
+  if (p === "/flow") {
+    const [n, e] = await DB.batch([
+      DB.prepare("SELECT id, chain, address, label, parent_id, hop, last_activity, paused FROM tr_watch ORDER BY hop, id LIMIT 5000"),
+      DB.prepare("SELECT a.id, a.watch_id, a.chain, a.tx, a.ts, a.tag, a.amount, a.asset, a.counterparty, a.status, l.name FROM tr_alerts a LEFT JOIN tr_labels l ON l.chain = a.chain AND l.address = LOWER(a.counterparty) WHERE a.tag IN ('exchange', 'mixer', 'bridge', 'dex_swap', 'dispersal') AND a.status != 'dismissed' ORDER BY a.ts DESC LIMIT 2000"),
+    ]);
+    return trOut({ nodes: n.results, ends: e.results, explorer: TR_EXPLORER });
+  }
   if (post && p === "/watch") {
     const row = { chain: trChain(d.chain), address: trAddr(d.address), label: clean(d.label, 120), source: clean(d.source, 120), source_url: trUrl(d.source_url), paused: d.paused ? 1 : 0 };
     const id = Math.round(Number(d.id)) || 0;
@@ -4177,8 +4185,8 @@ const TR_KNOWN = {
 };
 function trKind(name) {
   if (/thorchain|maya|chainflip|bridge|across|stargate|wormhole|li\.?fi|synapse|celer|debridge|squid|symbiosis|rango|orbiter|hop protocol|axelar|layerzero/i.test(name)) return "bridge";
-  if (/tornado|railgun|mixer|blender|sinbad|wasabi|coinjoin|yomix/i.test(name)) return "mixer";
-  if (/binance|okx|okex|kraken|coinbase|bybit|kucoin|huobi|htx|mexc|gate\.?io|bitget|bitfinex|crypto\.com|bitstamp|gemini|upbit|bithumb|poloniex|bingx|lbank|whitebit|hot ?wallet|exchange|deposit/i.test(name)) return "exchange";
+  if (/tornado|railgun|mixer|blender|sinbad|wasabi|coinjoin|yomix|helix|bitfog|joinmarket|samourai|whirlpool|cryptomixer/i.test(name)) return "mixer";
+  if (/binance|okx|okex|kraken|coinbase|bybit|kucoin|huobi|htx|mexc|gate\.?io|bitget|bitfinex|crypto\.com|bitstamp|gemini|upbit|bithumb|poloniex|bingx|lbank|whitebit|bittrex|btc-e|cex\.io|localbitcoins|bitflyer|coincheck|luno|paxful|hitbtc|okcoin|bitmex|deribit|coinone|korbit|bitbank|garantex|nobitex|changenow|fixedfloat|sideshift|simpleswap|stealthex|hot ?wallet|exchange|deposit/i.test(name)) return "exchange";
   if (/uniswap|1inch|paraswap|kyber|0x|zeroex|cow ?(swap|protocol)|sushi|curve|balancer|pancake|odos|openocean|metamask|aggregat|swap|router|permit2/i.test(name)) return "dex_swap";
   return "";
 }
@@ -4206,6 +4214,40 @@ async function trLabel(DB, chain, addr, C) {
     await DB.prepare("INSERT OR REPLACE INTO tr_labels (chain, address, name, kind, contract, ts) VALUES (?, ?, ?, ?, ?, ?)").bind(chain, key, out.name, out.kind, out.contract, Date.now()).run();
     return out;
   } catch { return { name: "", kind: "", contract: 0, unknown: true }; }
+}
+
+// Bitcoin and Tron have no free label service like Blockscout, so:
+// Bitcoin asks WalletExplorer (it groups addresses into named wallets such as "Binance.com"), then falls back to how busy the address is.
+// Tron asks TronScan if a key is saved, then falls back to how many different senders pay the address in a day.
+// A named or busy destination is a service: alert on it, and never follow the trail into it (its other payments belong to other customers).
+async function trLabelOther(DB, chain, addr, C) {
+  const key = addr.toLowerCase();
+  const hit = await DB.prepare("SELECT name, kind, contract FROM tr_labels WHERE chain = ? AND address = ? AND ts > ?").bind(chain, key, Date.now() - 30 * 864e5).first();
+  if (hit) return hit;
+  let name = "", kind = "";
+  try {
+    if (chain === "btc") {
+      try {
+        const d = await trGet("https://www.walletexplorer.com/api/1/address-lookup?address=" + encodeURIComponent(addr) + "&caller=chainwatch", C);
+        if (d && d.found && d.label) { name = clean(d.label, 80); kind = trKind(name); if (!kind) { kind = "exchange"; name += " (named service)"; } }
+      } catch {}
+      if (!name) {
+        const d = await trGet("https://blockstream.info/api/address/" + addr, C), n = (d.chain_stats && d.chain_stats.tx_count) || 0;
+        if (n >= 2000) { name = "High-traffic wallet, " + n.toLocaleString("en-US") + " transactions (likely an exchange or service, unverified)"; kind = "exchange"; }
+      }
+    } else if (chain === "tron") {
+      if (C.keys.tronscan) {
+        try { const d = await trGet("https://apilist.tronscanapi.com/api/accountv2?address=" + addr, C, { "TRON-PRO-API-KEY": C.keys.tronscan }); const t = clean(d.addressTag || d.publicTag || "", 80); if (t) { name = t; kind = trKind(t) || "exchange"; } } catch {}
+      }
+      if (!name) {
+        await new Promise((r) => setTimeout(r, 400));
+        const d = await trGet(`https://api.trongrid.io/v1/accounts/${addr}/transactions/trc20?limit=50&only_to=true&contract_address=${TR_TRON_USDT}`, C), rows = d.data || [];
+        if (rows.length >= 50 && new Set(rows.map((r) => r.from)).size >= 25 && rows[0].block_timestamp - rows[rows.length - 1].block_timestamp < 864e5) { name = "High-traffic wallet, 50+ deposits a day (likely an exchange or payment service, unverified)"; kind = "exchange"; }
+      }
+    }
+  } catch { return { name: "", kind: "", contract: 0 }; } // lookup failed: treat as unlabelled and don't cache
+  await DB.prepare("INSERT OR REPLACE INTO tr_labels (chain, address, name, kind, contract, ts) VALUES (?, ?, ?, ?, 0, ?)").bind(chain, key, name, kind, Date.now()).run();
+  return { name, kind, contract: 0 };
 }
 
 // Each fetcher returns { moves: [{tx, ts, to, amount, asset, call}], marker } with only OUTGOING moves newer than the marker.
@@ -4247,7 +4289,7 @@ async function trBtc(w, C) {
     const mix = t.vin.length >= 10 && t.vout.length >= 10 && Math.max(...Object.values(counts)) >= 5; // CoinJoin shape
     outs.sort((a, b) => b.value - a.value);
     moves.push({ tx: t.txid, ts: t.status.block_time * 1000, to: outs[0].scriptpubkey_address, amount: outs.reduce((s, o) => s + o.value, 0) / 1e8, asset: "BTC", mix,
-      outs: outs.slice(0, 5).map((o) => ({ to: o.scriptpubkey_address, amount: o.value / 1e8 })), fan: outs.length });
+      outs: outs.slice(0, 8).map((o) => ({ to: o.scriptpubkey_address, amount: o.value / 1e8 })), fan: outs.length });
   }
   const newest = txs.find((t) => t.status && t.status.confirmed);
   return { moves, marker: newest && newest.txid !== w.last_seen_tx ? newest.txid : null };
@@ -4305,6 +4347,7 @@ async function trTick(env, force) {
 
   const C = { calls: 0, keys: {} }, errors = [], fresh = [];
   if (s["key:etherscan"]) C.keys.etherscan = await acUnseal(env, s["key:etherscan"]);
+  if (s["key:tronscan"]) C.keys.tronscan = await acUnseal(env, s["key:tronscan"]);
   let seeded = 0;
   if (s.auto_seed !== "0" && now - Number(s.seeds_at || 0) > 7 * 864e5) { try { seeded = (await trSeedImport(env)).added; } catch (e) { errors.push("seeds: " + e.message); } }
 
@@ -4333,35 +4376,59 @@ async function trTick(env, force) {
         const woke = w.last_activity && newest - w.last_activity > dormant;
         const sums = {}; for (const m of moves) sums[m.asset] = (sums[m.asset] || 0) + m.amount;
         const fan = Math.max(new Set(moves.map((m) => m.to)).size, ...moves.map((m) => m.fan || 0));
-        // Biggest first; only the top few get a label lookup, an alert and a possible child.
-        const big = moves.filter((m) => m.call || m.amount >= (TR_MIN[m.asset] || 0)).sort((a, b) => b.amount - a.amount).slice(0, 3);
+        // Dispersal has three shapes: many receivers at once, a split into near-equal payments, or many receivers spread over a day.
+        let even = 0;
+        const sizes = {};
+        for (const m of moves) { if (m.call) continue; for (const o of m.outs || [m]) if (o.amount >= (TR_MIN[m.asset] || 0)) (sizes[m.asset] = sizes[m.asset] || []).push(o.amount); }
+        for (const list of Object.values(sizes)) { list.sort((x, y) => x - y); const mid = list[list.length >> 1]; even = Math.max(even, list.filter((x) => Math.abs(x - mid) <= mid * 0.03).length); }
+        if (even < 3) even = 0;
+        let day = 0;
+        if (fan < 5 && !even) {
+          const seen = new Set(moves.map((m) => m.to));
+          for (const r of (await DB.prepare("SELECT DISTINCT counterparty FROM tr_alerts WHERE watch_id = ? AND ts > ? AND tag IN ('transfer', 'dispersal', 'dormant_wake') LIMIT 30").bind(w.id, newest - 864e5).all()).results) seen.add(r.counterparty);
+          if (seen.size >= 5) day = seen.size;
+        }
+        const wide = fan >= 5 || even > 0 || day > 0;
+        // Biggest first. Normally the top 3 get a label lookup, an alert and a possible child; a dispersal follows up to 8 receivers.
+        const big = moves.filter((m) => m.call || m.amount >= (TR_MIN[m.asset] || 0)).sort((a, b) => b.amount - a.amount).slice(0, wide ? 8 : 3);
         let first = true;
-        for (const m of big) {
-          const lab = m.mix ? { name: "CoinJoin-style mix", kind: "mixer", contract: 1 } : w.chain === "btc" || w.chain === "tron" ? { name: "", kind: "", contract: 0 } : await trLabel(DB, w.chain, m.to, C);
+        for (let bi = 0; bi < big.length; bi++) {
+          const m = big[bi];
+          if (bi >= 3 && C.calls >= 36) break; // stay well inside the subrequest limit
+          let to = m.to, lab = { name: "", kind: "", contract: 0 };
+          if (m.mix) lab = { name: "CoinJoin-style mix", kind: "mixer", contract: 1 };
+          else if (w.chain === "btc") {
+            // Label the biggest outputs. If one is a named service, that output is what the alert is about.
+            for (const o of (m.outs || []).slice(0, wide ? 6 : 3)) { if (C.calls >= 42) break; o.lab = await trLabelOther(DB, "btc", o.to, C); }
+            const svc = (m.outs || []).find((o) => o.lab && o.lab.kind);
+            if (svc) { lab = svc.lab; to = svc.to; }
+          } else if (w.chain === "tron") lab = await trLabelOther(DB, "tron", m.to, C);
+          else lab = await trLabel(DB, w.chain, m.to, C);
           if (m.call && !lab.kind) continue; // a contract call we can't name: not worth an alert
-          let tag = lab.kind || (first && woke ? "dormant_wake" : first && fan >= 5 ? "dispersal" : "transfer");
+          let tag = lab.kind || (first && woke ? "dormant_wake" : first && wide ? "dispersal" : "transfer");
           const kids = [];
           const follow = (chain, address, amount, label) => { if (w.hop + 1 <= maxHops && total < TR_MAX_WATCH && now - m.ts < lookback) kids.push([chain, address, label || ""]); };
           let extra = "";
+          const floor = (wide ? 3 : 10) * (TR_MIN[m.asset] || 0);
           if (lab.kind === "bridge" && /thorchain/i.test(lab.name)) {
             try { const out = await trThor(m.tx, C); if (out) { follow(out.chain, out.address, 0, "THORChain swap out"); extra = ` The swap pays out to ${out.chain} ${out.address}, now on the watchlist. Confirm it on a second explorer.`; } } catch { extra = " Couldn't read the swap's destination yet."; }
+          } else if (m.outs && !m.mix) {
+            for (const o of m.outs.slice(0, wide ? 6 : 3)) if (!(o.lab && o.lab.kind) && o.amount >= floor && (wide || o.amount / m.amount >= pct)) follow(w.chain, o.to, o.amount);
           } else if (!lab.kind && !lab.contract && !lab.unknown) {
-            const share = (x) => x.amount >= 10 * (TR_MIN[m.asset] || 0) && x.amount / (sums[m.asset] || 1) >= pct;
-            if (m.outs) { for (const o of m.outs.slice(0, 3)) if (o.amount >= 10 * TR_MIN.BTC && o.amount / m.amount >= pct) follow(w.chain, o.to, o.amount); }
-            else if (share(m)) follow(w.chain, m.to, m.amount);
+            if (m.amount >= floor && (wide || m.amount / (sums[m.asset] || 1) >= pct)) follow(w.chain, m.to, m.amount);
           }
           for (const [chain, address, label] of kids) {
             const r = await DB.prepare("INSERT OR IGNORE INTO tr_watch (chain, address, label, source, source_url, added, parent_id, hop, paused) VALUES (?, ?, ?, ?, '', ?, ?, ?, 0)").bind(chain, address, label || (w.label ? "from " + w.label.replace(/^from /, "") : ""), w.source || "", now, w.id, w.hop + 1).run();
             total += r.meta?.changes || 0;
           }
           // Alerts are for fresh movement only; older history is followed quietly.
-          if (m.ts > Math.max(w.added - 48 * 36e5, now - 14 * 864e5)) {
+          if ((bi < 3 || lab.kind) && m.ts > Math.max(w.added - 48 * 36e5, now - 14 * 864e5)) {
             const what = m.call ? "called" : `sent ${trFmt(m.amount)} ${m.asset} to`;
-            const where = lab.name ? `${lab.name} (${trShort(m.to)})` : (m.fan > 1 ? `${m.fan} addresses, the largest ` : "") + trShort(m.to);
-            const why = { bridge: "This looks like a cross-chain move.", dex_swap: "This looks like a token swap.", mixer: "This looks like a mixer, where the trail usually ends.", exchange: "This looks like an exchange, which can freeze funds and knows the account holder. Report fast.", dormant_wake: `The address had been quiet for ${Math.round((newest - w.last_activity) / 864e5)} days.`, dispersal: `It paid ${fan} different addresses in this batch.`, transfer: kids.length ? "The receiver is now on the watchlist." : "" }[tag] || "";
+            const where = lab.name ? `${lab.name} (${trShort(to)})` : (m.fan > 1 ? `${m.fan} addresses, the largest ` : "") + trShort(to);
+            const why = { bridge: "This looks like a cross-chain move.", dex_swap: "This looks like a token swap.", mixer: "This looks like a mixer, where the trail usually ends.", exchange: "This looks like an exchange, which can freeze funds and knows the account holder. Report fast.", dormant_wake: `The address had been quiet for ${Math.round((newest - w.last_activity) / 864e5)} days.`, dispersal: (fan >= 5 ? `It paid ${fan} different addresses in this batch.` : even ? `It split the funds into ${even} near-equal payments, a common way to break up a trail.` : `It has paid ${day} different addresses within a day.`) + (kids.length ? " The largest receivers are now on the watchlist." : ""), transfer: kids.length ? "The receiver is now on the watchlist." : "" }[tag] || "";
             const summary = `${w.label || "Watched address"} (${w.hop ? "hop " + w.hop : "seed"}) ${what} ${where}. ${why}${extra}`.trim();
             const r = await DB.prepare("INSERT OR IGNORE INTO tr_alerts (watch_id, chain, address, tx, ts, tag, amount, asset, counterparty, summary, status, created) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'new', ?)")
-              .bind(w.id, w.chain, w.address, m.tx, m.ts, tag, m.call ? "" : trFmt(m.amount), m.call ? "" : m.asset, m.to, summary, now).run();
+              .bind(w.id, w.chain, w.address, m.tx, m.ts, tag, m.call ? "" : trFmt(m.amount), m.call ? "" : m.asset, to, summary, now).run();
             if (r.meta?.changes) fresh.push({ tag, summary });
           }
           first = false;

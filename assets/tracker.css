@@ -93,3 +93,22 @@ body .tr .tr-lead h3{font-family:inherit!important;font-size:.72rem!important;fo
 .tr-headside{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .tr-check{justify-content:flex-end}.tr-check span{display:flex;gap:8px;align-items:flex-start;font-weight:400;font-size:.92rem}
 .tr-chip.t-transfer{color:var(--ink-soft)}
+
+/* flow map */
+.tr-flowsum{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:0 0 14px}
+.tr-flowstat{border:1px solid var(--line);border-radius:var(--tr-r);padding:12px 14px;display:flex;flex-direction:column}
+.tr-flowstat b{font-family:Georgia,"Times New Roman",serif;font-weight:400;font-size:1.7rem;line-height:1.1}
+.tr-flowstat span{font-size:.82rem;color:var(--ink-soft)}
+.tr-flowstat.hot{border-color:var(--bad)}.tr-flowstat.hot b{color:var(--bad)}
+.tr-trail{overflow-x:auto}
+.tr-fmeta{margin:0 0 8px;font-size:.8rem;color:var(--ink-soft)}
+.tr-flow{list-style:none;margin:6px 0 2px 9px;padding:0 0 0 16px;border-left:2px solid var(--line-strong)}
+.tr-flow>li{position:relative;padding:4px 0}
+.tr-flow>li::before{content:"";position:absolute;left:-16px;top:17px;width:12px;border-top:2px solid var(--line-strong)}
+.tr-fnode{display:inline-flex;flex-wrap:wrap;align-items:center;gap:6px 8px;font-size:.9rem;vertical-align:middle}
+.tr-trail summary{cursor:pointer;list-style-position:outside;margin-left:16px;font-family:inherit}
+.tr-fhop,.tr-fwhen{font-size:.78rem;color:var(--ink-soft)}
+.tr-flabel{font-size:.82rem;color:var(--ink-soft);max-width:32ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tr-fend{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;font-size:.9rem}
+.tr-fend.t-exchange b,.tr-fend.t-mixer b{color:var(--bad)}
+.tr-link{border:0;background:none;padding:0;font:inherit;font-size:.78rem;color:var(--ink-soft);text-decoration:underline;cursor:pointer}

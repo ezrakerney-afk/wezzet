@@ -12,7 +12,7 @@
 <script>try{(function(t){if(t==="dark"||t==="light")document.documentElement.dataset.theme=t})(localStorage.getItem("wz-theme"))}catch(e){}</script>
 <link rel="stylesheet" href="/assets/site.css?v=7">
 <link rel="stylesheet" href="/assets/skin.css?v=2">
-<link rel="stylesheet" href="/assets/tracker.css?v=3">
+<link rel="stylesheet" href="/assets/tracker.css?v=4">
 </head>
 <body>
 <header class="site-header">
@@ -47,7 +47,7 @@
       <div class="tr-setup" id="tr-setup" hidden></div>
 
       <nav class="tr-tabs" role="tablist" aria-label="Sections">
-        <button type="button" role="tab" data-tab="watch">Watchlist</button><button type="button" role="tab" data-tab="alerts">Alerts <span class="n" id="tab-alerts-n" hidden></span></button><button type="button" role="tab" data-tab="leads">Leads</button><button type="button" role="tab" data-tab="runs">Run log</button><button type="button" role="tab" data-tab="settings">Settings</button>
+        <button type="button" role="tab" data-tab="watch">Watchlist</button><button type="button" role="tab" data-tab="alerts">Alerts <span class="n" id="tab-alerts-n" hidden></span></button><button type="button" role="tab" data-tab="flow">Flow map</button><button type="button" role="tab" data-tab="leads">Leads</button><button type="button" role="tab" data-tab="runs">Run log</button><button type="button" role="tab" data-tab="settings">Settings</button>
       </nav>
       <p class="tr-note" id="tr-status" role="status" aria-live="polite"></p>
 
@@ -99,6 +99,16 @@
         </div>
         <div class="tr-sel" id="a-sel" hidden><span id="a-sel-n"></span><button class="btn" type="button" data-act="a-promote">Promote to lead</button><select id="a-lead" aria-label="Which lead"><option value="">as a new lead</option></select><button class="btn btn-quiet" type="button" data-act="a-seen">Mark seen</button><button class="btn btn-quiet" type="button" data-act="a-dismiss">Dismiss</button></div>
         <div id="a-list" class="tr-alerts"></div>
+      </section>
+
+      <section data-pane="flow" hidden>
+        <p class="tr-intro">Where the money went. Each trail starts at an official seed address and follows the funds hop by hop to where they reached an exchange, mixer, bridge or swap. Exchanges matter most: they can freeze funds.</p>
+        <div class="tr-flowsum" id="f-sum"></div>
+        <div class="tr-bar">
+          <div class="tr-seg" id="f-view"><button type="button" data-v="ends" class="on">Trails with an endpoint</button><button type="button" data-v="moved">All trails that moved</button></div>
+          <select id="f-tag" aria-label="Endpoint type"><option value="">Any endpoint</option><option value="exchange">Exchange</option><option value="mixer">Mixer</option><option value="bridge">Bridge</option><option value="dex_swap">DEX swap</option></select>
+        </div>
+        <div id="f-list"></div>
       </section>
 
       <section data-pane="leads" hidden>
@@ -170,7 +180,7 @@
   </div>
 </main>
 <script src="/assets/account.js?v=3" defer></script>
-<script src="/assets/tracker.js?v=3" defer></script>
+<script src="/assets/tracker.js?v=4" defer></script>
 <script src="/assets/theme.js?v=4" defer></script>
 </body>
 </html>

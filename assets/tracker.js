@@ -18,7 +18,7 @@
   const txLink = (a) => (S.explorer[a.chain] ? el("a", { className: "mono", href: S.explorer[a.chain] + a.tx, target: "_blank", rel: "noopener noreferrer", textContent: short(a.tx), title: "Open in explorer" }) : el("span", { className: "mono", textContent: short(a.tx) }));
   const copyText = async (t, ok) => { try { await navigator.clipboard.writeText(t); status(ok, "good"); } catch { status("Couldn't copy. Select the text instead.", true); } };
   const empty = (cols, text) => el("tr", {}, el("td", { colSpan: cols, className: "tr-empty", textContent: text }));
-  let S = { watch: [], alerts: [], explorer: {}, leads: [], wView: "seeds", aView: "new" };
+  let S = { watch: [], alerts: [], explorer: {}, leads: [], wView: "seeds", aView: "new", fView: "ends", flow: null };
 
   // ---- gate ----
   async function start() {
@@ -67,7 +67,7 @@
     $$(".tr-tabs button").forEach((b) => { b.classList.toggle("on", b.dataset.tab === name); b.setAttribute("aria-selected", b.dataset.tab === name); });
     $$("[data-pane]").forEach((p) => (p.hidden = p.dataset.pane !== name));
     history.replaceState(null, "", "#" + name); status("");
-    ({ watch: loadWatch, alerts: loadAlerts, leads: loadLeads, settings: loadSettings, runs: loadRuns })[name]();
+    ({ watch: loadWatch, flow: loadFlow, alerts: loadAlerts, leads: loadLeads, settings: loadSettings, runs: loadRuns })[name]();
   }
   $(".tr-tabs").onclick = (e) => { const b = e.target.closest("button[data-tab]"); if (b) tab(b.dataset.tab); };
   $("#tr-stats").onclick = (e) => { const b = e.target.closest("[data-go]"); if (b) tab(b.dataset.go); };
@@ -105,6 +105,46 @@
   };
 
   // ---- alerts ----
+  // ---- flow map: seed -> hops -> where the money landed ----
+  async function loadFlow() {
+    const r = await api("flow"); if (!show(r)) return;
+    S.flow = r; S.explorer = r.explorer; drawFlow();
+  }
+  function drawFlow() {
+    const { nodes, ends } = S.flow, want = $("#f-tag").value;
+    const kids = new Map(), endsOf = new Map();
+    for (const n of nodes) if (n.parent_id) (kids.get(n.parent_id) || kids.set(n.parent_id, []).get(n.parent_id)).push(n);
+    for (const e of ends) if (e.tag !== "dispersal") (endsOf.get(e.watch_id) || endsOf.set(e.watch_id, []).get(e.watch_id)).push(e);
+    const split = new Set(ends.filter((e) => e.tag === "dispersal").map((e) => e.watch_id));
+    // How many endpoints of the wanted type sit at or below each node.
+    const reach = new Map();
+    const count = (n, seen) => { if (reach.has(n.id)) return reach.get(n.id); if (seen.has(n.id)) return 0; seen.add(n.id);
+      let c = (endsOf.get(n.id) || []).filter((e) => !want || e.tag === want).length; for (const k of kids.get(n.id) || []) c += count(k, seen); reach.set(n.id, c); return c; };
+    const size = (n) => 1 + (kids.get(n.id) || []).reduce((s, k) => s + size(k), 0);
+    const totals = { exchange: 0, mixer: 0, bridge: 0, dex_swap: 0 }; for (const e of ends) if (e.tag in totals) totals[e.tag]++;
+    $("#f-sum").replaceChildren(...Object.entries(totals).map(([t, n]) => el("div", { className: "tr-flowstat" + (n && (t === "exchange" || t === "mixer") ? " hot" : "") }, el("b", { textContent: n }), el("span", { textContent: TAGS[t] + (n === 1 ? " endpoint" : " endpoints") }))));
+    const node = (n, open) => {
+      const mine = (endsOf.get(n.id) || []).filter((e) => !want || e.tag === want), below = (kids.get(n.id) || []).filter((k) => S.fView === "moved" || count(k, new Set()) > 0);
+      const head = el("div", { className: "tr-fnode" }, chain(n.chain), el("span", { className: "mono", textContent: short(n.address), title: n.address }),
+        n.hop ? el("span", { className: "tr-fhop", textContent: "hop " + n.hop }) : el("span", { className: "tr-chip s-new", textContent: "seed" }),
+        split.has(n.id) ? tagChip("dispersal") : "", n.label ? el("span", { className: "tr-flabel", textContent: n.label }) : "",
+        n.last_activity ? el("span", { className: "tr-fwhen", textContent: "moved " + ago(n.last_activity) }) : "",
+        el("button", { type: "button", className: "tr-link", textContent: "Copy", onclick: (ev) => { ev.preventDefault(); copyText(n.address, "Address copied."); } }));
+      const list = el("ul", { className: "tr-flow" },
+        ...mine.map((e) => el("li", { className: "tr-fend t-" + e.tag }, tagChip(e.tag), el("b", { textContent: e.name || short(e.counterparty) }), e.amount ? el("span", { textContent: e.amount + " " + e.asset }) : "", el("span", { className: "tr-fwhen", textContent: when(e.ts) }), txLink(e))),
+        ...below.map((k) => el("li", {}, node(k, below.length + mine.length <= 3))));
+      if (!mine.length && !below.length) return head;
+      const d = el("details", { open }, el("summary", {}, head), list); return d;
+    };
+    const seeds = nodes.filter((n) => !n.parent_id).filter((n) => (S.fView === "moved" ? (kids.get(n.id) || []).length || (endsOf.get(n.id) || []).length : count(n, new Set()) > 0))
+      .sort((a, b) => count(b, new Set()) - count(a, new Set()) || size(b) - size(a));
+    $("#f-list").replaceChildren(...(seeds.length ? seeds.slice(0, 200).map((n, i) => el("div", { className: "tr-card tr-trail" },
+      el("p", { className: "tr-fmeta", textContent: (size(n) > 1 ? size(n) - 1 + (size(n) === 2 ? " address followed, " : " addresses followed, ") : "Straight from the seed, ") + count(n, new Set()) + (want ? " " + TAGS[want].toLowerCase() : "") + " endpoint" + (count(n, new Set()) === 1 ? "" : "s") }), node(n, i < 3)))
+      : [el("div", { className: "tr-card tr-empty", textContent: S.fView === "ends" ? "No trail has reached an exchange, mixer, bridge or swap yet. Try \"All trails that moved\"." : "Nothing has moved yet. Trails appear here once a watched address sends funds." })]));
+  }
+  $("#f-view").onclick = (e) => { const b = e.target.closest("button[data-v]"); if (!b || !S.flow) return; S.fView = b.dataset.v; $$("#f-view button").forEach((x) => x.classList.toggle("on", x === b)); drawFlow(); };
+  $("#f-tag").onchange = () => S.flow && drawFlow();
+
   async function loadAlerts() {
     const q = new URLSearchParams(); if ($("#a-tag").value) q.set("tag", $("#a-tag").value); if (S.aView) q.set("status", S.aView);
     const [r, l] = await Promise.all([api("alerts?" + q), api("leads")]);
@@ -211,7 +251,7 @@
       if (r.error) return status(r.error, true);
       const x = r.result || {};
       status(x.skipped === "busy" ? "A check ran a few seconds ago. Try again in a moment." : x.skipped ? "The watcher is " + (x.skipped === "paused" ? "paused" : "set to an external script") + ". Change that in Settings." : "Checked " + (x.checked || 0) + " addresses, " + (x.alerts || 0) + " new alert" + (x.alerts === 1 ? "" : "s") + (x.errors && x.errors.length ? ". " + x.errors.length + " had errors (see Run log)." : "."), x.skipped || (x.errors && x.errors.length) ? true : "good");
-      const m = $("#tr-status").textContent, c = $("#tr-status").className; const cur = $(".tr-tabs button.on"); if (cur) await ({ watch: loadWatch, alerts: loadAlerts, runs: loadRuns })[cur.dataset.tab]?.(); $("#tr-status").textContent = m; $("#tr-status").className = c; summary();
+      const m = $("#tr-status").textContent, c = $("#tr-status").className; const cur = $(".tr-tabs button.on"); if (cur) await ({ watch: loadWatch, flow: loadFlow, alerts: loadAlerts, runs: loadRuns })[cur.dataset.tab]?.(); $("#tr-status").textContent = m; $("#tr-status").className = c; summary();
     }
     if (act === "seeds") {
       b.disabled = true; const r = await api("seeds", {}); b.disabled = false;
