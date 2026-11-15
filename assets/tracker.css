@@ -1,0 +1,21 @@
+.tr-top{margin:0 0 6px}.tr-h1{font-size:2rem;font-weight:800;line-height:1.2}.tr-top .hint{margin:4px 0 0}.tr-grid .tr-chk{margin:4px 0}
+.tr-tabs{display:flex;flex-wrap:wrap;gap:4px;border-bottom:1px solid var(--line);margin:8px 0 12px}
+.tr-tabs button{background:none;border:0;border-bottom:2px solid transparent;padding:8px 12px;font:inherit;font-weight:600;color:var(--ink-soft);cursor:pointer}
+.tr-tabs button.on{color:var(--ink);border-bottom-color:var(--ink)}
+.tr-tabs .n{font-size:.75rem;background:var(--ink);color:var(--bg);border-radius:9px;padding:1px 6px;margin-left:4px}
+.tr-note{min-height:1.2em;margin:0 0 8px;color:var(--ink-soft)}.tr-note.err{color:var(--bad)}
+.tr-box{border:1px solid var(--line);border-radius:8px;padding:12px 14px;margin:0 0 12px}.tr-box summary{cursor:pointer;font-weight:600}.tr-box h2{font-size:1.05rem;margin:0 0 6px}
+.tr-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin-top:10px}
+.tr-grid label{display:flex;flex-direction:column;gap:4px;font-size:.9rem;font-weight:600}.tr-grid .wide{grid-column:span 2}.tr-grid .full{grid-column:1/-1}
+.tr-grid h2{font-size:1.05rem;margin:10px 0 0}.tr-grid small{font-weight:400;color:var(--ink-soft)}
+.tr-grid input,.tr-grid select,.tr-grid textarea,.tr-bar input,.tr-bar select,.tr-lead textarea,.tr-lead input,.tr-lead select{width:100%;box-sizing:border-box;font:inherit;padding:7px 9px;border:1px solid var(--line-strong);border-radius:6px;background:var(--bg);color:var(--ink)}
+.tr-chk{flex-direction:row!important;align-items:center;gap:8px!important;font-weight:400!important}.tr-chk input{width:auto!important}
+.tr-bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 10px}.tr-bar input[type=text]{flex:1 1 220px;width:auto}.tr-bar select{width:auto}
+.tr-scroll{overflow-x:auto}.tr-table{font-size:.88rem;min-width:720px}.tr-table td{vertical-align:top}
+.tr-table .mono,.tr-pre,.tr-lead pre{font-family:ui-monospace,Menlo,Consolas,monospace;overflow-wrap:anywhere}
+.tr-table tr.paused td{opacity:.55}.tr-table .sum{max-width:340px}.tr-tag{font-weight:600}
+.tr-pre,.tr-lead pre{white-space:pre-wrap;background:var(--line);padding:10px;border-radius:6px;font-size:.85rem;max-height:420px;overflow:auto}
+.tr-lead{border:1px solid var(--line);border-radius:8px;padding:12px 14px;margin:0 0 12px}.tr-lead .tr-grid{margin-top:6px}
+.tr-lead ul{margin:6px 0;padding-left:18px;font-size:.88rem}
+.tr-big{font-size:1.15rem;font-weight:600}.tr-big.warn,.tr-warn{color:var(--bad)}
+@media (max-width:520px){.tr-grid .wide{grid-column:1/-1}}

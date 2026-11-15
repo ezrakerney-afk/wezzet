@@ -24,6 +24,7 @@ export default {
     if (url.pathname === "/mcp/app" || url.pathname === "/mcp/app/") return mcpApp(request, env, ctx);
     if (url.pathname.startsWith("/oauth/") || url.pathname.startsWith("/.well-known/oauth-") || url.pathname === "/.well-known/openid-configuration") return oauth(request, env, url);
     if (url.pathname.startsWith("/api/chat/")) return chat(request, env, url, ctx);
+    if (url.pathname === "/api/tracker" || url.pathname.startsWith("/api/tracker/")) return trWatcher(request, env, url);
     if (url.pathname.startsWith("/api/forum/")) {
       if (!env.DB) return json({ error: "The forum database isn't connected yet." }, 503);
       try {
@@ -45,6 +46,7 @@ export default {
     out.headers.set("X-Content-Type-Options", "nosniff");
     out.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
     out.headers.set("X-Frame-Options", "SAMEORIGIN");
+    if (/^\/tracker(\.html)?\/?$/.test(url.pathname)) { out.headers.set("X-Robots-Tag", "noindex, nofollow"); out.headers.set("Cache-Control", "no-store"); out.headers.set("X-Frame-Options", "DENY"); }
     if (url.pathname.startsWith("/vendor/") && res.ok) out.headers.set("Cache-Control", "public, max-age=31536000, immutable");
     // Pages link CSS/JS with ?v=N and bump N on every change, so those URLs can be cached for good.
     else if (url.pathname.startsWith("/assets/") && /\.(css|js)$/.test(url.pathname) && /^\?v=\d+$/.test(url.search) && res.ok) out.headers.set("Cache-Control", "public, max-age=31536000, immutable");
@@ -3052,6 +3054,7 @@ async function chRoute(request, env, url, ctx) {
   if (p === "/google/start" || p === "/google") return googleLogin(request, env, p, d, sess, ip);
   if (!sess || sess.banned) return chOut({ me: null, error: sess ? "This account is suspended." : "Sign in to chat." }, p === "/me" ? 200 : 401);
   const me = sess.id;
+  if (p === "/tracker" || p.startsWith("/tracker/")) return trBrowser(request, env, p, d, q, sess);
 
   // Change my public username (5 changes a day).
   if (post && p === "/username") {
@@ -3786,4 +3789,339 @@ async function transport(request, url, env) {
     }
     return json({ error: 'mode must be flights, trains, ships, airports, ports, stations or railways' }, 400);
   } catch (err) { return json({ error: 'The live source is busy or unreachable right now (' + err.message + '). Try again in a minute.' }, 502); }
+}
+
+/* ---------- Chain Watch tracker (/tracker): private, owner-only, READ-ONLY ----------
+   A separate watcher script reads public blockchain data and reports here. Nothing in this code holds a wallet,
+   signs or sends a transaction, contacts anyone, or submits a tip: tips are plain-text drafts the owner copies by hand.
+   Owner = the Wezzet login name (ch_users.name) in the TRACKER_OWNER Pages variable; unset means off for everyone.
+   API keys are sealed with acSeal (TOKEN_SEAL_KEY) and never sent to the browser; the watcher token is stored as a hash. */
+const TR_SCHEMA = [
+  "CREATE TABLE IF NOT EXISTS tr_watch (id INTEGER PRIMARY KEY, chain TEXT, address TEXT, label TEXT, source TEXT, source_url TEXT, added INTEGER, parent_id INTEGER, hop INTEGER DEFAULT 0, paused INTEGER DEFAULT 0, last_seen_tx TEXT, last_activity INTEGER, UNIQUE(chain, address))",
+  "CREATE TABLE IF NOT EXISTS tr_alerts (id INTEGER PRIMARY KEY, watch_id INTEGER, chain TEXT, address TEXT, tx TEXT, ts INTEGER, tag TEXT, amount TEXT, asset TEXT, counterparty TEXT, summary TEXT, status TEXT DEFAULT 'new', created INTEGER, UNIQUE(chain, tx, address))",
+  "CREATE INDEX IF NOT EXISTS tr_alerts_created ON tr_alerts (created)",
+  "CREATE TABLE IF NOT EXISTS tr_leads (id INTEGER PRIMARY KEY, title TEXT, notes TEXT, status TEXT DEFAULT 'investigating', alert_ids TEXT, draft TEXT, created INTEGER, updated INTEGER)",
+  "CREATE TABLE IF NOT EXISTS tr_settings (k TEXT PRIMARY KEY, v TEXT)",
+  "CREATE TABLE IF NOT EXISTS tr_runs (id INTEGER PRIMARY KEY, started INTEGER, finished INTEGER, checked INTEGER, calls INTEGER, alerts INTEGER, errors TEXT)",
+];
+let trReady = false;
+const TR_KEYS = ["etherscan", "tronscan", "claude", "telegram_token", "telegram_chat"];
+const TR_TAGS = ["dispersal", "dex_swap", "bridge", "mixer", "exchange", "dormant_wake"];
+const TR_ALERT_ST = ["new", "seen", "dismissed", "promoted"];
+const TR_LEAD_ST = ["investigating", "ready", "submitted", "dropped"];
+const TR_DEFAULTS = { interval: "30", channel: "email", email: "", child_pct: "10", max_hops: "5", dormant_days: "30", paused: "0", keys_mode: "wezzet" };
+const TR_EXPLORER = { eth: "https://etherscan.io/tx/", bsc: "https://bscscan.com/tx/", arb: "https://arbiscan.io/tx/", base: "https://basescan.org/tx/", polygon: "https://polygonscan.com/tx/", op: "https://optimistic.etherscan.io/tx/", avax: "https://snowtrace.io/tx/", btc: "https://mempool.space/tx/", tron: "https://tronscan.org/#/transaction/" };
+const trOut = (d, s = 200) => json(d, s, { "x-robots-tag": "noindex" });
+const trChain = (c) => { c = String(c || "").trim().toLowerCase(); return /^[a-z0-9]{2,12}$/.test(c) ? c : ""; };
+const trAddr = (a) => { a = String(a || "").trim(); return /^[A-Za-z0-9:_-]{10,100}$/.test(a) ? a : ""; };
+const trTx = (t) => { t = String(t || "").trim(); return /^[A-Za-z0-9:_-]{10,130}$/.test(t) ? t : ""; };
+const trInt = (v, lo, hi, dflt) => { const n = Math.round(Number(v)); return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : dflt; };
+const trTime = (v) => { const n = typeof v === "number" ? v : Date.parse(v); return Number.isFinite(n) ? (n < 1e12 ? n * 1000 : n) : null; };
+const trUrl = (u) => { u = clean(u, 500); return /^https:\/\//i.test(u) ? u : ""; };
+function trEq(a, b) { if (a.length !== b.length) return false; let x = 0; for (let i = 0; i < a.length; i++) x |= a.charCodeAt(i) ^ b.charCodeAt(i); return x === 0; }
+
+async function trInit(env) {
+  if (trReady) return;
+  await env.DB.batch(TR_SCHEMA.map((s) => env.DB.prepare(s)));
+  trReady = true;
+}
+async function trSettings(DB) {
+  const rows = (await DB.prepare("SELECT k, v FROM tr_settings").all()).results;
+  const s = { ...TR_DEFAULTS };
+  for (const r of rows) s[r.k] = r.v;
+  return s;
+}
+const trSet = (DB, k, v) => DB.prepare("INSERT INTO tr_settings (k, v) VALUES (?, ?) ON CONFLICT(k) DO UPDATE SET v = excluded.v").bind(k, String(v));
+
+// ---- Browser side: /api/chat/tracker/* (cookie session from chRoute, its CSRF guard already ran) ----
+async function trBrowser(request, env, p, d, q, sess) {
+  const owner = String(env.TRACKER_OWNER || "").trim().toLowerCase();
+  const login = await env.DB.prepare("SELECT name FROM ch_users WHERE id = ?").bind(sess.id).first();
+  if (!owner || !login || String(login.name).toLowerCase() !== owner) return trOut({ error: "Not available." }, 403);
+  await trInit(env);
+  const DB = env.DB, post = request.method === "POST", now = Date.now();
+  const ids = (v) => (Array.isArray(v) ? v : [v]).map((x) => Math.round(Number(x))).filter((x) => x > 0).slice(0, 500);
+  const inIds = (list) => list.map(() => "?").join(",");
+  p = p.slice("/tracker".length) || "/";
+
+  if (p === "/" || p === "/me") return trOut({ ok: true, seal: !!(await acSealKey(env)) });
+
+  if (p === "/watch" && !post) {
+    const rows = (await DB.prepare("SELECT w.*, p.address AS parent_address FROM tr_watch w LEFT JOIN tr_watch p ON p.id = w.parent_id ORDER BY w.hop, w.added DESC LIMIT 5000").all()).results;
+    return trOut({ watch: rows });
+  }
+  if (post && p === "/watch") {
+    const row = { chain: trChain(d.chain), address: trAddr(d.address), label: clean(d.label, 120), source: clean(d.source, 120), source_url: trUrl(d.source_url), paused: d.paused ? 1 : 0 };
+    const id = Math.round(Number(d.id)) || 0;
+    if (!row.chain || !row.address) return trOut({ error: "Enter a chain (eth, btc, tron...) and a valid address." }, 400);
+    try {
+      if (id) await DB.prepare("UPDATE tr_watch SET chain=?, address=?, label=?, source=?, source_url=?, paused=? WHERE id=?").bind(row.chain, row.address, row.label, row.source, row.source_url, row.paused, id).run();
+      else await DB.prepare("INSERT INTO tr_watch (chain, address, label, source, source_url, added, hop, paused) VALUES (?, ?, ?, ?, ?, ?, 0, ?)").bind(row.chain, row.address, row.label, row.source, row.source_url, now, row.paused).run();
+    } catch { return trOut({ error: "That address is already on the watchlist for this chain." }, 409); }
+    return trOut({ ok: true });
+  }
+  if (post && p === "/watch/pause") {
+    const list = ids(d.ids); if (!list.length) return trOut({ error: "Nothing selected." }, 400);
+    await DB.prepare(`UPDATE tr_watch SET paused = ? WHERE id IN (${inIds(list)})`).bind(d.paused ? 1 : 0, ...list).run();
+    return trOut({ ok: true });
+  }
+  if (post && p === "/watch/delete") {
+    const list = ids(d.ids); if (!list.length) return trOut({ error: "Nothing selected." }, 400);
+    await DB.batch([
+      DB.prepare(`UPDATE tr_watch SET parent_id = NULL WHERE parent_id IN (${inIds(list)})`).bind(...list),
+      DB.prepare(`DELETE FROM tr_watch WHERE id IN (${inIds(list)})`).bind(...list),
+    ]);
+    return trOut({ ok: true });
+  }
+  // Bulk paste: one address per line, optionally "address, chain" or "chain address". Default chain from the form.
+  if (post && p === "/watch/import") {
+    const dflt = trChain(d.chain), label = clean(d.label, 120), source = clean(d.source, 120), surl = trUrl(d.source_url);
+    const lines = String(d.text || "").split(/\r?\n/).map((l) => l.trim()).filter(Boolean).slice(0, 2000);
+    const stmts = [], bad = [];
+    for (const l of lines) {
+      const parts = l.split(/[\s,;\t]+/).filter(Boolean);
+      let addr = "", chain = dflt;
+      for (const x of parts) { if (!addr && trAddr(x) && x.length > 12) addr = x; else if (trChain(x) && x.length <= 12) chain = trChain(x); }
+      if (!addr || !chain) { bad.push(l.slice(0, 80)); continue; }
+      stmts.push(DB.prepare("INSERT OR IGNORE INTO tr_watch (chain, address, label, source, source_url, added, hop, paused) VALUES (?, ?, ?, ?, ?, ?, 0, 0)").bind(chain, addr, label, source, surl, now));
+    }
+    let added = 0;
+    for (let i = 0; i < stmts.length; i += 100) for (const r of await DB.batch(stmts.slice(i, i + 100))) added += r.meta?.changes || 0;
+    return trOut({ added, skipped: stmts.length - added, bad: bad.slice(0, 20), badCount: bad.length });
+  }
+
+  if (p === "/alerts" && !post) {
+    const where = [], args = [];
+    if (TR_TAGS.includes(q.get("tag"))) { where.push("tag = ?"); args.push(q.get("tag")); }
+    if (TR_ALERT_ST.includes(q.get("status"))) { where.push("status = ?"); args.push(q.get("status")); }
+    const before = Number(q.get("before")); if (before > 0) { where.push("id < ?"); args.push(before); }
+    const rows = (await DB.prepare(`SELECT * FROM tr_alerts ${where.length ? "WHERE " + where.join(" AND ") : ""} ORDER BY id DESC LIMIT 200`).bind(...args).all()).results;
+    const counts = (await DB.prepare("SELECT status, COUNT(*) n FROM tr_alerts GROUP BY status").all()).results;
+    return trOut({ alerts: rows, counts, explorer: TR_EXPLORER });
+  }
+  if (post && p === "/alerts/status") {
+    const list = ids(d.ids); if (!list.length || !TR_ALERT_ST.includes(d.status)) return trOut({ error: "Pick alerts and a status." }, 400);
+    await DB.prepare(`UPDATE tr_alerts SET status = ? WHERE id IN (${inIds(list)})`).bind(d.status, ...list).run();
+    return trOut({ ok: true });
+  }
+  // Promote alerts to a new lead, or add them to an existing one.
+  if (post && p === "/alerts/promote") {
+    const list = ids(d.ids); if (!list.length) return trOut({ error: "Pick at least one alert." }, 400);
+    const lid = Math.round(Number(d.lead_id)) || 0;
+    if (lid) {
+      const l = await DB.prepare("SELECT alert_ids FROM tr_leads WHERE id = ?").bind(lid).first();
+      if (!l) return trOut({ error: "That lead is gone." }, 404);
+      const merged = [...new Set([...JSON.parse(l.alert_ids || "[]"), ...list])].slice(0, 500);
+      await DB.prepare("UPDATE tr_leads SET alert_ids = ?, updated = ? WHERE id = ?").bind(JSON.stringify(merged), now, lid).run();
+    } else {
+      const first = await DB.prepare("SELECT chain, address, tag FROM tr_alerts WHERE id = ?").bind(list[0]).first();
+      const title = clean(d.title, 120) || (first ? `${first.tag || "activity"} from ${first.chain} ${first.address.slice(0, 10)}…` : "New lead");
+      await DB.prepare("INSERT INTO tr_leads (title, notes, status, alert_ids, created, updated) VALUES (?, '', 'investigating', ?, ?, ?)").bind(title, JSON.stringify(list), now, now).run();
+    }
+    await DB.prepare(`UPDATE tr_alerts SET status = 'promoted' WHERE id IN (${inIds(list)})`).bind(...list).run();
+    return trOut({ ok: true });
+  }
+
+  if (p === "/leads" && !post) {
+    const leads = (await DB.prepare("SELECT * FROM tr_leads ORDER BY updated DESC LIMIT 200").all()).results;
+    const all = [...new Set(leads.flatMap((l) => JSON.parse(l.alert_ids || "[]")))].slice(0, 2000);
+    let alerts = [];
+    for (let i = 0; i < all.length; i += 90) alerts = alerts.concat((await DB.prepare(`SELECT id, chain, address, tx, ts, tag, amount, asset, counterparty FROM tr_alerts WHERE id IN (${inIds(all.slice(i, i + 90))})`).bind(...all.slice(i, i + 90)).all()).results);
+    return trOut({ leads, alerts, explorer: TR_EXPLORER });
+  }
+  if (post && p === "/leads") {
+    const id = Math.round(Number(d.id)) || 0;
+    const title = clean(d.title, 120), notes = clean(d.notes, 10000), status = TR_LEAD_ST.includes(d.status) ? d.status : "investigating";
+    const alertIds = d.alert_ids === undefined ? null : JSON.stringify(ids(d.alert_ids));
+    if (id) await DB.prepare("UPDATE tr_leads SET title = COALESCE(NULLIF(?, ''), title), notes = ?, status = ?, alert_ids = COALESCE(?, alert_ids), updated = ? WHERE id = ?").bind(title, notes, status, alertIds, now, id).run();
+    else await DB.prepare("INSERT INTO tr_leads (title, notes, status, alert_ids, created, updated) VALUES (?, ?, ?, ?, ?, ?)").bind(title || "New lead", notes, status, alertIds || "[]", now, now).run();
+    return trOut({ ok: true });
+  }
+  if (post && p === "/leads/delete") {
+    const list = ids(d.ids); if (!list.length) return trOut({ error: "Nothing selected." }, 400);
+    await DB.prepare(`DELETE FROM tr_leads WHERE id IN (${inIds(list)})`).bind(...list).run();
+    return trOut({ ok: true });
+  }
+  if (post && p === "/leads/draft") {
+    const lead = await DB.prepare("SELECT * FROM tr_leads WHERE id = ?").bind(Math.round(Number(d.id)) || 0).first();
+    if (!lead) return trOut({ error: "That lead is gone." }, 404);
+    let draft = await trDraft(DB, lead);
+    let note = "";
+    if (d.ai) {
+      const key = await acUnseal(env, (await DB.prepare("SELECT v FROM tr_settings WHERE k = 'key:claude'").first())?.v);
+      if (!key) note = "No Claude key saved in Settings, so this is the plain draft.";
+      else {
+        try {
+          const r = await fetch("https://api.anthropic.com/v1/messages", { method: "POST", signal: AbortSignal.timeout(30000), headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json" },
+            body: JSON.stringify({ model: "claude-haiku-5-5", max_tokens: 500, messages: [{ role: "user", content: "Below is a draft tip about blockchain activity, built from public on-chain data. Write a short, neutral summary paragraph (at most 120 words) a law enforcement reader can scan first. Use only facts in the draft, do not guess identities, and do not add new claims. Reply with the paragraph only.\n\n" + draft }] }) });
+          const j = await r.json();
+          const text = (j.content || []).map((c) => c.text || "").join("").trim();
+          if (r.ok && text) draft = draft.replace("SUMMARY\n", "SUMMARY\n" + text + "\n\n");
+          else note = "Claude didn't answer (" + (j.error?.message || r.status) + "), so this is the plain draft.";
+        } catch { note = "Claude didn't answer in time, so this is the plain draft."; }
+      }
+    }
+    await DB.prepare("UPDATE tr_leads SET draft = ?, updated = ? WHERE id = ?").bind(draft, now, lead.id).run();
+    return trOut({ draft, note });
+  }
+
+  if (p === "/settings" && !post) {
+    const s = await trSettings(DB);
+    const keys = {};
+    for (const k of TR_KEYS) {
+      const v = s["key:" + k] ? await acUnseal(env, s["key:" + k]) : null;
+      keys[k] = s["key:" + k] ? (v ? "saved, ends in ..." + v.slice(-4) : "saved (can't be read: check TOKEN_SEAL_KEY)") : "";
+    }
+    const out = {}; for (const k of Object.keys(TR_DEFAULTS)) out[k] = s[k];
+    return trOut({ settings: out, keys, token: s.token_hash ? "set " + new Date(Number(s.token_at || 0)).toISOString().slice(0, 10) : "", seal: !!(await acSealKey(env)) });
+  }
+  if (post && p === "/settings") {
+    const stmts = [];
+    if (d.interval !== undefined) stmts.push(trSet(DB, "interval", [15, 30, 60].includes(Number(d.interval)) ? Number(d.interval) : 30));
+    if (d.channel !== undefined) stmts.push(trSet(DB, "channel", ["email", "telegram", "both", "page"].includes(d.channel) ? d.channel : "email"));
+    if (d.email !== undefined) { const e = clean(d.email, 200); if (e && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) return trOut({ error: "That email address doesn't look right." }, 400); stmts.push(trSet(DB, "email", e)); }
+    if (d.child_pct !== undefined) stmts.push(trSet(DB, "child_pct", trInt(d.child_pct, 1, 100, 10)));
+    if (d.max_hops !== undefined) stmts.push(trSet(DB, "max_hops", trInt(d.max_hops, 0, 20, 5)));
+    if (d.dormant_days !== undefined) stmts.push(trSet(DB, "dormant_days", trInt(d.dormant_days, 1, 3650, 30)));
+    if (d.paused !== undefined) stmts.push(trSet(DB, "paused", d.paused ? 1 : 0));
+    if (d.keys_mode !== undefined) stmts.push(trSet(DB, "keys_mode", d.keys_mode === "github" ? "github" : "wezzet"));
+    for (const k of TR_KEYS) {
+      const v = d.keys && d.keys[k];
+      if (v === null || v === "") { if (d.keys && k in d.keys && v === null) stmts.push(DB.prepare("DELETE FROM tr_settings WHERE k = ?").bind("key:" + k)); continue; }
+      if (typeof v !== "string") continue;
+      const sealed = await acSeal(env, v.trim().slice(0, 500));
+      if (!sealed) return trOut({ error: "Keys can't be saved until the TOKEN_SEAL_KEY secret is set in Cloudflare Pages." }, 503);
+      stmts.push(trSet(DB, "key:" + k, sealed));
+    }
+    if (stmts.length) await DB.batch(stmts);
+    return trOut({ ok: true });
+  }
+  if (post && p === "/settings/token") {
+    const tok = "wzt_" + [...crypto.getRandomValues(new Uint8Array(24))].map((x) => x.toString(16).padStart(2, "0")).join("");
+    await DB.batch([trSet(DB, "token_hash", await acHash(tok)), trSet(DB, "token_at", now)]);
+    return trOut({ token: tok });
+  }
+
+  if (p === "/runs" && !post) {
+    const runs = (await DB.prepare("SELECT * FROM tr_runs ORDER BY id DESC LIMIT 100").all()).results;
+    const s = await trSettings(DB);
+    return trOut({ runs, interval: Number(s.interval) || 30, paused: s.paused === "1" });
+  }
+  return trOut({ error: "Not found." }, 404);
+}
+
+// Build a one-page plain-text tip from a lead. Draft only: the owner reviews it and submits it by hand.
+async function trDraft(DB, lead) {
+  const aids = JSON.parse(lead.alert_ids || "[]").slice(0, 200);
+  const alerts = aids.length ? (await DB.prepare(`SELECT * FROM tr_alerts WHERE id IN (${aids.map(() => "?").join(",")}) ORDER BY ts`).bind(...aids).all()).results : [];
+  const iso = (t) => (t ? new Date(t).toISOString().replace("T", " ").slice(0, 16) + " UTC" : "unknown time");
+  const seeds = [];
+  for (const a of alerts) {
+    let w = await DB.prepare("SELECT * FROM tr_watch WHERE id = ?").bind(a.watch_id).first();
+    for (let i = 0; w && w.parent_id && i < 25; i++) w = await DB.prepare("SELECT * FROM tr_watch WHERE id = ?").bind(w.parent_id).first() || w;
+    if (w && !seeds.some((s) => s.id === w.id)) seeds.push(w);
+  }
+  const L = [];
+  L.push("TIP DRAFT: " + lead.title, "Prepared " + iso(Date.now()) + " from public blockchain data. Review every line before sending.", "");
+  L.push("SUMMARY", "");
+  L.push("SEED ADDRESS(ES) AND WHERE THEY ARE NAMED");
+  if (!seeds.length) L.push("- (none linked yet)");
+  for (const s of seeds) L.push(`- ${s.chain} ${s.address}${s.label ? " (" + s.label + ")" : ""}: named in ${s.source || "[which notice?]"}${s.source_url ? " " + s.source_url : ""}`);
+  L.push("", "MOVEMENTS (oldest first)");
+  if (!alerts.length) L.push("- (no alerts linked)");
+  alerts.forEach((a, i) => {
+    L.push(`${i + 1}. ${iso(a.ts)} | ${a.chain} | ${a.amount || "?"} ${a.asset || ""} | ${a.tag || "activity"}`.replace(/\s+\|/g, " |"));
+    L.push(`   from ${a.address}${a.counterparty ? " to " + a.counterparty : ""}`);
+    L.push(`   tx ${a.tx}${TR_EXPLORER[a.chain] ? " " + TR_EXPLORER[a.chain] + a.tx : ""}`);
+  });
+  const last = alerts[alerts.length - 1];
+  L.push("", "WHERE THE FUNDS ARE NOW", last ? `- ${last.counterparty || last.address} on ${last.chain}${last.tag === "exchange" ? " (looks like an exchange deposit: [name the exchange if known])" : ""}` : "- [fill in]");
+  L.push("", "WHY THIS SEEMS NEW", "- [Explain why this movement isn't already in a public notice.]");
+  if (lead.notes) L.push("", "NOTES", lead.notes);
+  L.push("", "FLOW MAP", "- [Attach a screenshot of the flow map here.]");
+  L.push("", "This tip is from a private individual using public on-chain data only. No funds were touched and no one was contacted.");
+  return L.join("\n");
+}
+
+// ---- Watcher side: /api/tracker/* with Authorization: Bearer <token> (no cookie) ----
+async function trWatcher(request, env, url) {
+  if (!env.DB || !String(env.TRACKER_OWNER || "").trim()) return trOut({ error: "Not available." }, 404);
+  try {
+    await trInit(env); await tlInit(env);
+    const DB = env.DB, who = await tlWho(request), now = Date.now();
+    if (!(await tlLimitN(env, who, "tracker-bad", 20, 3600e3))) return trOut({ error: "Too many bad tokens. Wait an hour." }, 429);
+    const tok = (request.headers.get("authorization") || "").match(/^Bearer\s+(\S{10,200})$/i)?.[1] || "";
+    const s = await trSettings(DB);
+    if (!tok || !s.token_hash || !trEq(await acHash(tok), s.token_hash)) { await tlLog(env, who, "tracker-bad"); return trOut({ error: "Bad token." }, 401); }
+    if (!(await tlLimitN(env, "tracker", "tracker-call", 1200, 3600e3))) return trOut({ error: "Rate limited. Try again later." }, 429);
+    await tlLog(env, "tracker", "tracker-call");
+    const p = url.pathname.replace(/\/+$/, "").slice("/api/tracker".length) || "/";
+    const post = request.method === "POST";
+    const d = post ? await body(request) : {};
+
+    if (p === "/config" && !post) {
+      const paused = s.paused === "1";
+      const out = { paused, interval: Number(s.interval), channel: s.channel, email: s.email, child_pct: Number(s.child_pct), max_hops: Number(s.max_hops), dormant_days: Number(s.dormant_days), keys_mode: s.keys_mode };
+      if (paused) return trOut(out);
+      out.watch = (await DB.prepare("SELECT id, chain, address, label, source, parent_id, hop, last_seen_tx, last_activity FROM tr_watch WHERE paused = 0 ORDER BY id LIMIT 5000").all()).results;
+      if (s.keys_mode !== "github") { out.keys = {}; for (const k of TR_KEYS) if (s["key:" + k]) out.keys[k] = await acUnseal(env, s["key:" + k]); }
+      return trOut(out);
+    }
+    if (!post) return trOut({ error: "Not found." }, 404);
+    const list = (v) => (Array.isArray(v) ? v : []).slice(0, 200);
+    const watchId = async (chain, address) => (await DB.prepare("SELECT id FROM tr_watch WHERE chain = ? AND address = ?").bind(chain, address).first())?.id || null;
+
+    if (p === "/alerts") {
+      let added = 0;
+      for (const a of list(d.alerts)) {
+        const chain = trChain(a.chain), address = trAddr(a.address), tx = trTx(a.tx);
+        if (!chain || !address || !tx) continue;
+        const r = await DB.prepare("INSERT OR IGNORE INTO tr_alerts (watch_id, chain, address, tx, ts, tag, amount, asset, counterparty, summary, status, created) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'new', ?)")
+          .bind(await watchId(chain, address), chain, address, tx, trTime(a.ts) || now, TR_TAGS.includes(a.tag) ? a.tag : "", clean(a.amount, 40), clean(a.asset, 20), trAddr(a.counterparty) || clean(a.counterparty, 100), clean(a.summary, 1500), now).run();
+        added += r.meta?.changes || 0;
+      }
+      return trOut({ added });
+    }
+    if (p === "/watch") {
+      const maxHops = Number(s.max_hops) || 5;
+      let added = 0;
+      for (const w of list(d.watch)) {
+        const chain = trChain(w.chain), address = trAddr(w.address);
+        if (!chain || !address) continue;
+        let parent = Math.round(Number(w.parent_id)) || 0;
+        if (!parent && trAddr(w.parent)) parent = await watchId(trChain(w.parent_chain) || chain, trAddr(w.parent)) || 0;
+        const pr = parent && await DB.prepare("SELECT hop, source FROM tr_watch WHERE id = ?").bind(parent).first();
+        if (!pr) continue; // children must hang off a known address; seeds are added by the owner on the page
+        const hop = pr.hop + 1;
+        if (hop > maxHops) continue;
+        const r = await DB.prepare("INSERT OR IGNORE INTO tr_watch (chain, address, label, source, source_url, added, parent_id, hop, paused) VALUES (?, ?, ?, ?, '', ?, ?, ?, 0)")
+          .bind(chain, address, clean(w.label, 120), clean(w.source, 120) || pr.source || "", now, parent, hop).run();
+        added += r.meta?.changes || 0;
+      }
+      return trOut({ added });
+    }
+    if (p === "/runs") {
+      await DB.prepare("INSERT INTO tr_runs (started, finished, checked, calls, alerts, errors) VALUES (?, ?, ?, ?, ?, ?)")
+        .bind(trTime(d.started) || now, trTime(d.finished) || now, trInt(d.checked, 0, 1e7, 0), trInt(d.calls, 0, 1e7, 0), trInt(d.alerts, 0, 1e7, 0), clean(Array.isArray(d.errors) ? d.errors.join("\n") : d.errors, 4000)).run();
+      await DB.prepare("DELETE FROM tr_runs WHERE id <= (SELECT MAX(id) - 1000 FROM tr_runs)").run();
+      return trOut({ ok: true });
+    }
+    if (p === "/state") {
+      const stmts = [];
+      for (const x of list(d.state)) {
+        const id = Math.round(Number(x.id)) || await watchId(trChain(x.chain), trAddr(x.address));
+        if (!id) continue;
+        stmts.push(DB.prepare("UPDATE tr_watch SET last_seen_tx = COALESCE(?, last_seen_tx), last_activity = COALESCE(?, last_activity) WHERE id = ?").bind(trTx(x.last_seen_tx) || null, trTime(x.last_activity), id));
+      }
+      if (stmts.length) await DB.batch(stmts);
+      return trOut({ updated: stmts.length });
+    }
+    return trOut({ error: "Not found." }, 404);
+  } catch (e) {
+    return trOut({ error: "Something went wrong on our side." }, 500);
+  }
+}
+async function tlLimitN(env, who, action, max, win) {
+  const r = await env.DB.prepare("SELECT COUNT(*) AS n FROM actions WHERE who = ? AND action = ? AND created_at > ?").bind(who, action, Date.now() - win).first();
+  return (r ? r.n : 0) < max;
 }

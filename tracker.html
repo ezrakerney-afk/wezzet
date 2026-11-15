@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<title>Chain Watch | Wezzet</title>
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#121212" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<script>try{(function(t){if(t==="dark"||t==="light")document.documentElement.dataset.theme=t})(localStorage.getItem("wz-theme"))}catch(e){}</script>
+<link rel="stylesheet" href="/assets/site.css?v=7">
+<link rel="stylesheet" href="/assets/skin.css?v=2">
+<link rel="stylesheet" href="/assets/tracker.css?v=1">
+</head>
+<body>
+<header class="site-header">
+  <div class="wrap">
+    <a class="brand" href="/" aria-label="Wezzet home"><img src="/assets/icon-48.png" width="28" height="28" alt="">wezzet<span class="brand-dot">.</span></a>
+    <nav class="site-nav" aria-label="Main"><button class="theme-toggle" type="button" aria-label="Switch between light and dark mode"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm0 2v16a8 8 0 0 1 0-16Z"/></svg></button></nav>
+  </div>
+</header>
+<main>
+  <div class="wrap">
+    <div class="tr-top"><div class="tr-h1" role="heading" aria-level="1">Chain Watch</div><p class="hint" id="tr-last"></p></div>
+    <div id="tr-gate">
+      <p class="hint" id="tr-msg">Loading…</p>
+      <div id="wz-account" data-why="Sign in to continue." hidden></div>
+    </div>
+    <div id="tr-app" hidden>
+      <nav class="tr-tabs" role="tablist">
+        <button type="button" data-tab="watch" class="on">Watchlist</button><button type="button" data-tab="alerts">Alerts</button><button type="button" data-tab="leads">Leads</button><button type="button" data-tab="settings">Settings</button><button type="button" data-tab="runs">Run log</button>
+      </nav>
+      <p class="tr-note" id="tr-status" aria-live="polite"></p>
+
+      <section data-pane="watch">
+        <details class="tr-box"><summary>Add an address</summary>
+          <form id="w-add" class="tr-grid">
+            <input type="hidden" name="id">
+            <label>Chain<input type="text" name="chain" placeholder="eth, btc, tron…" list="tr-chains" required></label>
+            <label class="wide">Address<input type="text" name="address" spellcheck="false" autocomplete="off" required></label>
+            <label>Label<input type="text" name="label" placeholder="Bybit hacker 1"></label>
+            <label>Source notice<input type="text" name="source" placeholder="FBI PSA250226"></label>
+            <label class="wide">Source URL<input type="text" name="source_url" placeholder="https://…"></label>
+            <div class="btn-row"><button class="btn" type="submit">Save</button><button class="btn btn-quiet" type="reset">Clear</button></div>
+          </form>
+        </details>
+        <details class="tr-box"><summary>Bulk paste</summary>
+          <form id="w-import" class="tr-grid">
+            <label class="wide full">One address per line (optionally "address, chain")<textarea name="text" rows="6" spellcheck="false"></textarea></label>
+            <label>Default chain<input type="text" name="chain" list="tr-chains" placeholder="eth"></label>
+            <label>Label<input type="text" name="label"></label>
+            <label>Source notice<input type="text" name="source"></label>
+            <label class="wide">Source URL<input type="text" name="source_url" placeholder="https://…"></label>
+            <div class="btn-row"><button class="btn" type="submit">Import</button></div>
+          </form>
+        </details>
+        <div class="tr-bar">
+          <input type="text" id="w-filter" placeholder="Filter by address, label, chain…">
+          <label class="tr-chk"><input type="checkbox" id="w-kids"> Show children</label>
+          <button class="btn btn-quiet" type="button" data-act="w-pause">Pause</button><button class="btn btn-quiet" type="button" data-act="w-resume">Unpause</button><button class="btn btn-quiet" type="button" data-act="w-delete">Delete</button><button class="btn btn-quiet" type="button" data-act="w-csv">CSV</button>
+        </div>
+        <div class="tr-scroll"><table class="plain tr-table"><thead><tr><th><input type="checkbox" data-all="w"></th><th>Address</th><th>Chain</th><th>Label</th><th>Source</th><th>Added</th><th>Origin</th><th>Last activity</th><th></th></tr></thead><tbody id="w-rows"></tbody></table></div>
+      </section>
+
+      <section data-pane="alerts" hidden>
+        <div class="tr-bar">
+          <select id="a-tag"><option value="">All tags</option><option>dispersal</option><option>dex_swap</option><option>bridge</option><option>mixer</option><option>exchange</option><option>dormant_wake</option></select>
+          <select id="a-status"><option value="">All statuses</option><option>new</option><option>seen</option><option>dismissed</option><option>promoted</option></select>
+          <button class="btn btn-quiet" type="button" data-act="a-seen">Mark seen</button><button class="btn btn-quiet" type="button" data-act="a-dismiss">Dismiss</button><button class="btn" type="button" data-act="a-promote">Promote to lead</button>
+          <select id="a-lead"><option value="">as a new lead</option></select>
+        </div>
+        <div class="tr-scroll"><table class="plain tr-table"><thead><tr><th><input type="checkbox" data-all="a"></th><th>Time</th><th>Address</th><th>Tag</th><th>Amount</th><th>Tx</th><th>Summary</th><th>Status</th></tr></thead><tbody id="a-rows"></tbody></table></div>
+      </section>
+
+      <section data-pane="leads" hidden>
+        <div id="l-list"></div>
+      </section>
+
+      <section data-pane="settings" hidden>
+        <form id="s-form" class="tr-grid">
+          <h2 class="full">Watcher</h2>
+          <label>Check every<select name="interval"><option value="15">15 min</option><option value="30">30 min</option><option value="60">60 min</option></select></label>
+          <label>Alerts by<select name="channel"><option value="email">Email</option><option value="telegram">Telegram</option><option value="both">Both</option><option value="page">This page only</option></select></label>
+          <label class="wide">Alert email<input type="text" name="email" inputmode="email" autocomplete="off"></label>
+          <label>Follow children above (% of balance)<input type="text" name="child_pct" inputmode="numeric"></label>
+          <label>Max hops<input type="text" name="max_hops" inputmode="numeric"></label>
+          <label>Dormant after (days)<input type="text" name="dormant_days" inputmode="numeric"></label>
+          <label>API keys live in<select name="keys_mode"><option value="wezzet">Wezzet (sent to the watcher)</option><option value="github">GitHub secrets only</option></select></label>
+          <label class="tr-chk full"><input type="checkbox" name="paused"> <b>Pause everything</b> (the watcher stops without calling any APIs)</label>
+          <h2 class="full">API keys</h2>
+          <p class="hint full">Write-only. Saved keys are encrypted and never shown again. Leave a box empty to keep the saved key.</p>
+          <label>Etherscan<input type="password" name="k_etherscan" autocomplete="off"><small data-k="etherscan"></small></label>
+          <label>Tronscan<input type="password" name="k_tronscan" autocomplete="off"><small data-k="tronscan"></small></label>
+          <label>Claude<input type="password" name="k_claude" autocomplete="off"><small data-k="claude"></small></label>
+          <label>Telegram bot token<input type="password" name="k_telegram_token" autocomplete="off"><small data-k="telegram_token"></small></label>
+          <label>Telegram chat id<input type="password" name="k_telegram_chat" autocomplete="off"><small data-k="telegram_chat"></small></label>
+          <div class="btn-row full"><button class="btn" type="submit">Save settings</button></div>
+        </form>
+        <div class="tr-box">
+          <h2>Watcher token</h2>
+          <p class="hint">The watcher sends this as <code>Authorization: Bearer …</code>. Only a hash is kept, so it's shown once. A new token stops the old one.</p>
+          <p id="t-state" class="hint"></p>
+          <button class="btn btn-quiet" type="button" data-act="t-new">Generate new token</button>
+          <pre id="t-out" class="tr-pre" hidden></pre>
+        </div>
+      </section>
+
+      <section data-pane="runs" hidden>
+        <p id="r-sum" class="tr-big"></p>
+        <div class="tr-scroll"><table class="plain tr-table"><thead><tr><th>Started</th><th>Took</th><th>Checked</th><th>API calls</th><th>Alerts</th><th>Errors</th></tr></thead><tbody id="r-rows"></tbody></table></div>
+      </section>
+      <datalist id="tr-chains"><option value="eth"><option value="bsc"><option value="arb"><option value="base"><option value="polygon"><option value="op"><option value="avax"><option value="btc"><option value="tron"></datalist>
+    </div>
+  </div>
+</main>
+<script src="/assets/account.js?v=3" defer></script>
+<script src="/assets/tracker.js?v=1" defer></script>
+<script src="/assets/theme.js?v=4" defer></script>
+</body>
+</html>
