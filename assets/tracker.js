@@ -8,7 +8,7 @@
   const when = (t) => (t ? new Date(t).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "");
   const ago = (t) => { const m = Math.round((Date.now() - t) / 60000); return m < 1 ? "just now" : m < 90 ? m + " min ago" : m < 2880 ? Math.round(m / 60) + " h ago" : Math.round(m / 1440) + " days ago"; };
   const short = (a) => (a && a.length > 20 ? a.slice(0, 10) + "…" + a.slice(-8) : a || "");
-  const TAGS = { dispersal: "Dispersal", dex_swap: "DEX swap", bridge: "Bridge", mixer: "Mixer", exchange: "Exchange", dormant_wake: "Dormant wake" };
+  const TAGS = { dispersal: "Dispersal", dex_swap: "DEX swap", bridge: "Bridge", mixer: "Mixer", exchange: "Exchange", dormant_wake: "Dormant wake", transfer: "Transfer" };
   const status = (t, kind) => { const s = $("#tr-status"); s.textContent = t || ""; s.className = "tr-note" + (kind === true ? " err" : kind ? " " + kind : ""); };
   const show = (r, okText) => { if (r.error) status(r.error, true); else status(okText || "", okText ? "good" : ""); return !r.error; };
   const picked = (body) => $$("input[data-id]:checked", body).map((i) => Number(i.dataset.id));
@@ -26,7 +26,7 @@
     const r = me ? await api("me") : { status: 401 };
     if (r.status === 401) { $("#tr-msg").textContent = "Sign in to open Chain Watch."; $("#wz-account").hidden = false; return; }
     if (!r.ok) { $("#tr-msg").textContent = "Not available."; $("#wz-account").hidden = true; return; }
-    $("#tr-gate").hidden = true; $("#tr-app").hidden = false;
+    $("#tr-gate").hidden = true; $("#tr-app").hidden = false; $("#tr-run").hidden = false;
     tab(location.hash.slice(1) || "watch");
     summary();
   }
@@ -51,11 +51,14 @@
     $("#r-sum").className = "tr-big" + (stale ? " tr-warn" : "");
     const n = $("#tab-alerts-n"); n.hidden = !a.new; n.textContent = a.new || "";
     // Setup steps, shown until the watcher has run once.
-    const steps = [["Add seed addresses to the watchlist", !!w.total, "watch"], ["Save your API keys and alert email", r.seal && S.keysSet !== false && !!S.keysSet, "settings"], ["Generate the watcher token", r.token, "settings"], ["Run the watcher from the chain-watch repo", !!last, "runs"]];
+    const auto = r.engine !== "external";
+    $("#tr-run").hidden = !auto;
+    const steps = auto ? [["Official addresses imported" + (r.seeds_updated ? " (list from " + r.seeds_updated + ")" : ""), !!r.seeds_at, "watch"], ["First automatic check", !!last, "runs"], ["Choose how you want to hear about alerts", false, "settings"]]
+      : [["Add seed addresses to the watchlist", !!w.total, "watch"], ["Generate the watcher token", r.token, "settings"], ["Run your watcher script", !!last, "runs"]];
     const box = $("#tr-setup");
-    if (last) { box.hidden = true; return; }
+    if (last && w.total) { box.hidden = true; return; }
     box.hidden = false;
-    box.replaceChildren(el("b", { textContent: "Getting started" }), el("ol", {}, ...steps.map(([text, done, go]) => el("li", { className: done ? "done" : "" }, done ? text : el("button", { type: "button", textContent: text, onclick: () => tab(go) })))),
+    box.replaceChildren(el("b", { textContent: auto ? "Setting itself up. This takes a minute or two." : "Getting started" }), el("ol", {}, ...steps.map(([text, done, go]) => el("li", { className: done ? "done" : "" }, done ? text : el("button", { type: "button", textContent: text, onclick: () => tab(go) })))),
       !r.seal ? el("p", { className: "tr-warn tr-help", textContent: "Keys can't be saved yet: the site has no sealing secret set in Cloudflare." }) : "");
   }
 
@@ -157,12 +160,13 @@
     $$("[data-k]", f).forEach((s) => { const v = r.keys[s.dataset.k]; s.textContent = v ? "✓ " + v[0].toUpperCase() + v.slice(1) : "Not set"; s.className = v ? "set" : ""; });
     $$("input[type=password]", f).forEach((i) => (i.value = ""));
     S.keysSet = Object.values(r.keys).some(Boolean);
+    f.elements.auto_seed.checked = r.settings.auto_seed !== "0";
     $("#t-state").textContent = r.token ? "✓ A token is " + r.token + "." : "No token yet.";
   }
   $("#s-form").onsubmit = async (e) => {
     e.preventDefault(); const f = e.target, d = { keys: {} };
-    for (const k of ["interval", "channel", "email", "child_pct", "max_hops", "dormant_days", "keys_mode"]) d[k] = f.elements[k].value;
-    d.paused = f.elements.paused.checked;
+    for (const k of ["interval", "channel", "child_pct", "max_hops", "dormant_days", "keys_mode", "engine", "lookback_days"]) d[k] = f.elements[k].value;
+    d.paused = f.elements.paused.checked; d.auto_seed = f.elements.auto_seed.checked;
     $$("input[type=password]", f).forEach((i) => { if (i.value.trim()) d.keys[i.name.slice(2)] = i.value.trim(); });
     if (show(await api("settings", d))) { await loadSettings(); status("Settings saved.", "good"); summary(); }
   };
@@ -200,6 +204,19 @@
     if (act === "a-promote") {
       const ids = picked($("#a-list")); if (!ids.length) return;
       if (show(await api("alerts/promote", { ids, lead_id: $("#a-lead").value || undefined }))) { await loadAlerts(); status("Promoted. Find it in the Leads tab.", "good"); summary(); }
+    }
+    if (act === "run") {
+      b.disabled = true; status("Checking the next few addresses…");
+      const r = await api("run", {}); b.disabled = false;
+      if (r.error) return status(r.error, true);
+      const x = r.result || {};
+      status(x.skipped === "busy" ? "A check ran a few seconds ago. Try again in a moment." : x.skipped ? "The watcher is " + (x.skipped === "paused" ? "paused" : "set to an external script") + ". Change that in Settings." : "Checked " + (x.checked || 0) + " addresses, " + (x.alerts || 0) + " new alert" + (x.alerts === 1 ? "" : "s") + (x.errors && x.errors.length ? ". " + x.errors.length + " had errors (see Run log)." : "."), x.skipped || (x.errors && x.errors.length) ? true : "good");
+      const m = $("#tr-status").textContent, c = $("#tr-status").className; const cur = $(".tr-tabs button.on"); if (cur) await ({ watch: loadWatch, alerts: loadAlerts, runs: loadRuns })[cur.dataset.tab]?.(); $("#tr-status").textContent = m; $("#tr-status").className = c; summary();
+    }
+    if (act === "seeds") {
+      b.disabled = true; const r = await api("seeds", {}); b.disabled = false;
+      if (r.error) return status(r.error, true);
+      await loadWatch(); status("Official lists (" + r.updated + "): " + r.total + " addresses, " + r.added + " new.", "good"); summary();
     }
     if (act === "t-new") {
       if (!confirm("Make a new watcher token? The old one stops working.")) return;

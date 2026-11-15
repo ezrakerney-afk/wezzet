@@ -10,6 +10,8 @@ const SALT = "wezzet-forum-v1";
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
+    // Chain Watch: check a few watched addresses in the background, at most once every two minutes.
+    if (env.TRACKER_OWNER && env.DB && Date.now() > trNextTry) { trNextTry = Date.now() + 60e3; ctx.waitUntil(trTick(env).catch(() => {})); }
     // One canonical host: www.wezzet.com permanently redirects to wezzet.com so Google indexes a single copy.
     if (url.hostname.startsWith("www.")) { url.hostname = url.hostname.slice(4); return Response.redirect(url.toString(), 301); }
     if (url.pathname === "/api/tool-stats") return toolStats(request, env);
@@ -3806,13 +3808,14 @@ const TR_SCHEMA = [
   "CREATE TABLE IF NOT EXISTS tr_leads (id INTEGER PRIMARY KEY, title TEXT, notes TEXT, status TEXT DEFAULT 'investigating', alert_ids TEXT, draft TEXT, created INTEGER, updated INTEGER)",
   "CREATE TABLE IF NOT EXISTS tr_settings (k TEXT PRIMARY KEY, v TEXT)",
   "CREATE TABLE IF NOT EXISTS tr_runs (id INTEGER PRIMARY KEY, started INTEGER, finished INTEGER, checked INTEGER, calls INTEGER, alerts INTEGER, errors TEXT)",
+  "CREATE TABLE IF NOT EXISTS tr_labels (chain TEXT, address TEXT, name TEXT, kind TEXT, contract INTEGER, ts INTEGER, PRIMARY KEY (chain, address))",
 ];
 let trReady = false;
 const TR_KEYS = ["etherscan", "tronscan", "claude", "telegram_token", "telegram_chat"];
-const TR_TAGS = ["dispersal", "dex_swap", "bridge", "mixer", "exchange", "dormant_wake"];
+const TR_TAGS = ["dispersal", "dex_swap", "bridge", "mixer", "exchange", "dormant_wake", "transfer"];
 const TR_ALERT_ST = ["new", "seen", "dismissed", "promoted"];
 const TR_LEAD_ST = ["investigating", "ready", "submitted", "dropped"];
-const TR_DEFAULTS = { interval: "30", channel: "email", email: "", child_pct: "10", max_hops: "5", dormant_days: "30", paused: "0", keys_mode: "wezzet" };
+const TR_DEFAULTS = { interval: "30", channel: "email", email: "", child_pct: "10", max_hops: "5", dormant_days: "30", paused: "0", keys_mode: "wezzet", engine: "wezzet", auto_seed: "1", lookback_days: "90" };
 const TR_EXPLORER = { eth: "https://etherscan.io/tx/", bsc: "https://bscscan.com/tx/", arb: "https://arbiscan.io/tx/", base: "https://basescan.org/tx/", polygon: "https://polygonscan.com/tx/", op: "https://optimistic.etherscan.io/tx/", avax: "https://snowtrace.io/tx/", btc: "https://mempool.space/tx/", tron: "https://tronscan.org/#/transaction/" };
 const trOut = (d, s = 200) => json(d, s, { "x-robots-tag": "noindex" });
 const trChain = (c) => { c = String(c || "").trim().toLowerCase(); return /^[a-z0-9]{2,12}$/.test(c) ? c : ""; };
@@ -3826,6 +3829,7 @@ function trEq(a, b) { if (a.length !== b.length) return false; let x = 0; for (l
 async function trInit(env) {
   if (trReady) return;
   await env.DB.batch(TR_SCHEMA.map((s) => env.DB.prepare(s)));
+  try { await env.DB.prepare("ALTER TABLE tr_watch ADD COLUMN checked INTEGER").run(); } catch {}
   trReady = true;
 }
 async function trSettings(DB) {
@@ -3855,13 +3859,16 @@ async function trBrowser(request, env, p, d, q, sess) {
       DB.prepare("SELECT SUM(status = 'new') new, COUNT(*) total, SUM(created > ?) day FROM tr_alerts").bind(now - 86400e3),
       DB.prepare("SELECT SUM(status IN ('investigating', 'ready')) open, SUM(status = 'ready') ready, SUM(status = 'submitted') submitted FROM tr_leads"),
       DB.prepare("SELECT started, finished, errors FROM tr_runs ORDER BY id DESC LIMIT 1"),
-      DB.prepare("SELECT k, v FROM tr_settings WHERE k IN ('interval', 'paused', 'token_hash', 'channel')"),
+      DB.prepare("SELECT k, v FROM tr_settings WHERE k IN ('interval', 'paused', 'token_hash', 'channel', 'engine', 'seeds_at', 'seeds_updated')"),
     ]);
     const set = Object.fromEntries(st.results.map((x) => [x.k, x.v]));
     return trOut({ watch: w.results[0], alerts: a.results[0], leads: l.results[0], last: r.results[0] || null,
+      engine: set.engine || "wezzet", seeds_at: Number(set.seeds_at) || 0, seeds_updated: set.seeds_updated || "",
       interval: Number(set.interval) || 30, paused: set.paused === "1", token: !!set.token_hash, channel: set.channel || "email", seal: !!(await acSealKey(env)) });
   }
 
+  if (post && p === "/run") { try { return trOut({ result: await trTick(env, true) }); } catch (e) { return trOut({ error: "The check failed: " + String(e.message).slice(0, 120) }, 500); } }
+  if (post && p === "/seeds") { try { return trOut(await trSeedImport(env)); } catch (e) { return trOut({ error: "Couldn't load the official lists." }, 500); } }
   if (p === "/watch" && !post) {
     const rows = (await DB.prepare("SELECT w.*, p.address AS parent_address FROM tr_watch w LEFT JOIN tr_watch p ON p.id = w.parent_id ORDER BY w.hop, w.added DESC LIMIT 5000").all()).results;
     return trOut({ watch: rows });
@@ -4000,6 +4007,9 @@ async function trBrowser(request, env, p, d, q, sess) {
     if (d.max_hops !== undefined) stmts.push(trSet(DB, "max_hops", trInt(d.max_hops, 0, 20, 5)));
     if (d.dormant_days !== undefined) stmts.push(trSet(DB, "dormant_days", trInt(d.dormant_days, 1, 3650, 30)));
     if (d.paused !== undefined) stmts.push(trSet(DB, "paused", d.paused ? 1 : 0));
+    if (d.engine !== undefined) stmts.push(trSet(DB, "engine", d.engine === "external" ? "external" : "wezzet"));
+    if (d.auto_seed !== undefined) stmts.push(trSet(DB, "auto_seed", d.auto_seed ? 1 : 0));
+    if (d.lookback_days !== undefined) stmts.push(trSet(DB, "lookback_days", trInt(d.lookback_days, 1, 3650, 90)));
     if (d.keys_mode !== undefined) stmts.push(trSet(DB, "keys_mode", d.keys_mode === "github" ? "github" : "wezzet"));
     for (const k of TR_KEYS) {
       const v = d.keys && d.keys[k];
@@ -4140,4 +4150,243 @@ async function trWatcher(request, env, url) {
 async function tlLimitN(env, who, action, max, win) {
   const r = await env.DB.prepare("SELECT COUNT(*) AS n FROM actions WHERE who = ? AND action = ? AND created_at > ?").bind(who, action, Date.now() - win).first();
   return (r ? r.n : 0) < max;
+}
+
+/* ---------- Chain Watch built-in watcher ----------
+   Runs inside the site, so no separate script or server is needed. Pages has no cron, so a small batch of addresses
+   is checked in the background of ordinary site traffic, at most once every TR_GAP. Read-only public APIs only:
+   Etherscan (when a key is saved) or Blockscout for EVM chains, Blockstream / mempool.space for Bitcoin,
+   TronGrid for USDT on Tron, THORChain Midgard to find the far side of a cross-chain swap. */
+const TR_GAP = 120e3, TR_BATCH = 6, TR_MAX_WATCH = 3000;
+let trNextTry = 0;
+const TR_SCOUT = { eth: "eth.blockscout.com", base: "base.blockscout.com", arb: "arbitrum.blockscout.com", op: "optimism.blockscout.com", polygon: "polygon.blockscout.com" };
+const TR_CHAINID = { eth: 1, bsc: 56, arb: 42161, base: 8453, polygon: 137, op: 10, avax: 43114 };
+const TR_NATIVE = { eth: "ETH", bsc: "BNB", arb: "ETH", base: "ETH", polygon: "POL", op: "ETH", avax: "AVAX", btc: "BTC", tron: "TRX" };
+// Real token contracts only (spam tokens copy famous symbols). Ethereum mainnet.
+const TR_TOKENS = { "0xdac17f958d2ee523a2206206994597c13d831ec7": "USDT", "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48": "USDC", "0x6b175474e89094c44da98b954eedeac495271d0f": "DAI", "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2": "WETH", "0xae7ab96520de3a18e5e111b5eaab095312d7fe84": "stETH", "0x2260fac5e5542a773aa44fbcfedf74d5ec88bbd": "WBTC", "0xd5f7838f5c461feff7fe49ea5ebaf7728bb0adfa": "mETH" };
+const TR_TRON_USDT = "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t";
+// Smallest amount worth an alert; 10x that is worth following to a child address.
+const TR_MIN = { ETH: 0.1, BNB: 0.5, POL: 500, AVAX: 10, WETH: 0.1, stETH: 0.1, mETH: 0.1, WBTC: 0.005, BTC: 0.005, USDT: 300, USDC: 300, DAI: 300 };
+// A few well-known addresses, for when the label lookup is slow. Everything else is looked up and cached.
+const TR_KNOWN = {
+  "0xd37bbe5744d730a1d98d8dc97c42f0ca46ad7146": ["THORChain Router", "bridge"],
+  "0x28c6c06298d514db089934071355e5743bf21d60": ["Binance hot wallet", "exchange"], "0x21a31ee1afc51d94c2efccaa2092ad1028285549": ["Binance hot wallet", "exchange"], "0xdfd5293d8e347dfe59e90efd55b2956a1343963d": ["Binance hot wallet", "exchange"],
+  "0x6cc5f688a315f3dc28a7781717a9a798a59fda7b": ["OKX hot wallet", "exchange"], "0xf89d7b9c864f589bbf53a82105107622b35eaa40": ["Bybit hot wallet", "exchange"], "0x71660c4005ba85c37ccec55d0c4493e66fe775d3": ["Coinbase hot wallet", "exchange"],
+  "0x7a250d5630b4cf539739df2c5dacb4c659f2488d": ["Uniswap V2 Router", "dex_swap"], "0xe592427a0aece92de3edee1f18e0157c05861564": ["Uniswap V3 Router", "dex_swap"], "0x68b3465833fb72a70ecdf485e0e4c7bd8665fc45": ["Uniswap Router", "dex_swap"],
+  "0x1111111254eeb25477b68fb85ed929f73a960582": ["1inch Router", "dex_swap"], "0xdef171fe48cf0115b1d80b88dc8eab59176fee57": ["ParaSwap", "dex_swap"], "0x1231deb6f5749ef6ce6943a275a1d3e7486f4eae": ["LI.FI", "bridge"],
+};
+function trKind(name) {
+  if (/thorchain|maya|chainflip|bridge|across|stargate|wormhole|li\.?fi|synapse|celer|debridge|squid|symbiosis|rango|orbiter|hop protocol|axelar|layerzero/i.test(name)) return "bridge";
+  if (/tornado|railgun|mixer|blender|sinbad|wasabi|coinjoin|yomix/i.test(name)) return "mixer";
+  if (/binance|okx|okex|kraken|coinbase|bybit|kucoin|huobi|htx|mexc|gate\.?io|bitget|bitfinex|crypto\.com|bitstamp|gemini|upbit|bithumb|poloniex|bingx|lbank|whitebit|hot ?wallet|exchange|deposit/i.test(name)) return "exchange";
+  if (/uniswap|1inch|paraswap|kyber|0x|zeroex|cow ?(swap|protocol)|sushi|curve|balancer|pancake|odos|openocean|metamask|aggregat|swap|router|permit2/i.test(name)) return "dex_swap";
+  return "";
+}
+const trFmt = (n) => (n >= 1000 ? Math.round(n).toLocaleString("en-US") : n >= 1 ? String(Math.round(n * 100) / 100) : String(Number(n.toPrecision(3))));
+const trShort = (a) => (a.length > 16 ? a.slice(0, 8) + "…" + a.slice(-6) : a);
+async function trGet(url, C, headers) {
+  C.calls++;
+  const r = await fetch(url, { headers: { accept: "application/json", ...(headers || {}) }, signal: AbortSignal.timeout(8000) });
+  if (!r.ok) throw new Error(new URL(url).hostname + " " + r.status);
+  return r.json();
+}
+
+// Label for a destination: {name, kind, contract}. Cached in tr_labels for 30 days.
+async function trLabel(DB, chain, addr, C) {
+  const key = addr.toLowerCase();
+  if (TR_KNOWN[key]) return { name: TR_KNOWN[key][0], kind: TR_KNOWN[key][1], contract: true };
+  const hit = await DB.prepare("SELECT name, kind, contract FROM tr_labels WHERE chain = ? AND address = ? AND ts > ?").bind(chain, key, Date.now() - 30 * 864e5).first();
+  if (hit) return hit;
+  if (!TR_SCOUT[chain]) return { name: "", kind: "", contract: 0 };
+  try {
+    const d = await trGet(`https://${TR_SCOUT[chain]}/api/v2/addresses/${addr}`, C);
+    const tags = ((d.metadata && d.metadata.tags) || []).filter((t) => t && /name|protocol|classifier/i.test(t.tagType || "")).map((t) => t.name).filter(Boolean);
+    const name = clean([d.name, ...tags, ...(d.public_tags || []).map((t) => t.display_name || t.label)].filter(Boolean).join(" / "), 100);
+    const out = { name, kind: trKind(name), contract: d.is_contract ? 1 : 0 };
+    await DB.prepare("INSERT OR REPLACE INTO tr_labels (chain, address, name, kind, contract, ts) VALUES (?, ?, ?, ?, ?, ?)").bind(chain, key, out.name, out.kind, out.contract, Date.now()).run();
+    return out;
+  } catch { return { name: "", kind: "", contract: 0, unknown: true }; }
+}
+
+// Each fetcher returns { moves: [{tx, ts, to, amount, asset, call}], marker } with only OUTGOING moves newer than the marker.
+async function trEvm(w, C) {
+  const addr = w.address.toLowerCase(), since = Number(String(w.last_seen_tx || "").replace(/^b:/, "")) || 0;
+  const key = C.keys.etherscan && TR_CHAINID[w.chain] ? C.keys.etherscan : "";
+  if (!key && !TR_SCOUT[w.chain]) throw new Error(w.chain + " needs an Etherscan key");
+  const base = key ? `https://api.etherscan.io/v2/api?chainid=${TR_CHAINID[w.chain]}&apikey=${key}&` : `https://${TR_SCOUT[w.chain]}/api?`;
+  const q = (action) => trGet(`${base}module=account&action=${action}&address=${w.address}&startblock=${since + 1}&endblock=999999999&sort=desc&page=1&offset=25`, C);
+  const list = (d) => { if (Array.isArray(d.result)) return d.result; if (/no transactions|no token transfers/i.test(d.message || "") || d.result === null) return []; throw new Error("explorer: " + String(d.result || d.message).slice(0, 80)); };
+  const [txs, toks] = await Promise.all([q("txlist").then(list), w.chain === "eth" ? q("tokentx").then(list) : []]);
+  const moves = []; let top = since;
+  for (const t of txs) {
+    top = Math.max(top, Number(t.blockNumber) || 0);
+    if ((t.from || "").toLowerCase() !== addr || t.isError === "1" || !t.to) continue;
+    const amount = Number(t.value) / 1e18;
+    moves.push({ tx: t.hash, ts: Number(t.timeStamp) * 1000, to: t.to, amount, asset: TR_NATIVE[w.chain] || "ETH", call: amount === 0 && t.input && t.input !== "0x" });
+  }
+  for (const t of toks) {
+    top = Math.max(top, Number(t.blockNumber) || 0);
+    const sym = TR_TOKENS[(t.contractAddress || "").toLowerCase()];
+    if ((t.from || "").toLowerCase() !== addr || !sym || !t.to) continue;
+    moves.push({ tx: t.hash, ts: Number(t.timeStamp) * 1000, to: t.to, amount: Number(t.value) / 10 ** (Number(t.tokenDecimal) || 18), asset: sym });
+  }
+  return { moves, marker: top > since ? "b:" + top : null };
+}
+async function trBtc(w, C) {
+  let txs;
+  try { txs = await trGet(`https://blockstream.info/api/address/${w.address}/txs`, C); }
+  catch { txs = await trGet(`https://mempool.space/api/address/${w.address}/txs`, C); }
+  const moves = [];
+  for (const t of txs) {
+    if (t.txid === w.last_seen_tx) break;
+    if (!t.status || !t.status.confirmed) continue;
+    if (!t.vin.some((i) => i.prevout && i.prevout.scriptpubkey_address === w.address)) continue;
+    const outs = t.vout.filter((o) => o.scriptpubkey_address && o.scriptpubkey_address !== w.address);
+    if (!outs.length) continue;
+    const counts = {}; for (const o of t.vout) counts[o.value] = (counts[o.value] || 0) + 1;
+    const mix = t.vin.length >= 10 && t.vout.length >= 10 && Math.max(...Object.values(counts)) >= 5; // CoinJoin shape
+    outs.sort((a, b) => b.value - a.value);
+    moves.push({ tx: t.txid, ts: t.status.block_time * 1000, to: outs[0].scriptpubkey_address, amount: outs.reduce((s, o) => s + o.value, 0) / 1e8, asset: "BTC", mix,
+      outs: outs.slice(0, 5).map((o) => ({ to: o.scriptpubkey_address, amount: o.value / 1e8 })), fan: outs.length });
+  }
+  const newest = txs.find((t) => t.status && t.status.confirmed);
+  return { moves, marker: newest && newest.txid !== w.last_seen_tx ? newest.txid : null };
+}
+async function trTron(w, C) {
+  const since = Number(String(w.last_seen_tx || "").replace(/^t:/, "")) || 0;
+  const d = await trGet(`https://api.trongrid.io/v1/accounts/${w.address}/transactions/trc20?limit=25&only_from=true&contract_address=${TR_TRON_USDT}&min_timestamp=${since + 1}`, C);
+  const moves = []; let top = since;
+  for (const t of d.data || []) {
+    top = Math.max(top, t.block_timestamp || 0);
+    if (t.from !== w.address || !t.token_info || t.token_info.address !== TR_TRON_USDT || t.type !== "Transfer") continue;
+    moves.push({ tx: t.transaction_id, ts: t.block_timestamp, to: t.to, amount: Number(t.value) / 1e6, asset: "USDT" });
+  }
+  return { moves, marker: top > since ? "t:" + top : null };
+}
+// THORChain: find where a swap paid out, so the trail continues on the other chain.
+async function trThor(tx, C) {
+  const id = tx.replace(/^0x/, "").toUpperCase();
+  let d;
+  try { d = await trGet("https://gateway.liquify.com/chain/thorchain_midgard/v2/actions?txid=" + id, C); }
+  catch { d = await trGet("https://midgard.ninerealms.com/v2/actions?txid=" + id, C); }
+  const map = { BTC: "btc", ETH: "eth", BSC: "bsc", TRON: "tron", BASE: "base", AVAX: "avax" };
+  for (const a of d.actions || []) {
+    const memo = (a.metadata && a.metadata.swap && a.metadata.swap.memo) || "";
+    const parts = memo.split(":");
+    const asset = (parts[1] || "").split(/[.~]/)[0].toUpperCase(), dest = trAddr(parts[2]);
+    const short = { B: "BTC", E: "ETH", S: "BSC" }[asset] || asset;
+    if (dest && map[short] && !dest.startsWith("thor")) return { chain: map[short], address: dest };
+  }
+  return null;
+}
+
+async function trSeedImport(env) {
+  const r = await env.ASSETS.fetch(new Request("https://wezzet.com/assets/tracker-seeds.json"));
+  if (!r.ok) throw new Error("seed list missing");
+  const d = await r.json(), DB = env.DB, now = Date.now();
+  let added = 0;
+  const stmts = (d.seeds || []).filter((s) => trChain(s.chain) && trAddr(s.address)).map((s) => DB.prepare("INSERT OR IGNORE INTO tr_watch (chain, address, label, source, source_url, added, hop, paused) VALUES (?, ?, ?, ?, ?, ?, 0, 0)").bind(s.chain, s.address, clean(s.label, 120), clean(s.source, 120), trUrl(s.source_url), now));
+  for (let i = 0; i < stmts.length; i += 100) for (const x of await DB.batch(stmts.slice(i, i + 100))) added += x.meta?.changes || 0;
+  await DB.batch([trSet(DB, "seeds_at", now), trSet(DB, "seeds_updated", clean(d.updated, 20))]);
+  return { added, total: stmts.length, updated: d.updated };
+}
+
+// One round. force = the owner pressed "Check now".
+async function trTick(env, force) {
+  if (!env.DB || !String(env.TRACKER_OWNER || "").trim()) return null;
+  await trInit(env);
+  const DB = env.DB, now = Date.now();
+  const s = await trSettings(DB);
+  if (s.paused === "1" || (s.engine || "wezzet") !== "wezzet") return { skipped: s.paused === "1" ? "paused" : "external" };
+  // One round at a time, across all the places this code runs.
+  await DB.prepare("INSERT OR IGNORE INTO tr_settings (k, v) VALUES ('tick_at', '0')").run();
+  const lock = await DB.prepare("UPDATE tr_settings SET v = ? WHERE k = 'tick_at' AND CAST(v AS INTEGER) < ?").bind(String(now), now - (force ? 15e3 : TR_GAP)).run();
+  if (!lock.meta?.changes) return { skipped: "busy" };
+
+  const C = { calls: 0, keys: {} }, errors = [], fresh = [];
+  if (s["key:etherscan"]) C.keys.etherscan = await acUnseal(env, s["key:etherscan"]);
+  let seeded = 0;
+  if (s.auto_seed !== "0" && now - Number(s.seeds_at || 0) > 7 * 864e5) { try { seeded = (await trSeedImport(env)).added; } catch (e) { errors.push("seeds: " + e.message); } }
+
+  const interval = (Number(s.interval) || 30) * 60e3, maxHops = Number(s.max_hops) || 5, pct = (Number(s.child_pct) || 10) / 100;
+  const dormant = (Number(s.dormant_days) || 30) * 864e5, lookback = (Number(s.lookback_days) || 90) * 864e5;
+  // Recently active addresses first (every interval), then everything else, oldest check first.
+  const hot = (await DB.prepare("SELECT * FROM tr_watch WHERE paused = 0 AND COALESCE(checked, 0) < ? AND (last_activity > ? OR (parent_id IS NOT NULL AND added > ?)) ORDER BY COALESCE(checked, 0) LIMIT ?").bind(now - interval, now - 14 * 864e5, now - 14 * 864e5, TR_BATCH - 2).all()).results;
+  const rest = (await DB.prepare(`SELECT * FROM tr_watch WHERE paused = 0 AND COALESCE(checked, 0) < ? ${hot.length ? "AND id NOT IN (" + hot.map((x) => x.id).join(",") + ")" : ""} ORDER BY COALESCE(checked, 0) LIMIT ?`).bind(now - Math.min(interval, 10 * 60e3), TR_BATCH - hot.length).all()).results;
+  const batch = [...hot, ...rest];
+  if (!batch.length) return { checked: 0, alerts: 0, seeded };
+  // Mark them checked first, so one slow or broken address can never block the queue.
+  await DB.prepare(`UPDATE tr_watch SET checked = ? WHERE id IN (${batch.map((x) => x.id).join(",")})`).bind(now).run();
+  let total = (await DB.prepare("SELECT COUNT(*) n FROM tr_watch").first()).n;
+
+  // Tron's free API allows only a slow trickle, so those go one after another.
+  let tronQueue = Promise.resolve();
+  const tronNext = (w) => (tronQueue = tronQueue.catch(() => {}).then(() => new Promise((r) => setTimeout(r, 400))).then(() => trTron(w, C)));
+  const results = await Promise.allSettled(batch.map((w) => (w.chain === "btc" ? trBtc(w, C) : w.chain === "tron" ? tronNext(w) : trEvm(w, C))));
+  for (let i = 0; i < batch.length; i++) {
+    const w = batch[i], res = results[i];
+    if (res.status === "rejected") { errors.push(`${w.chain} ${trShort(w.address)}: ${String(res.reason && res.reason.message || res.reason).slice(0, 90)}`); continue; }
+    const { moves, marker } = res.value;
+    try {
+      if (moves.length) {
+        const newest = Math.max(...moves.map((m) => m.ts));
+        const woke = w.last_activity && newest - w.last_activity > dormant;
+        const sums = {}; for (const m of moves) sums[m.asset] = (sums[m.asset] || 0) + m.amount;
+        const fan = Math.max(new Set(moves.map((m) => m.to)).size, ...moves.map((m) => m.fan || 0));
+        // Biggest first; only the top few get a label lookup, an alert and a possible child.
+        const big = moves.filter((m) => m.call || m.amount >= (TR_MIN[m.asset] || 0)).sort((a, b) => b.amount - a.amount).slice(0, 3);
+        let first = true;
+        for (const m of big) {
+          const lab = m.mix ? { name: "CoinJoin-style mix", kind: "mixer", contract: 1 } : w.chain === "btc" || w.chain === "tron" ? { name: "", kind: "", contract: 0 } : await trLabel(DB, w.chain, m.to, C);
+          if (m.call && !lab.kind) continue; // a contract call we can't name: not worth an alert
+          let tag = lab.kind || (first && woke ? "dormant_wake" : first && fan >= 5 ? "dispersal" : "transfer");
+          const kids = [];
+          const follow = (chain, address, amount, label) => { if (w.hop + 1 <= maxHops && total < TR_MAX_WATCH && now - m.ts < lookback) kids.push([chain, address, label || ""]); };
+          let extra = "";
+          if (lab.kind === "bridge" && /thorchain/i.test(lab.name)) {
+            try { const out = await trThor(m.tx, C); if (out) { follow(out.chain, out.address, 0, "THORChain swap out"); extra = ` The swap pays out to ${out.chain} ${out.address}, now on the watchlist. Confirm it on a second explorer.`; } } catch { extra = " Couldn't read the swap's destination yet."; }
+          } else if (!lab.kind && !lab.contract && !lab.unknown) {
+            const share = (x) => x.amount >= 10 * (TR_MIN[m.asset] || 0) && x.amount / (sums[m.asset] || 1) >= pct;
+            if (m.outs) { for (const o of m.outs.slice(0, 3)) if (o.amount >= 10 * TR_MIN.BTC && o.amount / m.amount >= pct) follow(w.chain, o.to, o.amount); }
+            else if (share(m)) follow(w.chain, m.to, m.amount);
+          }
+          for (const [chain, address, label] of kids) {
+            const r = await DB.prepare("INSERT OR IGNORE INTO tr_watch (chain, address, label, source, source_url, added, parent_id, hop, paused) VALUES (?, ?, ?, ?, '', ?, ?, ?, 0)").bind(chain, address, label || (w.label ? "from " + w.label.replace(/^from /, "") : ""), w.source || "", now, w.id, w.hop + 1).run();
+            total += r.meta?.changes || 0;
+          }
+          // Alerts are for fresh movement only; older history is followed quietly.
+          if (m.ts > Math.max(w.added - 48 * 36e5, now - 14 * 864e5)) {
+            const what = m.call ? "called" : `sent ${trFmt(m.amount)} ${m.asset} to`;
+            const where = lab.name ? `${lab.name} (${trShort(m.to)})` : (m.fan > 1 ? `${m.fan} addresses, the largest ` : "") + trShort(m.to);
+            const why = { bridge: "This looks like a cross-chain move.", dex_swap: "This looks like a token swap.", mixer: "This looks like a mixer, where the trail usually ends.", exchange: "This looks like an exchange, which can freeze funds and knows the account holder. Report fast.", dormant_wake: `The address had been quiet for ${Math.round((newest - w.last_activity) / 864e5)} days.`, dispersal: `It paid ${fan} different addresses in this batch.`, transfer: kids.length ? "The receiver is now on the watchlist." : "" }[tag] || "";
+            const summary = `${w.label || "Watched address"} (${w.hop ? "hop " + w.hop : "seed"}) ${what} ${where}. ${why}${extra}`.trim();
+            const r = await DB.prepare("INSERT OR IGNORE INTO tr_alerts (watch_id, chain, address, tx, ts, tag, amount, asset, counterparty, summary, status, created) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'new', ?)")
+              .bind(w.id, w.chain, w.address, m.tx, m.ts, tag, m.call ? "" : trFmt(m.amount), m.call ? "" : m.asset, m.to, summary, now).run();
+            if (r.meta?.changes) fresh.push({ tag, summary });
+          }
+          first = false;
+        }
+        await DB.prepare("UPDATE tr_watch SET last_activity = MAX(COALESCE(last_activity, 0), ?) WHERE id = ?").bind(newest, w.id).run();
+      }
+      if (marker) await DB.prepare("UPDATE tr_watch SET last_seen_tx = ? WHERE id = ?").bind(marker, w.id).run();
+    } catch (e) { errors.push(`${w.chain} ${trShort(w.address)}: ${String(e.message).slice(0, 90)}`); }
+  }
+  await DB.prepare("INSERT INTO tr_runs (started, finished, checked, calls, alerts, errors) VALUES (?, ?, ?, ?, ?, ?)").bind(now, Date.now(), batch.length, C.calls, fresh.length, errors.slice(0, 8).join("\n")).run();
+  if (Math.random() < 0.05) await DB.prepare("DELETE FROM tr_runs WHERE id <= (SELECT MAX(id) - 1500 FROM tr_runs)").run();
+  if (fresh.length) await trNotify(env, s, fresh).catch(() => {});
+  return { checked: batch.length, calls: C.calls, alerts: fresh.length, seeded, errors };
+}
+
+// New alerts: a browser notification for the owner (if they turned notifications on in Messages) and Telegram if set up.
+async function trNotify(env, s, fresh) {
+  const DB = env.DB, head = fresh.length === 1 ? "1 new alert" : fresh.length + " new alerts";
+  if (s.channel !== "page") {
+    const u = await DB.prepare("SELECT id FROM ch_users WHERE name = ?").bind(String(env.TRACKER_OWNER).trim()).first();
+    if (u) { await DB.prepare("INSERT INTO ch_notes (uid, room, kind, title, body, ts) VALUES (?, 'tracker', 'tracker', ?, ?, ?)").bind(u.id, "Chain Watch: " + head, fresh[0].summary.slice(0, 140), Date.now()).run(); await pushTo(DB, u.id); }
+  }
+  if ((s.channel === "telegram" || s.channel === "both") && s["key:telegram_token"] && s["key:telegram_chat"]) {
+    const tok = await acUnseal(env, s["key:telegram_token"]), chat = await acUnseal(env, s["key:telegram_chat"]);
+    if (tok && chat) await fetch(`https://api.telegram.org/bot${tok}/sendMessage`, { method: "POST", signal: AbortSignal.timeout(8000), headers: { "content-type": "application/json" },
+      body: JSON.stringify({ chat_id: chat, disable_web_page_preview: true, text: "Chain Watch: " + head + "\n\n" + fresh.slice(0, 5).map((a) => "• [" + a.tag + "] " + a.summary).join("\n\n") + "\n\nhttps://wezzet.com/tracker#alerts" }) });
+  }
 }

@@ -90,3 +90,6 @@ body .tr .tr-lead h3{font-family:inherit!important;font-size:.72rem!important;fo
 @media (max-width:760px){.tr-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.tr-grid .wide{grid-column:1/-1}.tr-pause{align-items:flex-start}}
 .tr-bar select,.tr-sel select{width:auto!important;flex:0 1 auto;max-width:100%}
 .tr input[type=checkbox]:not(.tr-switch input){width:16px!important;height:16px!important;min-height:0!important;padding:0!important;margin:3px 0 0;flex:none;accent-color:var(--accent,var(--ink));outline-offset:2px}
+.tr-headside{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.tr-check{justify-content:flex-end}.tr-check span{display:flex;gap:8px;align-items:flex-start;font-weight:400;font-size:.92rem}
+.tr-chip.t-transfer{color:var(--ink-soft)}

@@ -12,7 +12,7 @@
 <script>try{(function(t){if(t==="dark"||t==="light")document.documentElement.dataset.theme=t})(localStorage.getItem("wz-theme"))}catch(e){}</script>
 <link rel="stylesheet" href="/assets/site.css?v=7">
 <link rel="stylesheet" href="/assets/skin.css?v=2">
-<link rel="stylesheet" href="/assets/tracker.css?v=2">
+<link rel="stylesheet" href="/assets/tracker.css?v=3">
 </head>
 <body>
 <header class="site-header">
@@ -27,9 +27,9 @@
       <div>
         <p class="tr-eyebrow">Private · Read-only</p>
         <div class="tr-h1" role="heading" aria-level="1">Chain Watch</div>
-        <p class="tr-sub">Follows wallets named in public FBI and OFAC notices, flags where the money moves, and drafts tips for you to send yourself.</p>
+        <p class="tr-sub">Watches wallets named in public FBI and OFAC notices, follows the money on its own, and drafts tips for you to send yourself.</p>
       </div>
-      <div class="tr-pill" id="tr-health" hidden><span class="dot"></span><span id="tr-last"></span></div>
+      <div class="tr-headside"><div class="tr-pill" id="tr-health" hidden><span class="dot"></span><span id="tr-last"></span></div><button class="btn btn-quiet" type="button" data-act="run" id="tr-run" hidden>Check now</button></div>
     </div>
 
     <div id="tr-gate" class="tr-card tr-gate">
@@ -52,9 +52,10 @@
       <p class="tr-note" id="tr-status" role="status" aria-live="polite"></p>
 
       <section data-pane="watch" hidden>
-        <p class="tr-intro">Seed addresses you added from public notices, plus the child addresses the watcher found by following the money.</p>
+        <p class="tr-intro">Seeds come from official notices. Children are addresses the watcher added by itself while following the money.</p>
         <div class="tr-tools">
           <button class="btn" type="button" data-open="w-add-box">+ Add address</button>
+          <button class="btn btn-quiet" type="button" data-act="seeds">Import official lists</button>
           <button class="btn btn-quiet" type="button" data-open="w-import-box">Bulk paste</button>
           <button class="btn btn-quiet" type="button" data-act="w-csv">Export CSV</button>
         </div>
@@ -94,7 +95,7 @@
         <p class="tr-intro">Movements the watcher flagged, newest first. Tick the ones that matter and promote them to a lead.</p>
         <div class="tr-bar">
           <div class="tr-seg" id="a-view"><button type="button" data-v="new" class="on">New</button><button type="button" data-v="">All</button><button type="button" data-v="seen">Seen</button><button type="button" data-v="promoted">Promoted</button><button type="button" data-v="dismissed">Dismissed</button></div>
-          <select id="a-tag" aria-label="Filter by tag"><option value="">Any tag</option><option value="dispersal">Dispersal</option><option value="dex_swap">DEX swap</option><option value="bridge">Bridge</option><option value="mixer">Mixer</option><option value="exchange">Exchange</option><option value="dormant_wake">Dormant wake</option></select>
+          <select id="a-tag" aria-label="Filter by tag"><option value="">Any tag</option><option value="dispersal">Dispersal</option><option value="dex_swap">DEX swap</option><option value="bridge">Bridge</option><option value="mixer">Mixer</option><option value="exchange">Exchange</option><option value="dormant_wake">Dormant wake</option><option value="transfer">Transfer</option></select>
         </div>
         <div class="tr-sel" id="a-sel" hidden><span id="a-sel-n"></span><button class="btn" type="button" data-act="a-promote">Promote to lead</button><select id="a-lead" aria-label="Which lead"><option value="">as a new lead</option></select><button class="btn btn-quiet" type="button" data-act="a-seen">Mark seen</button><button class="btn btn-quiet" type="button" data-act="a-dismiss">Dismiss</button></div>
         <div id="a-list" class="tr-alerts"></div>
@@ -106,7 +107,7 @@
       </section>
 
       <section data-pane="runs" hidden>
-        <p class="tr-intro">Each time the watcher checks the chains, it logs a run here.</p>
+        <p class="tr-intro">The watcher runs by itself in small rounds, about every two minutes, checking a few addresses each time. Active addresses are checked first.</p>
         <div class="tr-card tr-runbox"><span class="dot" id="r-dot"></span><p id="r-sum" class="tr-big"></p></div>
         <div class="tr-scroll tr-card tr-flush"><table class="tr-table"><thead><tr><th>Started</th><th>Took</th><th class="r">Checked</th><th class="r">API calls</th><th class="r">Alerts</th><th>Errors</th></tr></thead><tbody id="r-rows"></tbody></table></div>
       </section>
@@ -118,9 +119,18 @@
             <label class="tr-switch"><input type="checkbox" name="paused"><span></span></label>
           </div>
           <div class="tr-card">
+            <h2 class="tr-h2">Automation</h2>
+            <p class="tr-help">Built in means Wezzet does the checking itself and you don't need to set up anything else.</p>
+            <div class="tr-grid">
+              <label class="wide">Watcher runs<select name="engine"><option value="wezzet">Built in to Wezzet (automatic)</option><option value="external">From my own script (uses the watcher token)</option></select></label>
+              <label class="wide tr-check"><span><input type="checkbox" name="auto_seed"> Add new official addresses every week</span><small id="s-seeds"></small></label>
+            </div>
+          </div>
+          <div class="tr-card">
             <h2 class="tr-h2">Checking</h2>
             <div class="tr-grid">
-              <label>Check every<select name="interval"><option value="15">15 minutes</option><option value="30">30 minutes</option><option value="60">60 minutes</option></select></label>
+              <label>Check active addresses every<select name="interval"><option value="15">15 minutes</option><option value="30">30 minutes</option><option value="60">60 minutes</option></select></label>
+              <label>Follow trails from the last<span class="tr-unit"><input type="text" name="lookback_days" inputmode="numeric"><i>days</i></span></label>
               <label>Follow children above<span class="tr-unit"><input type="text" name="child_pct" inputmode="numeric"><i>% of balance</i></span></label>
               <label>Max hops<input type="text" name="max_hops" inputmode="numeric"></label>
               <label>Dormant after<span class="tr-unit"><input type="text" name="dormant_days" inputmode="numeric"><i>days</i></span></label>
@@ -129,13 +139,13 @@
           <div class="tr-card">
             <h2 class="tr-h2">Alerts</h2>
             <div class="tr-grid">
-              <label>Send alerts by<select name="channel"><option value="email">Email</option><option value="telegram">Telegram</option><option value="both">Email and Telegram</option><option value="page">This page only</option></select></label>
-              <label class="wide">Alert email<input type="text" name="email" inputmode="email" autocomplete="off" placeholder="you@example.com"></label>
+              <label class="wide">Tell me about new alerts by<select name="channel"><option value="email">Browser notification</option><option value="telegram">Telegram</option><option value="both">Browser notification and Telegram</option><option value="page">This page only</option></select></label>
             </div>
+            <p class="tr-help" style="margin:10px 0 0">Browser notifications use the same switch as Messages: turn notifications on once in <a href="/chat">Messages</a> on each device. Telegram needs the bot token and chat ID below.</p>
           </div>
           <div class="tr-card">
             <h2 class="tr-h2">API keys</h2>
-            <p class="tr-help">Keys are encrypted and never shown again. Leave a box empty to keep the saved key.</p>
+            <p class="tr-help">All optional. The built-in watcher works without keys; a free Etherscan key makes Ethereum checks faster and adds BNB Chain. Keys are encrypted and never shown again. Leave a box empty to keep the saved key.</p>
             <div class="tr-grid">
               <label class="tr-full">Keys live in<select name="keys_mode"><option value="wezzet">Wezzet (sent to the watcher when it checks in)</option><option value="github">GitHub secrets only (Wezzet keeps none)</option></select></label>
               <label>Etherscan<input type="password" name="k_etherscan" autocomplete="off"><small data-k="etherscan"></small></label>
@@ -149,7 +159,7 @@
         </form>
         <div class="tr-card">
           <h2 class="tr-h2">Watcher token</h2>
-          <p class="tr-help">The watcher script uses this to talk to Wezzet. Put it in the chain-watch repo as the <code>WEZZET_TOKEN</code> secret. It's shown once, and making a new one stops the old one.</p>
+          <p class="tr-help">Only needed if you run your own watcher script. Put it in that script's repo as the <code>WEZZET_TOKEN</code> secret. It's shown once, and making a new one stops the old one.</p>
           <p id="t-state" class="tr-keyline"></p>
           <button class="btn btn-quiet" type="button" data-act="t-new">Generate new token</button>
           <div id="t-box" class="tr-token" hidden><code id="t-out"></code><button class="btn" type="button" data-act="t-copy">Copy</button></div>
@@ -160,7 +170,7 @@
   </div>
 </main>
 <script src="/assets/account.js?v=3" defer></script>
-<script src="/assets/tracker.js?v=2" defer></script>
+<script src="/assets/tracker.js?v=3" defer></script>
 <script src="/assets/theme.js?v=4" defer></script>
 </body>
 </html>
