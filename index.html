@@ -72,7 +72,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400..700&display=swap">
 <link rel="stylesheet" href="/assets/site.css?v=8" />
     <link rel="stylesheet" href="/assets/dashboard.css?v=8" />
-    <link rel="stylesheet" href="/assets/home.css?v=3" />
+    <link rel="stylesheet" href="/assets/home.css?v=4" />
   </head>
   <body class="dashboard home-page">
     <a class="skip-link" href="#main">Skip to content</a>
@@ -120,7 +120,7 @@
       <section id="overview" aria-labelledby="home-heading">
         <div class="home-hero">
           <div class="home-intro">
-            <h1 id="home-heading" tabindex="-1">Tools for the work<br class="hero-break" /> in front of you.</h1>
+            <h1 id="home-heading" tabindex="-1">Tools for the work<br class="hero-break" /> <em>in front of you.</em></h1>
             <p>Convert files, edit videos, and run quick calculations right in your browser.</p>
             <form class="search home-search" role="search" id="search-form" action="/" autocomplete="off">
               <label class="sr-only" for="q">Search tools</label>
@@ -133,6 +133,7 @@
               <ul class="results" id="results" role="listbox" aria-label="Tools" hidden></ul>
             </form>
             <p class="search-examples">Try <a href="/heic-to-jpg">HEIC to JPG</a>, <a href="/compress-pdf">Compress PDF</a>, or the <a href="/transport">live flight, train and ship tracker</a>.</p>
+            <ul class="home-facts"><li><strong>750+</strong> free tools</li><li>No sign-up needed</li><li>Most run in your browser</li></ul>
           </div>
 
           <section class="news-carousel" aria-roledescription="carousel" aria-label="Wezzet news" id="website-news">
@@ -195,6 +196,11 @@
             </section>
           </div>
         </div>
+
+        <section class="home-popular" aria-labelledby="popular-heading">
+          <h2 id="popular-heading">Popular tools</h2>
+          <ul class="home-cards"><li><a href="/heic-to-jpg"><strong>HEIC to JPG</strong><span>Turn iPhone photos into JPGs that open anywhere.</span></a></li><li><a href="/compress-pdf"><strong>Compress PDF</strong><span>Shrink a PDF to fit an email or upload limit.</span></a></li><li><a href="/mp4-to-mp3"><strong>MP4 to MP3</strong><span>Pull the audio out of a video.</span></a></li><li><a href="/units"><strong>Unit converter</strong><span>Length, weight, volume, temperature and 90 more.</span></a></li><li><a href="/transport"><strong>Live transport tracker</strong><span>Flights, trains and ships, live, worldwide.</span></a></li><li><a href="/qr"><strong>QR code generator</strong><span>Make a QR code for a link, Wi-Fi or contact.</span></a></li><li><a href="/number"><strong>Number converters</strong><span>Binary, hex, fractions, percent and more.</span></a></li><li><a href="/ai"><strong>WezzetAI</strong><span>Ask a question or get help with any tool.</span></a></li></ul>
+        </section>
 
         <aside class="home-extension" aria-labelledby="extension-heading">
           <div>
@@ -998,14 +1004,14 @@
         </div>
       </section>
 
-      <footer class="dash-footer home-footer">
-        <a href="#overview">Wezzet</a>
-        <nav aria-label="Footer">
-          <a href="/about">About</a>
-          <a href="/contact">Contact</a>
-          <a href="/privacy">Privacy</a>
-          <a href="https://x.com/WezzetX" rel="noopener">Wezzet on X</a>
-        </nav>
+      <footer class="home-foot">
+        <div class="home-foot-grid">
+          <div><a class="home-foot-brand" href="#overview">wezzet<span>.</span></a><p>Free tools for the work in front of you. Built by Ezra Kerney and Noah Puckett.</p></div>
+          <div><strong class="home-foot-h">Popular</strong><ul><li><a href="/heic-to-jpg">HEIC to JPG</a></li><li><a href="/compress-pdf">Compress PDF</a></li><li><a href="/mp4-to-mp3">MP4 to MP3</a></li><li><a href="/units">Unit converter</a></li><li><a href="/qr">QR code generator</a></li></ul></div>
+          <div><strong class="home-foot-h">Explore</strong><ul><li><a href="/converters">Converters by topic</a></li><li><a href="/transport">Live transport tracker</a></li><li><a href="/ai">WezzetAI</a></li><li><a href="/aicomms">AI Comms</a></li><li><a href="/forum">Forum</a></li></ul></div>
+          <div><strong class="home-foot-h">Wezzet</strong><ul><li><a href="/about">About</a></li><li><a href="/contact">Contact</a></li><li><a href="/privacy">Privacy</a></li><li><a href="https://x.com/WezzetX" rel="noopener">@WezzetX on X</a></li><li><a href="https://www.instagram.com/wezzetig/" rel="noopener">@wezzetig on Instagram</a></li><li><a href="https://www.tiktok.com/@wezzet_tt" rel="noopener">@wezzet_tt on TikTok</a></li></ul></div>
+        </div>
+        <p class="home-foot-base">© 2026 Wezzet</p>
       </footer>
     </main>
     </div>
