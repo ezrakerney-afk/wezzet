@@ -12,7 +12,7 @@
 <script>try{(function(t){if(t==="dark"||t==="light")document.documentElement.dataset.theme=t})(localStorage.getItem("wz-theme"))}catch(e){}</script>
 <link rel="stylesheet" href="/assets/site.css?v=7">
 <link rel="stylesheet" href="/assets/skin.css?v=2">
-<link rel="stylesheet" href="/assets/tracker.css?v=5">
+<link rel="stylesheet" href="/assets/tracker.css?v=6">
 </head>
 <body>
 <header class="site-header">
@@ -39,12 +39,17 @@
 
     <div id="tr-app" hidden>
       <div class="tr-stats" id="tr-stats">
-        <button type="button" class="tr-stat" data-go="watch"><span class="k">Watching</span><b id="st-watch">–</b><span class="s" id="st-watch-s"></span></button>
+        <button type="button" class="tr-stat" data-go="watch"><span class="k">Watching</span><b id="st-watch">–</b><span class="s" id="st-watch-s"></span><span class="tr-bar-mini"><i id="st-sweep"></i></span></button>
+        <button type="button" class="tr-stat" data-go="watch"><span class="k">Still sitting</span><b id="st-money">–</b><span class="s" id="st-money-s"></span></button>
         <button type="button" class="tr-stat" data-go="alerts"><span class="k">New alerts</span><b id="st-alerts">–</b><span class="s" id="st-alerts-s"></span></button>
         <button type="button" class="tr-stat" data-go="leads"><span class="k">Open leads</span><b id="st-leads">–</b><span class="s" id="st-leads-s"></span></button>
         <button type="button" class="tr-stat" data-go="runs"><span class="k">Watcher</span><b id="st-run">–</b><span class="s" id="st-run-s"></span></button>
       </div>
       <div class="tr-setup" id="tr-setup" hidden></div>
+      <section class="tr-card tr-opps" id="tr-opps" hidden>
+        <div class="tr-opps-head"><div><h2 class="tr-h2">Best leads right now</h2><p class="tr-help">Money still sitting at watched addresses, biggest first. Stablecoins (USDT, USDC) can be frozen by their issuer when law enforcement asks, so those are the most useful to report.</p></div></div>
+        <ol id="tr-opps-list" class="tr-opps-list"></ol>
+      </section>
 
       <nav class="tr-tabs" role="tablist" aria-label="Sections">
         <button type="button" role="tab" data-tab="watch">Watchlist</button><button type="button" role="tab" data-tab="alerts">Alerts <span class="n" id="tab-alerts-n" hidden></span></button><button type="button" role="tab" data-tab="flow">Flow map</button><button type="button" role="tab" data-tab="leads">Leads</button><button type="button" role="tab" data-tab="runs">Run log</button><button type="button" role="tab" data-tab="settings">Settings</button>
@@ -88,7 +93,7 @@
           <div class="tr-seg" id="w-view"><button type="button" data-v="seeds" class="on">Seeds</button><button type="button" data-v="all">All</button><button type="button" data-v="kids">Children</button><button type="button" data-v="paused">Paused</button></div>
         </div>
         <div class="tr-sel" id="w-sel" hidden><span id="w-sel-n"></span><button class="btn btn-quiet" type="button" data-act="w-pause">Pause</button><button class="btn btn-quiet" type="button" data-act="w-resume">Unpause</button><button class="btn btn-quiet tr-danger" type="button" data-act="w-delete">Delete</button></div>
-        <div class="tr-scroll tr-card tr-flush"><table class="tr-table"><thead><tr><th class="c"><input type="checkbox" data-all="w" aria-label="Select all"></th><th>Address</th><th>Label and source</th><th>Origin</th><th>Last activity</th><th></th></tr></thead><tbody id="w-rows"></tbody></table></div>
+        <div class="tr-scroll tr-card tr-flush"><table class="tr-table"><thead><tr><th class="c"><input type="checkbox" data-all="w" aria-label="Select all"></th><th>Address</th><th>Label and source</th><th>Origin</th><th class="r">Holding</th><th>Last moved</th><th></th></tr></thead><tbody id="w-rows"></tbody></table></div>
       </section>
 
       <section data-pane="alerts" hidden>
@@ -161,6 +166,7 @@
               <label class="tr-full">Keys live in<select name="keys_mode"><option value="wezzet">Wezzet (sent to the watcher when it checks in)</option><option value="github">GitHub secrets only (Wezzet keeps none)</option></select></label>
               <label>Etherscan<input type="password" name="k_etherscan" autocomplete="off"><small data-k="etherscan"></small></label>
               <label>Tronscan<input type="password" name="k_tronscan" autocomplete="off"><small data-k="tronscan"></small></label>
+              <label>TronGrid (free, makes Tron checks 4x faster)<input type="password" name="k_trongrid" autocomplete="off"><small data-k="trongrid"></small></label>
               <label>Claude<input type="password" name="k_claude" autocomplete="off"><small data-k="claude"></small></label>
               <label>Telegram bot token<input type="password" name="k_telegram_token" autocomplete="off"><small data-k="telegram_token"></small></label>
               <label>Telegram chat ID<input type="password" name="k_telegram_chat" autocomplete="off"><small data-k="telegram_chat"></small></label>
@@ -181,7 +187,7 @@
   </div>
 </main>
 <script src="/assets/account.js?v=3" defer></script>
-<script src="/assets/tracker.js?v=5" defer></script>
+<script src="/assets/tracker.js?v=6" defer></script>
 <script src="/assets/theme.js?v=4" defer></script>
 </body>
 </html>

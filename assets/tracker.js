@@ -24,8 +24,8 @@
   async function start() {
     const me = window.wzAccount ? await window.wzAccount.ready : null;
     const r = me ? await api("me") : { status: 401 };
-    if (r.status === 401) { $("#tr-msg").textContent = "Sign in to open Chain Watch."; $("#wz-account").hidden = false; return; }
-    if (!r.ok) { $("#tr-msg").textContent = "Not available."; $("#wz-account").hidden = true; return; }
+    if (r.status === 401) { $("#tr-msg").textContent = "Chain Watch is in private beta. Sign in with an invited Wezzet account to open it."; $("#wz-account").hidden = false; return; }
+    if (!r.ok) { $("#tr-msg").textContent = "Chain Watch is in private beta, so it's only open to invited accounts for now. It watches wallets named in FBI and Treasury notices and follows where stolen crypto moves."; $("#wz-account").hidden = true; return; }
     $("#tr-gate").hidden = true; $("#tr-app").hidden = false; $("#tr-run").hidden = false;
     tab(location.hash.slice(1) || "watch");
     summary();
@@ -38,11 +38,16 @@
     const w = r.watch, a = r.alerts, l = r.leads, last = r.last;
     const set = (id, v, s, cls) => { $("#st-" + id).textContent = v; $("#st-" + id + "-s").textContent = s; $("#st-" + id).parentElement.className = "tr-stat" + (cls ? " " + cls : ""); };
     set("watch", w.total || 0, (w.seeds || 0) + " seeds, " + ((w.total || 0) - (w.seeds || 0)) + " children" + (w.paused ? ", " + w.paused + " paused" : ""));
+    const pct = w.total ? Math.round((100 * (w.checked || 0)) / w.total) : 0;
+    $("#st-sweep").style.width = pct + "%"; $("#st-sweep").parentElement.title = pct < 100 ? "First full check: " + pct + "% done" : "Every address checked";
+    if (pct < 100 && w.total) $("#st-watch-s").textContent = "First check " + pct + "% done (" + (w.checked || 0) + " of " + w.total + ")";
+    set("money", w.usd ? usd(w.usd) : "–", w.freeze ? usd(w.freeze) + " freezable at " + (w.freeze_n || 0) + " addresses" : w.checked ? "Balances fill in as addresses are checked" : "Waiting for the first check", w.freeze ? "hot" : "");
+    opps();
     set("alerts", a.new || 0, (a.day || 0) + " in the last 24 h", a.new ? "hot" : "");
     set("leads", l.open || 0, (l.ready || 0) + " ready, " + (l.submitted || 0) + " submitted");
     const t = last && (last.finished || last.started), stale = t && Date.now() - t > 2 * r.interval * 60000;
     const state = r.paused ? "off" : !last ? "" : stale || last.errors ? "warn" : "ok";
-    const word = r.paused ? "Paused" : !last ? "Not run yet" : stale ? "Late" : last.errors ? "Errors" : "Running";
+    const word = r.paused ? "Paused" : !last ? "Starting" : stale ? "Late" : last.errors ? "Errors" : "Running";
     const line = r.paused ? "Turn it back on in Settings" : !last ? "Waiting for the first run" : "Last run " + ago(t) + (stale ? ", expected every " + r.interval + " min" : "");
     set("run", word, line, state === "warn" ? "warn" : "");
     $("#tr-health").hidden = false; $("#tr-health").className = "tr-pill " + state; $("#tr-last").textContent = r.paused ? "Paused" : last ? "Last run " + ago(t) : "Watcher not run yet";
@@ -62,6 +67,17 @@
       !r.seal ? el("p", { className: "tr-warn tr-help", textContent: "Keys can't be saved yet: the site has no sealing secret set in Cloudflare." }) : "");
   }
 
+  const usd = (n) => "$" + (n >= 1e6 ? (n / 1e6).toFixed(n >= 1e7 ? 0 : 1) + "M" : n >= 1e4 ? Math.round(n / 1e3) + "k" : Math.round(n || 0).toLocaleString("en-US"));
+  async function opps() {
+    const r = await api("holdings"); if (r.error) return;
+    const list = r.holdings.filter((h) => h.bal_usd >= 1000).slice(0, 6);
+    $("#tr-opps").hidden = !list.length;
+    $("#tr-opps-list").replaceChildren(...list.map((h) => el("li", {},
+      el("div", { className: "amt" }, el("b", { textContent: usd(h.bal_usd) }), h.freeze_usd >= 1000 ? el("span", { className: "tr-chip t-exchange", textContent: usd(h.freeze_usd) + " freezable" + (h.frozen === 0 ? ", not frozen yet" : "") }) : h.frozen === 1 ? el("span", { className: "tr-chip", textContent: "Already frozen" }) : ""),
+      el("div", { className: "who" }, chain(h.chain), el("span", { className: "mono", textContent: short(h.address), title: h.address }), el("span", { className: "tr-sm", textContent: (h.label || "") + (h.source ? " · " + h.source : "") + (h.hop ? " · hop " + h.hop : "") + " · " + (h.balance || "") + (h.last_activity ? " · last moved " + ago(h.last_activity) : "") })),
+      el("button", { type: "button", className: "btn btn-quiet", textContent: "Make lead", onclick: async (e) => { e.target.disabled = true; if (show(await api("watch/lead", { id: h.id }), "Lead created with the facts filled in. Check it in Leads before you send anything.")) summary(); } }))));
+  }
+
   function tab(name) {
     if (!$(`[data-pane="${name}"]`)) name = "watch";
     $$(".tr-tabs button").forEach((b) => { b.classList.toggle("on", b.dataset.tab === name); b.setAttribute("aria-selected", b.dataset.tab === name); });
@@ -78,16 +94,17 @@
   async function loadWatch() { const r = await api("watch"); if (show(r)) { S.watch = r.watch; drawWatch(); } }
   function drawWatch() {
     const f = $("#w-filter").value.trim().toLowerCase(), v = S.wView;
-    const rows = S.watch.filter((w) => (v === "all" || (v === "seeds" && !w.parent_id) || (v === "kids" && w.parent_id) || (v === "paused" && w.paused)) && (!f || [w.address, w.label, w.chain, w.source].join(" ").toLowerCase().includes(f)));
-    $("#w-rows").replaceChildren(...(rows.length ? rows.slice(0, 1000).map((w) => el("tr", { className: w.paused ? "paused" : "" },
+    const rows = S.watch.slice().sort((a, b) => (b.bal_usd || 0) - (a.bal_usd || 0)).filter((w) => (v === "all" || (v === "seeds" && !w.parent_id) || (v === "kids" && w.parent_id) || (v === "paused" && w.paused)) && (!f || [w.address, w.label, w.chain, w.source].join(" ").toLowerCase().includes(f)));
+    $("#w-rows").replaceChildren(...(rows.length ? rows.slice(0, S.wMax || 50).map((w) => el("tr", { className: w.paused ? "paused" : "" },
       el("td", { className: "c" }, el("input", { type: "checkbox", dataset: { id: w.id }, ariaLabel: "Select" })),
       el("td", {}, chain(w.chain), el("span", { className: "mono", textContent: w.address }), w.paused ? el("span", { className: "tr-sm", textContent: "Paused" }) : ""),
       el("td", {}, w.label || "", el("span", { className: "tr-sm" }, w.source_url ? el("a", { href: w.source_url, target: "_blank", rel: "noopener noreferrer", textContent: w.source || "Source" }) : w.source || "")),
       el("td", {}, w.parent_id ? "Hop " + w.hop : "Seed", w.parent_id ? el("span", { className: "tr-sm mono", textContent: "from " + short(w.parent_address), title: w.parent_address }) : el("span", { className: "tr-sm", textContent: "added " + when(w.added) })),
-      el("td", {}, w.last_activity ? ago(w.last_activity) : el("span", { className: "tr-sm", textContent: "None seen" })),
-      el("td", {}, el("button", { type: "button", className: "tr-link", textContent: "Edit", onclick: () => editWatch(w) })))) : [empty(6, S.watch.length ? "Nothing matches." : "No addresses yet. Add one, or bulk paste a list from a notice.")]));
+      el("td", { className: "r" }, w.bal_at ? el("b", { textContent: w.bal_usd >= 1 ? usd(w.bal_usd) : "$0" }) : el("span", { className: "tr-sm", textContent: "Not checked yet" }), w.bal_at && w.balance !== "Empty" ? el("span", { className: "tr-sm", textContent: w.balance }) : "", w.freeze_usd >= 1000 ? el("span", { className: "tr-chip t-exchange", textContent: "Freezable" }) : w.frozen === 1 ? el("span", { className: "tr-chip", textContent: "Frozen" }) : ""),
+      el("td", {}, w.last_activity ? ago(w.last_activity) : el("span", { className: "tr-sm", textContent: w.checked ? "Never" : "–" })),
+      el("td", {}, el("button", { type: "button", className: "tr-link", textContent: "Edit", onclick: () => editWatch(w) })))) : [empty(7, S.watch.length ? "Nothing matches." : "No addresses yet. Add one, or bulk paste a list from a notice.")]));
     $('[data-all="w"]').checked = false; selBar("#w-sel", $("#w-rows"));
-    if (rows.length > 1000) status("Showing the first 1000 of " + rows.length + ". Search to narrow it down.");
+    if (rows.length > (S.wMax || 50)) $("#w-rows").append(el("tr", {}, el("td", { colSpan: 7, className: "tr-empty" }, el("button", { type: "button", className: "btn btn-quiet", textContent: "Show more (" + (rows.length - (S.wMax || 50)) + " left)", onclick: () => { S.wMax = (S.wMax || 50) + 100; drawWatch(); } }))));
   }
   const openBox = (id, on) => { $$("[data-box]").forEach((b) => (b.hidden = b.dataset.box !== id || !on)); };
   function editWatch(w) {

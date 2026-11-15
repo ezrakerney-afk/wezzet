@@ -11,7 +11,7 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     // Chain Watch: check a few watched addresses in the background, at most once every two minutes.
-    if (env.TRACKER_OWNER && env.DB && Date.now() > trNextTry) { trNextTry = Date.now() + 60e3; ctx.waitUntil(trTick(env).catch(() => {})); }
+    if (env.TRACKER_OWNER && env.DB && Date.now() > trNextTry) { trNextTry = Date.now() + 60e3; ctx.waitUntil(trTick(env).catch((e) => trLogError(env, e))); }
     // One canonical host: www.wezzet.com permanently redirects to wezzet.com so Google indexes a single copy.
     if (url.hostname.startsWith("www.")) { url.hostname = url.hostname.slice(4); return Response.redirect(url.toString(), 301); }
     if (url.pathname === "/api/tool-stats") return toolStats(request, env);
@@ -3811,7 +3811,7 @@ const TR_SCHEMA = [
   "CREATE TABLE IF NOT EXISTS tr_labels (chain TEXT, address TEXT, name TEXT, kind TEXT, contract INTEGER, ts INTEGER, PRIMARY KEY (chain, address))",
 ];
 let trReady = false;
-const TR_KEYS = ["etherscan", "tronscan", "claude", "telegram_token", "telegram_chat"];
+const TR_KEYS = ["etherscan", "tronscan", "trongrid", "claude", "telegram_token", "telegram_chat"];
 const TR_TAGS = ["dispersal", "dex_swap", "bridge", "mixer", "exchange", "dormant_wake", "transfer"];
 const TR_ALERT_ST = ["new", "seen", "dismissed", "promoted"];
 const TR_LEAD_ST = ["investigating", "ready", "submitted", "dropped"];
@@ -3830,6 +3830,7 @@ async function trInit(env) {
   if (trReady) return;
   await env.DB.batch(TR_SCHEMA.map((s) => env.DB.prepare(s)));
   try { await env.DB.prepare("ALTER TABLE tr_watch ADD COLUMN checked INTEGER").run(); } catch {}
+  for (const c of ["balance TEXT", "bal_usd REAL", "freeze_usd REAL", "bal_at INTEGER", "frozen INTEGER"]) { try { await env.DB.prepare("ALTER TABLE tr_watch ADD COLUMN " + c).run(); } catch {} }
   try { await env.DB.prepare("ALTER TABLE tr_alerts ADD COLUMN ai TEXT").run(); } catch {}
   trReady = true;
 }
@@ -3856,7 +3857,7 @@ async function trBrowser(request, env, p, d, q, sess) {
   // Overview numbers for the cards at the top of the page.
   if (p === "/summary") {
     const [w, a, l, r, st] = await DB.batch([
-      DB.prepare("SELECT COUNT(*) total, SUM(parent_id IS NULL) seeds, SUM(paused) paused FROM tr_watch"),
+      DB.prepare("SELECT COUNT(*) total, SUM(parent_id IS NULL) seeds, SUM(paused) paused, SUM(checked IS NOT NULL) checked, SUM(bal_usd) usd, SUM(freeze_usd) freeze, SUM(freeze_usd >= 1000) freeze_n, SUM(bal_usd >= 1000) holding_n FROM tr_watch"),
       DB.prepare("SELECT SUM(status = 'new') new, COUNT(*) total, SUM(created > ?) day FROM tr_alerts").bind(now - 86400e3),
       DB.prepare("SELECT SUM(status IN ('investigating', 'ready')) open, SUM(status = 'ready') ready, SUM(status = 'submitted') submitted FROM tr_leads"),
       DB.prepare("SELECT started, finished, errors FROM tr_runs ORDER BY id DESC LIMIT 1"),
@@ -3868,6 +3869,23 @@ async function trBrowser(request, env, p, d, q, sess) {
       interval: Number(set.interval) || 30, paused: set.paused === "1", token: !!set.token_hash, channel: set.channel || "email", seal: !!(await acSealKey(env)) });
   }
 
+  // Biggest balances still sitting at watched addresses. Stablecoins (USDT/USDC) can be frozen by their issuer.
+  if (p === "/holdings" && !post) {
+    const rows = (await DB.prepare("SELECT id, chain, address, label, source, source_url, hop, balance, bal_usd, freeze_usd, frozen, bal_at, last_activity FROM tr_watch WHERE bal_usd >= 100 ORDER BY freeze_usd DESC, bal_usd DESC LIMIT 25").all()).results;
+    return trOut({ holdings: rows });
+  }
+  // Turn a holding into a lead with the facts already filled in.
+  if (post && p === "/watch/lead") {
+    const w = await DB.prepare("SELECT * FROM tr_watch WHERE id = ?").bind(Math.round(Number(d.id)) || 0).first();
+    if (!w) return trOut({ error: "That address is gone." }, 404);
+    const usd = (n) => "$" + Math.round(n || 0).toLocaleString("en-US");
+    const notes = `Address: ${w.chain} ${w.address}\nNamed in: ${w.source || "?"}${w.source_url ? " " + w.source_url : ""}${w.hop ? " (hop " + w.hop + " from a named address)" : ""}\nHolding: ${w.balance || "?"} (about ${usd(w.bal_usd)}, checked ${w.bal_at ? new Date(w.bal_at).toISOString().slice(0, 16).replace("T", " ") + " UTC" : "?"})\n` +
+      (w.frozen === 1 ? "Already frozen by the issuer, so funds can't move. Lower value as a tip.\n" : "") + (w.freeze_usd >= 1 ? `Freezable: about ${usd(w.freeze_usd)} in stablecoins. The issuer (Tether for USDT, Circle for USDC) can freeze these at law enforcement's request, so this is worth reporting to the FBI (ic3.gov or tips.fbi.gov) and mentioning the token and address.\n` : "") +
+      "Check first: is this address already frozen or already in a public report? Look it up on the explorer and search the address online.";
+    const now2 = Date.now();
+    await DB.prepare("INSERT INTO tr_leads (title, notes, status, alert_ids, created, updated) VALUES (?, ?, 'investigating', '[]', ?, ?)").bind(`${w.freeze_usd >= 1000 ? "Freezable funds" : "Funds sitting"}: ${usd(w.freeze_usd >= 1000 ? w.freeze_usd : w.bal_usd)} at ${w.chain} ${w.address.slice(0, 10)}…`, notes, now2, now2).run();
+    return trOut({ ok: true });
+  }
   if (post && p === "/run") { try { return trOut({ result: await trTick(env, true) }); } catch (e) { return trOut({ error: "The check failed: " + String(e.message).slice(0, 120) }, 500); } }
   if (post && p === "/seeds") { try { return trOut(await trSeedImport(env)); } catch (e) { return trOut({ error: "Couldn't load the official lists." }, 500); } }
   if (p === "/watch" && !post) {
@@ -4203,6 +4221,7 @@ function trKind(name) {
 const trFmt = (n) => (n >= 1000 ? Math.round(n).toLocaleString("en-US") : n >= 1 ? String(Math.round(n * 100) / 100) : String(Number(n.toPrecision(3))));
 const trShort = (a) => (a.length > 16 ? a.slice(0, 8) + "…" + a.slice(-6) : a);
 async function trGet(url, C, headers) {
+  if (C.calls >= 40) throw new Error("call budget used up for this round");
   C.calls++;
   const r = await fetch(url, { headers: { accept: "application/json", ...(headers || {}) }, signal: AbortSignal.timeout(8000) });
   if (!r.ok) throw new Error(new URL(url).hostname + " " + r.status);
@@ -4306,7 +4325,7 @@ async function trBtc(w, C) {
 }
 async function trTron(w, C) {
   const since = Number(String(w.last_seen_tx || "").replace(/^t:/, "")) || 0;
-  const d = await trGet(`https://api.trongrid.io/v1/accounts/${w.address}/transactions/trc20?limit=25&only_from=true&contract_address=${TR_TRON_USDT}&min_timestamp=${since + 1}`, C);
+  const d = await trGet(`https://api.trongrid.io/v1/accounts/${w.address}/transactions/trc20?limit=25&only_from=true&contract_address=${TR_TRON_USDT}&min_timestamp=${since + 1}`, C, C.keys.trongrid ? { "TRON-PRO-API-KEY": C.keys.trongrid } : undefined);
   const moves = []; let top = since;
   for (const t of d.data || []) {
     top = Math.max(top, t.block_timestamp || 0);
@@ -4332,6 +4351,80 @@ async function trThor(tx, C) {
   return null;
 }
 
+// ---- Balances: what is still sitting at each watched address, in dollars ----
+async function trPrices(DB, C) {
+  const row = await DB.prepare("SELECT v FROM tr_settings WHERE k = 'prices'").first();
+  const old = row ? JSON.parse(row.v) : null;
+  if (old && Date.now() - old.at < 3 * 3600e3) return old;
+  try {
+    const d = await trGet("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,tron,binancecoin,matic-network,avalanche-2&vs_currencies=usd", C);
+    const p = { at: Date.now(), BTC: d.bitcoin?.usd, ETH: d.ethereum?.usd, TRX: d.tron?.usd, BNB: d.binancecoin?.usd, POL: d["matic-network"]?.usd, AVAX: d["avalanche-2"]?.usd };
+    if (!p.BTC || !p.ETH) throw new Error("no prices");
+    await trSet(DB, "prices", JSON.stringify(p)).run();
+    return p;
+  } catch { return old || { at: 0, BTC: 0, ETH: 0, TRX: 0 }; }
+}
+const TR_STABLE = { USDT: 1, USDC: 1, DAI: 1 }, TR_FREEZE = { USDT: 1, USDC: 1 };
+// Returns [{asset, amount}] for the assets we track on that chain.
+async function trBalances(w, C) {
+  const out = [];
+  if (w.chain === "btc") {
+    let d; try { d = await trGet(`https://blockstream.info/api/address/${w.address}`, C); } catch { d = await trGet(`https://mempool.space/api/address/${w.address}`, C); }
+    out.push({ asset: "BTC", amount: ((d.chain_stats.funded_txo_sum || 0) - (d.chain_stats.spent_txo_sum || 0)) / 1e8 });
+  } else if (w.chain === "tron") {
+    const d = await trGet(`https://api.trongrid.io/v1/accounts/${w.address}`, C, C.keys.trongrid ? { "TRON-PRO-API-KEY": C.keys.trongrid } : undefined);
+    const a = (d.data || [])[0] || {};
+    out.push({ asset: "TRX", amount: (a.balance || 0) / 1e6 });
+    for (const t of a.trc20 || []) if (t[TR_TRON_USDT]) out.push({ asset: "USDT", amount: Number(t[TR_TRON_USDT]) / 1e6 });
+  } else if (TR_SCOUT[w.chain]) {
+    const host = TR_SCOUT[w.chain];
+    const [a, toks] = await Promise.all([trGet(`https://${host}/api/v2/addresses/${w.address}`, C), w.chain === "eth" ? trGet(`https://${host}/api/v2/addresses/${w.address}/token-balances`, C) : []]);
+    out.push({ asset: TR_NATIVE[w.chain] || "ETH", amount: Number(a.coin_balance || 0) / 1e18 });
+    for (const t of Array.isArray(toks) ? toks : []) {
+      const sym = TR_TOKENS[String(t.token && (t.token.address_hash || t.token.address) || "").toLowerCase()];
+      if (sym) out.push({ asset: sym, amount: Number(t.value) / 10 ** (Number(t.token.decimals) || 18) });
+    }
+  } else return null;
+  return out;
+}
+// Is this address already blacklisted (frozen) by the stablecoin issuer? 1 = frozen, 0 = not, null = couldn't tell.
+const TR_B58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+function trTronHex(a) { let n = 0n; for (const c of a) { const i = TR_B58.indexOf(c); if (i < 0) return ""; n = n * 58n + BigInt(i); } const h = n.toString(16).padStart(50, "0"); return h.slice(2, 42); }
+async function trFrozen(w, list, C) {
+  const pad = (hex) => hex.toLowerCase().replace(/^0x/, "").padStart(64, "0");
+  C.calls++;
+  if (w.chain === "tron") {
+    const hex = trTronHex(w.address); if (!hex) return null;
+    const r = await fetch("https://api.trongrid.io/wallet/triggerconstantcontract", { method: "POST", signal: AbortSignal.timeout(8000), headers: { "content-type": "application/json", ...(C.keys.trongrid ? { "TRON-PRO-API-KEY": C.keys.trongrid } : {}) },
+      body: JSON.stringify({ owner_address: w.address, contract_address: TR_TRON_USDT, function_selector: "isBlackListed(address)", parameter: pad(hex), visible: true }) });
+    const d = await r.json(); const out = d && d.constant_result && d.constant_result[0];
+    return out ? (BigInt("0x" + out) ? 1 : 0) : null;
+  }
+  if (w.chain === "eth") {
+    const calls = [];
+    if (list.some((x) => x.asset === "USDT" && x.amount > 0)) calls.push(["0xdac17f958d2ee523a2206206994597c13d831ec7", "0xe47d6060"]);
+    if (list.some((x) => x.asset === "USDC" && x.amount > 0)) calls.push(["0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48", "0xfe575a87"]);
+    let any = 0;
+    for (const [to, sel] of calls) {
+      const r = await fetch("https://eth.blockscout.com/api/eth-rpc", { method: "POST", signal: AbortSignal.timeout(8000), headers: { "content-type": "application/json" }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "eth_call", params: [{ to, data: sel + pad(w.address) }, "latest"] }) });
+      const d = await r.json(); if (!d.result) return null;
+      if (BigInt(d.result)) any = 1;
+    }
+    return any;
+  }
+  return null;
+}
+async function trSaveBalance(DB, w, list, prices, C) {
+  const px = (a) => TR_STABLE[a] ? 1 : a === "WETH" || a === "stETH" || a === "mETH" ? prices.ETH : a === "WBTC" ? prices.BTC : prices[a] || 0;
+  const has = list.filter((x) => x.amount > 0);
+  const usd = has.reduce((n, x) => n + x.amount * px(x.asset), 0);
+  let freeze = has.reduce((n, x) => n + (TR_FREEZE[x.asset] ? x.amount : 0), 0), frozen = null;
+  // Already frozen funds aren't a lead any more, so they don't count as freezable.
+  if (freeze >= 100 && C) { try { frozen = await trFrozen(w, has, C); } catch {} if (frozen === 1) freeze = 0; }
+  const text = has.sort((a, b) => b.amount * px(b.asset) - a.amount * px(a.asset)).slice(0, 3).map((x) => trFmt(x.amount) + " " + x.asset).join(" · ") || "Empty";
+  await DB.prepare("UPDATE tr_watch SET balance = ?, bal_usd = ?, freeze_usd = ?, bal_at = ?, frozen = ? WHERE id = ?").bind(text, Math.round(usd), Math.round(freeze), Date.now(), frozen, w.id).run();
+}
+
 async function trSeedImport(env) {
   const r = await env.ASSETS.fetch(new Request("https://wezzet.com/assets/tracker-seeds.json"));
   if (!r.ok) throw new Error("seed list missing");
@@ -4344,6 +4437,9 @@ async function trSeedImport(env) {
 }
 
 // One round. force = the owner pressed "Check now".
+async function trLogError(env, e) {
+  try { await env.DB.prepare("INSERT INTO tr_runs (started, finished, checked, calls, alerts, errors) VALUES (?, ?, 0, 0, 0, ?)").bind(Date.now(), Date.now(), "Watcher crashed: " + String(e && e.message || e).slice(0, 300)).run(); } catch {}
+}
 async function trTick(env, force) {
   if (!env.DB || !String(env.TRACKER_OWNER || "").trim()) return null;
   await trInit(env);
@@ -4358,6 +4454,7 @@ async function trTick(env, force) {
   const C = { calls: 0, keys: {} }, errors = [], fresh = [];
   if (s["key:etherscan"]) C.keys.etherscan = await acUnseal(env, s["key:etherscan"]);
   if (s["key:tronscan"]) C.keys.tronscan = await acUnseal(env, s["key:tronscan"]);
+  if (s["key:trongrid"]) C.keys.trongrid = await acUnseal(env, s["key:trongrid"]);
   let seeded = 0;
   if (s.auto_seed !== "0" && now - Number(s.seeds_at || 0) > 7 * 864e5) { try { seeded = (await trSeedImport(env)).added; } catch (e) { errors.push("seeds: " + e.message); } }
 
@@ -4365,7 +4462,14 @@ async function trTick(env, force) {
   const dormant = (Number(s.dormant_days) || 30) * 864e5, lookback = (Number(s.lookback_days) || 90) * 864e5;
   // Recently active addresses first (every interval), then everything else, oldest check first.
   const hot = (await DB.prepare("SELECT * FROM tr_watch WHERE paused = 0 AND COALESCE(checked, 0) < ? AND (last_activity > ? OR (parent_id IS NOT NULL AND added > ?)) ORDER BY COALESCE(checked, 0) LIMIT ?").bind(now - interval, now - 14 * 864e5, now - 14 * 864e5, TR_BATCH - 2).all()).results;
-  const rest = (await DB.prepare(`SELECT * FROM tr_watch WHERE paused = 0 AND COALESCE(checked, 0) < ? ${hot.length ? "AND id NOT IN (" + hot.map((x) => x.id).join(",") + ")" : ""} ORDER BY COALESCE(checked, 0) LIMIT ?`).bind(now - Math.min(interval, 10 * 60e3), TR_BATCH - hot.length).all()).results;
+  // Tron's free API (TronGrid without a key) answers "too many requests" past about one address per round, so mix chains.
+  const tronCap = C.keys.trongrid ? 4 : 1;
+  const skip = hot.length ? "AND id NOT IN (" + hot.map((x) => x.id).join(",") + ")" : "";
+  const due = now - Math.min(interval, 10 * 60e3);
+  const tronLeft = Math.max(0, tronCap - hot.filter((x) => x.chain === "tron").length);
+  const tronRows = tronLeft ? (await DB.prepare(`SELECT * FROM tr_watch WHERE paused = 0 AND chain = 'tron' AND COALESCE(checked, 0) < ? ${skip} ORDER BY COALESCE(checked, 0) LIMIT ?`).bind(due, tronLeft).all()).results : [];
+  const otherRows = (await DB.prepare(`SELECT * FROM tr_watch WHERE paused = 0 AND chain <> 'tron' AND COALESCE(checked, 0) < ? ${skip} ORDER BY COALESCE(checked, 0) LIMIT ?`).bind(due, TR_BATCH).all()).results;
+  const rest = [...tronRows, ...otherRows].slice(0, Math.max(0, TR_BATCH - hot.length));
   const batch = [...hot, ...rest];
   if (!batch.length) return { checked: 0, alerts: 0, seeded };
   // Mark them checked first, so one slow or broken address can never block the queue.
@@ -4374,10 +4478,11 @@ async function trTick(env, force) {
 
   // Tron's free API allows only a slow trickle, so those go one after another.
   let tronQueue = Promise.resolve();
-  const tronNext = (w) => (tronQueue = tronQueue.catch(() => {}).then(() => new Promise((r) => setTimeout(r, 400))).then(() => trTron(w, C)));
+  const tronNext = (w) => (tronQueue = tronQueue.catch(() => {}).then(() => new Promise((r) => setTimeout(r, 1100))).then(() => trTron(w, C)));
   const results = await Promise.allSettled(batch.map((w) => (w.chain === "btc" ? trBtc(w, C) : w.chain === "tron" ? tronNext(w) : trEvm(w, C))));
   for (let i = 0; i < batch.length; i++) {
     const w = batch[i], res = results[i];
+    if (res.status === "rejected" && / 429$/.test(String(res.reason && res.reason.message))) { await DB.prepare("UPDATE tr_watch SET checked = ? WHERE id = ?").bind(now - interval + 5 * 60e3, w.id).run(); }
     if (res.status === "rejected") { errors.push(`${w.chain} ${trShort(w.address)}: ${String(res.reason && res.reason.message || res.reason).slice(0, 90)}`); continue; }
     const { moves, marker } = res.value;
     try {
@@ -4400,11 +4505,12 @@ async function trTick(env, force) {
         }
         const wide = fan >= 5 || even > 0 || day > 0;
         // Biggest first. Normally the top 3 get a label lookup, an alert and a possible child; a dispersal follows up to 8 receivers.
-        const big = moves.filter((m) => m.call || m.amount >= (TR_MIN[m.asset] || 0)).sort((a, b) => b.amount - a.amount).slice(0, wide ? 8 : 3);
+        // Moves older than the lookback can't raise an alert or add a child, so they get no lookups (saves the call budget).
+        const big = moves.filter((m) => now - m.ts < lookback && (m.call || m.amount >= (TR_MIN[m.asset] || 0))).sort((a, b) => b.amount - a.amount).slice(0, wide ? 8 : 3);
         let first = true;
         for (let bi = 0; bi < big.length; bi++) {
           const m = big[bi];
-          if (bi >= 3 && C.calls >= 36) break; // stay well inside the subrequest limit
+          if (bi >= 3 && C.calls >= 30) break; // stay well inside the subrequest limit
           let to = m.to, lab = { name: "", kind: "", contract: 0 };
           if (m.mix) lab = { name: "CoinJoin-style mix", kind: "mixer", contract: 1 };
           else if (w.chain === "btc") {
@@ -4448,6 +4554,17 @@ async function trTick(env, force) {
       if (marker) await DB.prepare("UPDATE tr_watch SET last_seen_tx = ? WHERE id = ?").bind(marker, w.id).run();
     } catch (e) { errors.push(`${w.chain} ${trShort(w.address)}: ${String(e.message).slice(0, 90)}`); }
   }
+  // Balances: once a day per address, or right after it moved. Tron goes last, after a pause, to stay under its limit.
+  try {
+    const due = batch.filter((w, i) => results[i].status === "fulfilled" && (!w.bal_at || now - w.bal_at > 864e5 || results[i].value.moves.length));
+    if (due.length) {
+      const prices = await trPrices(DB, C);
+      const nonTron = due.filter((w) => w.chain !== "tron"), tron = due.filter((w) => w.chain === "tron").slice(0, 1);
+      const got = await Promise.allSettled(nonTron.map((w) => trBalances(w, C)));
+      for (let i = 0; i < nonTron.length; i++) if (got[i].status === "fulfilled" && got[i].value) await trSaveBalance(DB, nonTron[i], got[i].value, prices, C);
+      for (const w of tron) { await new Promise((r) => setTimeout(r, 1100)); try { const b = await trBalances(w, C); await new Promise((r) => setTimeout(r, 1100)); await trSaveBalance(DB, w, b, prices, C); } catch (e) { errors.push("balance " + trShort(w.address) + ": " + String(e.message).slice(0, 60)); } }
+    }
+  } catch (e) { errors.push("balances: " + String(e.message).slice(0, 80)); }
   await DB.prepare("INSERT INTO tr_runs (started, finished, checked, calls, alerts, errors) VALUES (?, ?, ?, ?, ?, ?)").bind(now, Date.now(), batch.length, C.calls, fresh.length, errors.slice(0, 8).join("\n")).run();
   if (Math.random() < 0.05) await DB.prepare("DELETE FROM tr_runs WHERE id <= (SELECT MAX(id) - 1500 FROM tr_runs)").run();
   if (fresh.length && s.ai_alerts !== "0") {

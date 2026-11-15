@@ -114,3 +114,15 @@ body .tr .tr-lead h3{font-family:inherit!important;font-size:.72rem!important;fo
 .tr-link{border:0;background:none;padding:0;font:inherit;font-size:.78rem;color:var(--ink-soft);text-decoration:underline;cursor:pointer}
 .tr-alert .ai{margin:2px 0 6px;padding:8px 10px;border-left:3px solid var(--accent);background:color-mix(in srgb,var(--accent) 7%,transparent);border-radius:0 8px 8px 0;font-size:.9rem}
 .tr-alert .ai b{font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);margin-right:4px}
+
+/* Holdings and best leads */
+.tr-stats{grid-template-columns:repeat(5,minmax(0,1fr))}
+.tr-bar-mini{display:block;height:4px;border-radius:2px;background:var(--line);margin-top:6px;overflow:hidden}.tr-bar-mini i{display:block;height:100%;width:0;background:var(--accent,var(--ink));transition:width .4s}
+.tr-opps{border-color:var(--line-strong);background:linear-gradient(180deg,var(--surface,var(--bg)),var(--bg))}
+.tr-opps-list{list-style:none;margin:10px 0 0;padding:0;counter-reset:o}
+.tr-opps-list li{display:grid;grid-template-columns:150px 1fr auto;gap:6px 14px;align-items:center;padding:10px 0;border-top:1px solid var(--line)}
+.tr-opps-list .amt{display:flex;flex-direction:column;align-items:flex-start;gap:4px}.tr-opps-list .amt b{font-size:1.2rem;letter-spacing:-.01em}
+.tr-opps-list .who{min-width:0}.tr-opps-list .who .tr-sm{margin-top:2px}
+.tr-table td.r .tr-sm{text-align:right}.tr-table td.r .tr-chip{margin-top:4px}
+@media (max-width:900px){.tr-stats{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:600px){.tr-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.tr-opps-list li{grid-template-columns:1fr auto}.tr-opps-list .who{grid-column:1/-1;grid-row:2}}
