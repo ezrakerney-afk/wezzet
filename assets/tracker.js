@@ -18,7 +18,7 @@
   const txLink = (a) => (S.explorer[a.chain] ? el("a", { className: "mono", href: S.explorer[a.chain] + a.tx, target: "_blank", rel: "noopener noreferrer", textContent: short(a.tx), title: "Open in explorer" }) : el("span", { className: "mono", textContent: short(a.tx) }));
   const copyText = async (t, ok) => { try { await navigator.clipboard.writeText(t); status(ok, "good"); } catch { status("Couldn't copy. Select the text instead.", true); } };
   const empty = (cols, text) => el("tr", {}, el("td", { colSpan: cols, className: "tr-empty", textContent: text }));
-  let S = { watch: [], alerts: [], explorer: {}, leads: [], wView: "seeds", aView: "new", fView: "ends", flow: null };
+  let S = { holdings: [], mView: "", watch: [], alerts: [], explorer: {}, leads: [], wView: "seeds", aView: "new", fView: "ends", flow: null };
 
   // ---- gate ----
   async function start() {
@@ -55,6 +55,8 @@
     $("#r-sum").textContent = r.paused ? "Paused. The watcher is stopped." : !last ? "The watcher hasn't run yet." : "Last run " + ago(t) + (stale ? ". That's more than twice the " + r.interval + " minute interval, so check the watcher." : ". Checks every " + r.interval + " minutes.");
     $("#r-sum").className = "tr-big" + (stale ? " tr-warn" : "");
     const n = $("#tab-alerts-n"); n.hidden = !a.new; n.textContent = a.new || "";
+    const wn = $("#tab-watch-n"); wn.hidden = !w.total; wn.textContent = w.total >= 1000 ? (w.total / 1000).toFixed(1) + "k" : w.total || "";
+    const ln = $("#tab-leads-n"); ln.hidden = !l.open; ln.textContent = l.open || "";
     // Setup steps, shown until the watcher has run once.
     const auto = r.engine !== "external";
     $("#tr-run").hidden = !auto;
@@ -68,14 +70,39 @@
   }
 
   const usd = (n) => "$" + (n >= 1e6 ? (n / 1e6).toFixed(n >= 1e7 ? 0 : 1) + "M" : n >= 1e4 ? Math.round(n / 1e3) + "k" : Math.round(n || 0).toLocaleString("en-US"));
-  async function opps() {
-    const r = await api("holdings"); if (r.error) return;
-    const list = r.holdings.filter((h) => h.bal_usd >= 1000).slice(0, 6);
-    $("#tr-opps-empty").hidden = !!list.length;
-    $("#tr-opps-list").replaceChildren(...list.map((h) => el("li", {},
+  // Which list an address came from, in plain words.
+  const GROUPS = ["North Korea", "Iran", "Russia", "Terror financing", "Drugs and crime groups", "Ransomware and cyber", "Weapons", "Other sanctioned", "Other"];
+  const groupOf = (src) => { const s = src || ""; return /DPRK|FBI PSA/.test(s) ? GROUPS[0] : /IRAN|IRGC|IFSR|HRIT/.test(s) ? GROUPS[1] : /RUSSIA|CAATSA|UKRAINE/.test(s) ? GROUPS[2] : /SDGT|FTO/.test(s) ? GROUPS[3] : /DRUGS|SDNTK|TCO/.test(s) ? GROUPS[4] : /CYBER/.test(s) ? GROUPS[5] : /NPWMD/.test(s) ? GROUPS[6] : /OFAC/.test(s) ? GROUPS[7] : GROUPS[8]; };
+  const fillGroups = (sel) => { const s = $(sel); if (s.options.length < 2) s.append(...GROUPS.map((g) => el("option", { value: g, textContent: g }))); };
+  const oppRow = (h) => el("li", {},
       el("div", { className: "amt" }, el("b", { textContent: usd(h.bal_usd) }), h.freeze_usd >= 1000 ? el("span", { className: "tr-chip t-exchange", textContent: usd(h.freeze_usd) + " freezable" + (h.frozen === 0 ? ", not frozen yet" : "") }) : h.frozen === 1 ? el("span", { className: "tr-chip", textContent: "Already frozen" }) : ""),
       el("div", { className: "who" }, chain(h.chain), el("span", { className: "mono", textContent: short(h.address), title: h.address }), el("span", { className: "tr-sm", textContent: (h.label || "") + (h.source ? " · " + h.source : "") + (h.hop ? " · hop " + h.hop : "") + " · " + (h.balance || "") + (h.last_activity ? " · last moved " + ago(h.last_activity) : "") })),
-      el("button", { type: "button", className: "btn btn-quiet", textContent: "Make lead", onclick: async (e) => { e.target.disabled = true; if (show(await api("watch/lead", { id: h.id }), "Lead created with the facts filled in. Check it in Leads before you send anything.")) summary(); } }))));
+      el("button", { type: "button", className: "btn btn-quiet", textContent: "Make lead", onclick: async (e) => { e.target.disabled = true; if (show(await api("watch/lead", { id: h.id }), "Lead created with the facts filled in. Check it in Leads before you send anything.")) summary(); } }));
+  async function opps() {
+    const r = await api("holdings"); if (r.error) return;
+    S.holdings = r.holdings;
+    const list = r.holdings.filter((h) => h.bal_usd >= 1000).slice(0, 5);
+    $("#tr-opps-empty").hidden = !!list.length;
+    $("#tr-opps-list").replaceChildren(...list.map(oppRow));
+    const n = $("#tab-money-n"); n.hidden = !r.holdings.length; n.textContent = r.holdings.length;
+    drawMoney();
+  }
+  function drawMoney() {
+    fillGroups("#m-group");
+    const v = S.mView, g = $("#m-group").value;
+    const list = (S.holdings || []).filter((h) => (!v || (v === "freeze" && h.freeze_usd >= 1) || (v === "open" && h.freeze_usd >= 1 && h.frozen === 0)) && (!g || groupOf(h.source) === g));
+    $("#m-empty").hidden = !!list.length; $("#m-empty").textContent = (S.holdings || []).length ? "Nothing matches." : "Nothing found yet. Balances fill in as addresses are checked.";
+    $("#m-list").replaceChildren(...list.map(oppRow));
+  }
+  async function loadSources() {
+    const r = await api("watch"); if (!show(r)) return; S.watch = r.watch;
+    const by = new Map(GROUPS.map((g) => [g, { n: 0, c: 0, usd: 0, fr: 0 }]));
+    for (const w of S.watch) { if (w.parent_id) continue; const x = by.get(groupOf(w.source)); x.n++; if (w.checked) x.c++; x.usd += w.bal_usd || 0; x.fr += w.frozen === 1 ? 0 : w.freeze_usd || 0; }
+    const rows = [...by].filter(([, x]) => x.n);
+    $("#g-rows").replaceChildren(...(rows.length ? rows.map(([g, x]) => el("tr", {}, el("td", {}, el("b", { textContent: g })), el("td", { className: "r", textContent: x.n }), el("td", { className: "r", textContent: Math.round((100 * x.c) / x.n) + "%" }), el("td", { className: "r", textContent: x.usd >= 1 ? usd(x.usd) : "–" }), el("td", { className: "r", textContent: x.fr >= 1 ? usd(x.fr) : "–" }),
+      el("td", {}, el("button", { type: "button", className: "tr-link", textContent: "Show", onclick: () => { S.wGroup = g; S.wView = "seeds"; tab("watch"); } })))) : [empty(6, "No addresses yet.")]));
+    const kids = S.watch.filter((w) => w.parent_id).length;
+    $("#g-note").textContent = (kids ? kids + " more addresses were added by the watcher itself while following money. " : "") + "The official lists refresh every week.";
   }
 
   const scoreChip = (a) => (a.score ? el("span", { className: "tr-score" + (a.score >= 80 ? " hi" : a.score >= 55 ? " mid" : ""), textContent: a.score, title: "Priority score, 0 to 100" }) : "");
@@ -91,7 +118,8 @@
     $$(".tr-tabs button").forEach((b) => { b.classList.toggle("on", b.dataset.tab === name); b.setAttribute("aria-selected", b.dataset.tab === name); });
     $$("[data-pane]").forEach((p) => (p.hidden = p.dataset.pane !== name));
     history.replaceState(null, "", "#" + name); status("");
-    ({ overview: loadOverview, watch: loadWatch, flow: loadFlow, alerts: loadAlerts, leads: loadLeads, settings: loadSettings, runs: loadRuns })[name]();
+    ({ overview: loadOverview, watch: loadWatch, flow: loadFlow, alerts: loadAlerts, leads: loadLeads, settings: loadSettings, runs: loadRuns, money: opps, sources: loadSources, report: () => {} })[name]();
+    if (innerWidth <= 860) $(".tr-tabs button.on")?.scrollIntoView({ block: "nearest", inline: "center" });
   }
   $(".tr-tabs").onclick = (e) => { const b = e.target.closest("button[data-tab]"); if (b) tab(b.dataset.tab); };
   $("#tr-app").addEventListener("click", (e) => { const b = e.target.closest("[data-go]"); if (b) tab(b.dataset.go); });
@@ -101,12 +129,14 @@
   // ---- watchlist ----
   async function loadWatch() { const r = await api("watch"); if (show(r)) { S.watch = r.watch; drawWatch(); } }
   function drawWatch() {
-    const f = $("#w-filter").value.trim().toLowerCase(), v = S.wView;
-    const rows = S.watch.slice().sort((a, b) => (b.bal_usd || 0) - (a.bal_usd || 0)).filter((w) => (v === "all" || (v === "seeds" && !w.parent_id) || (v === "kids" && w.parent_id) || (v === "paused" && w.paused)) && (!f || [w.address, w.label, w.chain, w.source].join(" ").toLowerCase().includes(f)));
+    fillGroups("#w-group");
+    if (S.wGroup != null) { $("#w-group").value = S.wGroup; S.wGroup = null; $$("#w-view button").forEach((x) => x.classList.toggle("on", x.dataset.v === S.wView)); }
+    const f = $("#w-filter").value.trim().toLowerCase(), v = S.wView, g = $("#w-group").value;
+    const rows = S.watch.slice().sort((a, b) => (b.bal_usd || 0) - (a.bal_usd || 0)).filter((w) => (v === "all" || (v === "seeds" && !w.parent_id) || (v === "kids" && w.parent_id) || (v === "paused" && w.paused)) && (!g || groupOf(w.source) === g) && (!f || [w.address, w.label, w.chain, w.source].join(" ").toLowerCase().includes(f)));
     $("#w-rows").replaceChildren(...(rows.length ? rows.slice(0, S.wMax || 50).map((w) => el("tr", { className: w.paused ? "paused" : "" },
       el("td", { className: "c" }, el("input", { type: "checkbox", dataset: { id: w.id }, ariaLabel: "Select" })),
       el("td", {}, chain(w.chain), el("span", { className: "mono", textContent: w.address }), w.paused ? el("span", { className: "tr-sm", textContent: "Paused" }) : ""),
-      el("td", {}, w.label || "", el("span", { className: "tr-sm" }, w.source_url ? el("a", { href: w.source_url, target: "_blank", rel: "noopener noreferrer", textContent: w.source || "Source" }) : w.source || "")),
+      el("td", {}, w.label || "", w.parent_id ? "" : el("span", { className: "tr-sm", textContent: groupOf(w.source) }), el("span", { className: "tr-sm" }, w.source_url ? el("a", { href: w.source_url, target: "_blank", rel: "noopener noreferrer", textContent: w.source || "Source" }) : w.source || "")),
       el("td", {}, w.parent_id ? "Hop " + w.hop : "Seed", w.parent_id ? el("span", { className: "tr-sm mono", textContent: "from " + short(w.parent_address), title: w.parent_address }) : el("span", { className: "tr-sm", textContent: "added " + when(w.added) })),
       el("td", { className: "r" }, w.bal_at ? el("b", { textContent: w.bal_usd >= 1 ? usd(w.bal_usd) : "$0" }) : el("span", { className: "tr-sm", textContent: "Not checked yet" }), w.bal_at && w.balance !== "Empty" ? el("span", { className: "tr-sm", textContent: w.balance }) : "", w.freeze_usd >= 1000 ? el("span", { className: "tr-chip t-exchange", textContent: "Freezable" }) : w.frozen === 1 ? el("span", { className: "tr-chip", textContent: "Frozen" }) : ""),
       el("td", {}, w.last_activity ? ago(w.last_activity) : el("span", { className: "tr-sm", textContent: w.checked ? "Never" : "–" })),
@@ -120,7 +150,7 @@
     for (const k of ["id", "chain", "address", "label", "source", "source_url"]) f.elements[k].value = w[k] || "";
     f.scrollIntoView({ block: "nearest" }); f.elements.label.focus();
   }
-  $("#w-filter").oninput = drawWatch; seg("#w-view", "wView", drawWatch);
+  $("#w-filter").oninput = drawWatch; seg("#w-view", "wView", drawWatch); $("#w-group").onchange = drawWatch; seg("#m-view", "mView", drawMoney); $("#m-group").onchange = drawMoney;
   $("#w-rows").onchange = () => selBar("#w-sel", $("#w-rows"));
   $("#w-add").onsubmit = async (e) => { e.preventDefault(); const d = form(e.target); const w = S.watch.find((x) => x.id == d.id); d.paused = w ? !!w.paused : false; if (show(await api("watch", d), "Saved.")) { e.target.reset(); e.target.elements.id.value = ""; openBox("", false); await loadWatch(); status("Saved.", "good"); summary(); } };
   $("#w-import").onsubmit = async (e) => {

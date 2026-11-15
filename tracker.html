@@ -15,7 +15,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400..700&display=swap">
 <link rel="stylesheet" href="/assets/site.css?v=8">
 <link rel="stylesheet" href="/assets/skin.css?v=4">
-<link rel="stylesheet" href="/assets/tracker.css?v=8">
+<link rel="stylesheet" href="/assets/tracker.css?v=9">
 </head>
 <body>
 <header class="site-header">
@@ -30,7 +30,7 @@
       <div>
         <p class="tr-eyebrow">Private · Read-only</p>
         <div class="tr-h1" role="heading" aria-level="1">Chain Watch</div>
-        <p class="tr-sub">Watches wallets named in public FBI and OFAC notices, follows the money on its own, and drafts tips for you to send yourself.</p>
+        <p class="tr-sub">Watches every crypto wallet on the US sanctions list and in FBI notices, follows the money on its own, and drafts tips for you to send yourself.</p>
       </div>
       <div class="tr-headside"><div class="tr-pill" id="tr-health" hidden><span class="dot"></span><span id="tr-last"></span></div><button class="btn btn-quiet" type="button" data-act="run" id="tr-run" hidden>Check now</button></div>
     </div>
@@ -40,20 +40,31 @@
       <div id="wz-account" data-why="Sign in with your Wezzet account." hidden></div>
     </div>
 
-    <div id="tr-app" hidden>
-      <div class="tr-stats" id="tr-stats">
+    <div id="tr-app" class="tr-shell" hidden>
+      <aside class="tr-side">
+        <nav class="tr-tabs" role="tablist" aria-label="Sections">
+          <span class="tr-navh">Watch</span>
+          <button type="button" role="tab" data-tab="overview"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 13h6V4H4v9Zm0 7h6v-5H4v5Zm10 0h6v-9h-6v9Zm0-16v5h6V4h-6Z"/></svg><span>Overview</span></button><button type="button" role="tab" data-tab="money"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M16.5 7.5C15.6 6.3 14 5.6 12 5.6c-2.6 0-4.5 1.3-4.5 3.2 0 4.3 9 2.1 9 6.4 0 1.9-1.9 3.2-4.5 3.2-2 0-3.6-.7-4.5-1.9"/></svg><span>Money found</span><span class="n q" id="tab-money-n" hidden></span></button><button type="button" role="tab" data-tab="alerts"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 16V11a6 6 0 1 1 12 0v5l2 2H4l2-2Zm4 5h4"/></svg><span>Alerts</span><span class="n" id="tab-alerts-n" hidden></span></button><button type="button" role="tab" data-tab="flow"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h4v4H5V5Zm10 10h4v4h-4v-4ZM7 9v4a4 4 0 0 0 4 4h4"/></svg><span>Flow map</span></button>
+          <span class="tr-navh">Lists</span>
+          <button type="button" role="tab" data-tab="watch"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg><span>Watchlist</span><span class="n q" id="tab-watch-n" hidden></span></button><button type="button" role="tab" data-tab="sources"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4 6v6c0 4.5 3.2 7.8 8 9 4.8-1.2 8-4.5 8-9V6l-8-3Z"/></svg><span>Sources</span></button>
+          <span class="tr-navh">Act</span>
+          <button type="button" role="tab" data-tab="leads"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l4 4v14H6V3Zm8 0v5h5M9 13h7M9 17h7"/></svg><span>Leads</span><span class="n q" id="tab-leads-n" hidden></span></button><button type="button" role="tab" data-tab="report"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20 20 4M20 4h-7M20 4v7M4 4v16h16"/></svg><span>Where to report</span></button>
+          <span class="tr-navh">System</span>
+          <button type="button" role="tab" data-tab="runs"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 7v5l3 2M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg><span>Run log</span></button><button type="button" role="tab" data-tab="settings"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h2M10 17h10M16 4.5v5M8 14.5v5"/></svg><span>Settings</span></button>
+        </nav>
+      </aside>
+      <div class="tr-main">
+      <p class="tr-note" id="tr-status" role="status" aria-live="polite"></p>
+
+      <section data-pane="overview" hidden>
+        <h2 class="tr-ph">Overview</h2>
+        <div class="tr-stats" id="tr-stats">
         <button type="button" class="tr-stat" data-go="watch"><span class="k">Watching</span><b id="st-watch">–</b><span class="s" id="st-watch-s"></span><span class="tr-bar-mini"><i id="st-sweep"></i></span></button>
         <button type="button" class="tr-stat" data-go="watch"><span class="k">Still sitting</span><b id="st-money">–</b><span class="s" id="st-money-s"></span></button>
         <button type="button" class="tr-stat" data-go="alerts"><span class="k">New alerts</span><b id="st-alerts">–</b><span class="s" id="st-alerts-s"></span></button>
         <button type="button" class="tr-stat" data-go="leads"><span class="k">Open leads</span><b id="st-leads">–</b><span class="s" id="st-leads-s"></span></button>
         <button type="button" class="tr-stat" data-go="runs"><span class="k">Watcher</span><b id="st-run">–</b><span class="s" id="st-run-s"></span></button>
       </div>
-      <nav class="tr-tabs" role="tablist" aria-label="Sections">
-        <button type="button" role="tab" data-tab="overview">Overview</button><button type="button" role="tab" data-tab="watch">Watchlist</button><button type="button" role="tab" data-tab="alerts">Alerts <span class="n" id="tab-alerts-n" hidden></span></button><button type="button" role="tab" data-tab="flow">Flow map</button><button type="button" role="tab" data-tab="leads">Leads</button><button type="button" role="tab" data-tab="runs">Run log</button><button type="button" role="tab" data-tab="settings">Settings</button>
-      </nav>
-      <p class="tr-note" id="tr-status" role="status" aria-live="polite"></p>
-
-      <section data-pane="overview" hidden>
         <div class="tr-setup" id="tr-setup" hidden></div>
         <div class="tr-cols">
           <section class="tr-card tr-opps" id="tr-opps">
@@ -61,6 +72,7 @@
             <p class="tr-help">The biggest balances still sitting at watched addresses. USDT and USDC can be frozen by their issuer when law enforcement asks, so unfrozen ones are the best tips.</p>
             <ol id="tr-opps-list" class="tr-opps-list"></ol>
             <p class="tr-empty" id="tr-opps-empty">Nothing found yet. Balances fill in as the first full check runs.</p>
+            <button type="button" class="tr-link" data-go="money">See all money found</button>
           </section>
           <section class="tr-card">
             <h2 class="tr-h2">Top new alerts</h2>
@@ -70,19 +82,10 @@
             <button type="button" class="tr-link" data-go="alerts">See all alerts</button>
           </section>
         </div>
-        <section class="tr-card">
-          <h2 class="tr-h2">Where a tip can pay</h2>
-          <div class="tr-pay">
-            <div><b>FBI</b><p>The fastest route when funds can still be frozen. No set reward, but this is where action happens.</p><a href="https://www.ic3.gov/" target="_blank" rel="noopener noreferrer">ic3.gov</a> · <a href="https://tips.fbi.gov/" target="_blank" rel="noopener noreferrer">tips.fbi.gov</a></div>
-            <div><b>Rewards for Justice</b><p>Up to $5 million for information that disrupts North Korea's money laundering. Names, companies and services count most.</p><a href="https://rewardsforjustice.net/" target="_blank" rel="noopener noreferrer">rewardsforjustice.net</a></div>
-            <div><b>Lazarus Bounty</b><p>Bybit pays a share of funds frozen because of your trace. Only for money from the Bybit theft. Check it's still open.</p><a href="https://www.lazarusbounty.com/en/" target="_blank" rel="noopener noreferrer">lazarusbounty.com</a></div>
-            <div><b>The exchange itself</b><p>When funds are landing at an exchange right now, its compliance or law-enforcement contact can freeze them within hours.</p><span class="tr-sm">Find the contact on the exchange's site</span></div>
-          </div>
-          <p class="tr-help" style="margin:12px 0 0">Always check a lead by hand first, never contact the wallets' owners, and don't post findings publicly before you tip.</p>
-        </section>
       </section>
 
       <section data-pane="watch" hidden>
+        <h2 class="tr-ph">Watchlist</h2>
         <p class="tr-intro">Seeds come from official notices. Children are addresses the watcher added by itself while following the money.</p>
         <div class="tr-tools">
           <button class="btn" type="button" data-open="w-add-box">+ Add address</button>
@@ -116,6 +119,7 @@
         </form>
         <div class="tr-bar">
           <input type="search" id="w-filter" placeholder="Search address, label, chain or notice">
+          <select id="w-group" aria-label="Filter by group"><option value="">Any group</option></select>
           <div class="tr-seg" id="w-view"><button type="button" data-v="seeds" class="on">Seeds</button><button type="button" data-v="all">All</button><button type="button" data-v="kids">Children</button><button type="button" data-v="paused">Paused</button></div>
         </div>
         <div class="tr-sel" id="w-sel" hidden><span id="w-sel-n"></span><button class="btn btn-quiet" type="button" data-act="w-pause">Pause</button><button class="btn btn-quiet" type="button" data-act="w-resume">Unpause</button><button class="btn btn-quiet tr-danger" type="button" data-act="w-delete">Delete</button></div>
@@ -123,6 +127,7 @@
       </section>
 
       <section data-pane="alerts" hidden>
+        <h2 class="tr-ph">Alerts</h2>
         <p class="tr-intro">Movements the watcher flagged. Each has a dollar value and a priority score. Tick the ones that matter and promote them to a lead.</p>
         <div class="tr-bar">
           <div class="tr-seg" id="a-view"><button type="button" data-v="new" class="on">New</button><button type="button" data-v="">All</button><button type="button" data-v="seen">Seen</button><button type="button" data-v="promoted">Promoted</button><button type="button" data-v="dismissed">Dismissed</button></div>
@@ -134,6 +139,7 @@
       </section>
 
       <section data-pane="flow" hidden>
+        <h2 class="tr-ph">Flow map</h2>
         <p class="tr-intro">Where the money went. Each trail starts at an official seed address and follows the funds hop by hop to where they reached an exchange, mixer, bridge or swap. Exchanges matter most: they can freeze funds.</p>
         <div class="tr-flowsum" id="f-sum"></div>
         <div class="tr-bar">
@@ -143,18 +149,49 @@
         <div id="f-list"></div>
       </section>
 
+      <section data-pane="money" hidden>
+        <h2 class="tr-ph">Money found</h2>
+        <p class="tr-intro">Every watched address that still holds $100 or more, biggest freezable amounts first. USDT and USDC can be frozen by their issuer, so "not frozen yet" is the most useful thing to report.</p>
+        <div class="tr-bar"><div class="tr-seg" id="m-view"><button type="button" data-v="" class="on">All</button><button type="button" data-v="freeze">Freezable</button><button type="button" data-v="open">Not frozen yet</button></div><select id="m-group" aria-label="Filter by group"><option value="">Any group</option></select></div>
+        <div class="tr-card"><ol id="m-list" class="tr-opps-list tr-wide"></ol><p class="tr-empty" id="m-empty">Nothing found yet. Balances fill in as addresses are checked.</p></div>
+      </section>
+
+      <section data-pane="sources" hidden>
+        <h2 class="tr-ph">Sources</h2>
+        <p class="tr-intro">Where the watched addresses come from. Everything is from public US government lists: the Treasury (OFAC) sanctions list and FBI notices. Pick a group to see its addresses.</p>
+        <div class="tr-scroll tr-card tr-flush"><table class="tr-table"><thead><tr><th>Group</th><th class="r">Addresses</th><th class="r">Checked</th><th class="r">Still holding</th><th class="r">Freezable</th><th></th></tr></thead><tbody id="g-rows"></tbody></table></div>
+        <p class="tr-help" id="g-note"></p>
+      </section>
+
+      <section data-pane="report" hidden>
+        <h2 class="tr-ph">Where to report</h2>
+        <p class="tr-intro">Places a tip can go, and which ones can pay. You always send it yourself.</p>
+        <section class="tr-card">
+                    <div class="tr-pay">
+            <div><b>FBI</b><p>The fastest route when funds can still be frozen. No set reward, but this is where action happens.</p><a href="https://www.ic3.gov/" target="_blank" rel="noopener noreferrer">ic3.gov</a> · <a href="https://tips.fbi.gov/" target="_blank" rel="noopener noreferrer">tips.fbi.gov</a></div>
+            <div><b>Rewards for Justice</b><p>Up to $5 million for information that disrupts North Korea's money laundering. Names, companies and services count most.</p><a href="https://rewardsforjustice.net/" target="_blank" rel="noopener noreferrer">rewardsforjustice.net</a></div>
+            <div><b>Lazarus Bounty</b><p>Bybit pays a share of funds frozen because of your trace. Only for money from the Bybit theft. Check it's still open.</p><a href="https://www.lazarusbounty.com/en/" target="_blank" rel="noopener noreferrer">lazarusbounty.com</a></div>
+            <div><b>The exchange itself</b><p>When funds are landing at an exchange right now, its compliance or law-enforcement contact can freeze them within hours.</p><span class="tr-sm">Find the contact on the exchange's site</span></div>
+          </div>
+          <p class="tr-help" style="margin:12px 0 0">Always check a lead by hand first, never contact the wallets' owners, and don't post findings publicly before you tip.</p>
+        </section>
+      </section>
+
       <section data-pane="leads" hidden>
+        <h2 class="tr-ph">Leads</h2>
         <p class="tr-intro">Alerts you promoted. Add notes, then build a tip draft to copy into Rewards for Justice, the FBI or an exchange. Nothing is ever sent from here.</p>
         <div id="l-list"></div>
       </section>
 
       <section data-pane="runs" hidden>
-        <p class="tr-intro">The watcher runs by itself in small rounds, about every two minutes, checking a few addresses each time. Active addresses are checked first.</p>
+        <h2 class="tr-ph">Run log</h2>
+        <p class="tr-intro">The watcher runs by itself in small rounds, about every minute, checking a few addresses each time. Active addresses are checked first.</p>
         <div class="tr-card tr-runbox"><span class="dot" id="r-dot"></span><p id="r-sum" class="tr-big"></p></div>
         <div class="tr-scroll tr-card tr-flush"><table class="tr-table"><thead><tr><th>Started</th><th>Took</th><th class="r">Checked</th><th class="r">API calls</th><th class="r">Alerts</th><th>Errors</th></tr></thead><tbody id="r-rows"></tbody></table></div>
       </section>
 
       <section data-pane="settings" hidden>
+        <h2 class="tr-ph">Settings</h2>
         <form id="s-form">
           <div class="tr-card tr-pause">
             <div><h2 class="tr-h2">Pause everything</h2><p class="tr-help">The watcher stops at its next check and makes no API calls until you turn this off.</p></div>
@@ -210,6 +247,7 @@
         </div>
       </section>
       <datalist id="tr-chains"><option value="eth"><option value="bsc"><option value="arb"><option value="base"><option value="polygon"><option value="op"><option value="avax"><option value="btc"><option value="tron"></datalist>
+      </div>
     </div>
   </div>
 </main>
@@ -226,7 +264,7 @@
   </div>
 </footer>
 <script src="/assets/account.js?v=3" defer></script>
-<script src="/assets/tracker.js?v=7" defer></script>
+<script src="/assets/tracker.js?v=8" defer></script>
 <script src="/assets/ui.js?v=1" defer></script>
 <script src="/assets/theme.js?v=5" defer></script>
 </body>

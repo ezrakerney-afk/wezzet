@@ -3910,7 +3910,7 @@ async function trBrowser(request, env, p, d, q, sess) {
 
   // Biggest balances still sitting at watched addresses. Stablecoins (USDT/USDC) can be frozen by their issuer.
   if (p === "/holdings" && !post) {
-    const rows = (await DB.prepare("SELECT id, chain, address, label, source, source_url, hop, balance, bal_usd, freeze_usd, frozen, bal_at, last_activity FROM tr_watch WHERE bal_usd >= 100 ORDER BY freeze_usd DESC, bal_usd DESC LIMIT 25").all()).results;
+    const rows = (await DB.prepare("SELECT id, chain, address, label, source, source_url, hop, balance, bal_usd, freeze_usd, frozen, bal_at, last_activity FROM tr_watch WHERE bal_usd >= 100 ORDER BY (CASE WHEN frozen = 1 THEN 0 ELSE freeze_usd END) DESC, bal_usd DESC LIMIT 100").all()).results;
     return trOut({ holdings: rows });
   }
   // Turn a holding into a lead with the facts already filled in.
@@ -4481,15 +4481,21 @@ function trScore(tag, usd, asset) {
   return Math.min(100, n);
 }
 
+// Bump when the bundled list grows a lot, so every install picks it up on the next round instead of next week.
+const TR_SEEDS_V = "2";
 async function trSeedImport(env) {
   const r = await env.ASSETS.fetch(new Request("https://wezzet.com/assets/tracker-seeds.json"));
   if (!r.ok) throw new Error("seed list missing");
   const d = await r.json(), DB = env.DB, now = Date.now();
   let added = 0;
-  const stmts = (d.seeds || []).filter((s) => trChain(s.chain) && trAddr(s.address)).map((s) => DB.prepare("INSERT OR IGNORE INTO tr_watch (chain, address, label, source, source_url, added, hop, paused) VALUES (?, ?, ?, ?, ?, ?, 0, 0)").bind(s.chain, s.address, clean(s.label, 120), clean(s.source, 120), trUrl(s.source_url), now));
-  for (let i = 0; i < stmts.length; i += 100) for (const x of await DB.batch(stmts.slice(i, i + 100))) added += x.meta?.changes || 0;
-  await DB.batch([trSet(DB, "seeds_at", now), trSet(DB, "seeds_updated", clean(d.updated, 20))]);
-  return { added, total: stmts.length, updated: d.updated };
+  // One statement per 250 addresses (the list is passed as JSON), so a long list stays inside the free plan's query limit.
+  const rows = (d.seeds || []).map((s) => ({ c: trChain(s.chain), a: trAddr(s.address), l: clean(s.label, 120), s: clean(s.source, 120), u: trUrl(s.source_url) })).filter((s) => s.c && s.a);
+  for (let i = 0; i < rows.length; i += 250) {
+    const r = await DB.prepare("INSERT OR IGNORE INTO tr_watch (chain, address, label, source, source_url, added, hop, paused) SELECT json_extract(value, '$.c'), json_extract(value, '$.a'), json_extract(value, '$.l'), json_extract(value, '$.s'), json_extract(value, '$.u'), ?, 0, 0 FROM json_each(?)").bind(now, JSON.stringify(rows.slice(i, i + 250))).run();
+    added += r.meta?.changes || 0;
+  }
+  await DB.batch([trSet(DB, "seeds_at", now), trSet(DB, "seeds_updated", clean(d.updated, 20)), trSet(DB, "seeds_v", TR_SEEDS_V)]);
+  return { added, total: rows.length, updated: d.updated };
 }
 
 // One round. force = the owner pressed "Check now".
@@ -4512,7 +4518,7 @@ async function trTick(env, force) {
   if (s["key:tronscan"]) C.keys.tronscan = await acUnseal(env, s["key:tronscan"]);
   if (s["key:trongrid"]) C.keys.trongrid = await acUnseal(env, s["key:trongrid"]);
   let seeded = 0;
-  if (s.auto_seed !== "0" && now - Number(s.seeds_at || 0) > 7 * 864e5) { try { seeded = (await trSeedImport(env)).added; } catch (e) { errors.push("seeds: " + e.message); } }
+  if (s.auto_seed !== "0" && (now - Number(s.seeds_at || 0) > 7 * 864e5 || s.seeds_v !== TR_SEEDS_V)) { try { seeded = (await trSeedImport(env)).added; } catch (e) { errors.push("seeds: " + e.message); } }
 
   const interval = (Number(s.interval) || 30) * 60e3, maxHops = Number(s.max_hops) || 5, pct = (Number(s.child_pct) || 10) / 100;
   const dormant = (Number(s.dormant_days) || 30) * 864e5, lookback = (Number(s.lookback_days) || 90) * 864e5;
