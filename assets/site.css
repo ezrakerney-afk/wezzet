@@ -359,3 +359,13 @@ textarea.mono, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consola
 .tight[style*="grid"] { grid-template-columns: minmax(0, 1fr); }
 .tight > *, .stats > * { min-width: 0; }
 .segmented { max-width: 100%; flex-wrap: wrap; }
+
+/* Shared type and page transitions */
+:root { --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; --font-serif: "Instrument Serif", Georgia, "Times New Roman", serif; }
+body { font-family: var(--font-sans); font-optical-sizing: auto; }
+@view-transition { navigation: auto; }
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: .16s; }
+.wz-theming::view-transition-old(root) { animation: none; }
+.wz-theming::view-transition-new(root) { animation: wz-theme .55s cubic-bezier(.4, 0, .2, 1); }
+@keyframes wz-theme { from { clip-path: circle(0 at var(--tx, 50%) var(--ty, 0)); } to { clip-path: circle(150vmax at var(--tx, 50%) var(--ty, 0)); } }
+@media (prefers-reduced-motion: reduce) { @view-transition { navigation: none; } }

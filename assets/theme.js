@@ -8,9 +8,15 @@
     label();
     b.addEventListener("click", () => {
       const next = isDark() ? "light" : "dark";
-      root.dataset.theme = next;
-      try { localStorage.setItem("wz-theme", next); } catch (e) {}
-      label();
+      const apply = () => { root.dataset.theme = next; try { localStorage.setItem("wz-theme", next); } catch (e) {} label(); };
+      // The new theme opens out from the button, where the browser supports it.
+      if (!document.startViewTransition || matchMedia("(prefers-reduced-motion: reduce)").matches) return apply();
+      const r = b.getBoundingClientRect();
+      root.style.setProperty("--tx", r.left + r.width / 2 + "px"); root.style.setProperty("--ty", r.top + r.height / 2 + "px");
+      root.classList.add("wz-theming");
+      const done = () => root.classList.remove("wz-theming");
+      document.startViewTransition(apply).finished.finally(done);
+      setTimeout(done, 1200); // in case the tab is in the background and the animation never finishes
     });
   });
 })();

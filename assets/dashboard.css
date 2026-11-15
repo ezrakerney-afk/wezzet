@@ -4,9 +4,7 @@
   --purple-soft: color-mix(in srgb, var(--purple) 9%, var(--bg));
   margin: 0;
   background: var(--bg);
-  font:
-    15px/1.5 system-ui,
-    sans-serif;
+  font: 15px/1.5 var(--font-sans, system-ui, sans-serif);
   color: var(--ink);
 }
 .dashboard *,

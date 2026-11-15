@@ -144,11 +144,12 @@
 
 .home-intro h1,
 .home-page .tool-section h1 {
-  font-family: Georgia, "Times New Roman", serif;
+  font-family: var(--font-serif, Georgia, serif);
   font-weight: 400;
-  letter-spacing: -0.055em;
-  line-height: 1.04;
-  font-size: clamp(46px, 6vw, 84px);
+  letter-spacing: -0.025em;
+  line-height: 0.98;
+  font-size: clamp(52px, 6.8vw, 96px);
+  text-wrap: balance;
   margin: 0 0 20px;
 }
 
