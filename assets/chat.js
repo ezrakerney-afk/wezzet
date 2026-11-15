@@ -27,9 +27,12 @@
     leave: '<svg viewBox="0 0 24 24"><path fill="currentColor" d="M10 3h9a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-9v-2h9V5h-9V3Zm-.6 4.6L10.8 9l-2 2H16v2H8.8l2 2-1.4 1.4L5 12l4.4-4.4Z"/></svg>',
     edit: '<svg viewBox="0 0 24 24"><path fill="currentColor" d="M4 17.25V20h2.75L17.81 8.94l-2.75-2.75L4 17.25Zm16.71-10.04a1 1 0 0 0 0-1.41l-2.51-2.51a1 1 0 0 0-1.41 0l-1.96 1.96 3.92 3.92 1.96-1.96Z"/></svg>',
   };
+  const known = {}; // username -> { id, av } so any avatar can show that person's picture
   const avatar = (name, cls) => {
     const a = document.createElement("span"); a.className = "av" + (cls ? " " + cls : "");
     a.textContent = (name || "?")[0]; a.style.background = `hsl(${hue(name || "?")} 55% 42%)`; a.setAttribute("aria-hidden", "true");
+    const k = known[name]; // their picture sits on top of the initial; if it fails to load, the initial shows
+    if (k && k.av) { const i = document.createElement("img"); i.alt = ""; i.decoding = "async"; i.src = "/api/chat/avatar?u=" + k.id + "&v=" + k.av; i.onerror = () => i.remove(); a.append(i); }
     return a;
   };
   const withDot = (av, online) => {
@@ -58,7 +61,7 @@
     await api("logout", {}).catch(() => {}); location.reload();
   });
 
-  const showMe = () => { $("me-name").textContent = me.name; $("me-av").replaceWith(Object.assign(avatar(me.name), { id: "me-av" })); };
+  const showMe = () => { $("me-name").textContent = me.name; $("me-av").replaceWith(Object.assign(avatar(me.name), { id: "me-av", title: "Change your profile picture" })); };
   async function start(user) {
     me = user; $("auth-wrap").hidden = true; $("app").hidden = false; showMe();
     if ("Notification" in window) enablePush(false);
@@ -81,6 +84,8 @@
   // ---------- rooms ----------
   async function loadRooms() {
     rooms = await api("rooms"); roomsAt = Date.now();
+    for (const x of rooms.dms) known[x.name] = { id: x.uid, av: x.av };
+    if (me && (me.av !== rooms.av || !known[me.name])) { me.av = rooms.av || 0; known[me.name] = { id: me.id, av: me.av }; showMe(); }
     const item = (key, label, online, unread) => {
       const li = document.createElement("li"), b = document.createElement("button"), nm = document.createElement("span");
       b.className = "room" + (unread && key !== cur ? " unread" : ""); b.type = "button"; b.dataset.room = key;
@@ -131,7 +136,8 @@
     $("room-title").textContent = dm || grp ? info.name : "# " + info.name;
     $("room-status").textContent = dm ? (rooms.blocks.includes(info.name) ? "Blocked" : info.online ? "Online" : "Offline") : grp ? info.n + " members" : "";
     $("room-av").replaceChildren(dm ? withDot(avatar(info.name, "lg"), info.online) : grp ? avatar(info.name, "lg grp") : "");
-    $("call-btn").hidden = !dm; $("info-btn").hidden = !(dm || grp);
+    $("call-btn").hidden = !dm; $("info-btn").hidden = !(dm || grp); $("leave-btn").hidden = !(dm || grp);
+    $("leave-btn").title = grp ? "Leave this group" : "Leave this chat"; $("leave-btn").setAttribute("aria-label", $("leave-btn").title);
     $("text").placeholder = "Message " + (dm || grp ? info.name : "#" + info.name);
     if (!$("profile").hidden) { if (grp) groupPanel(); else if (dm) profile(info.name); }
   }
@@ -144,6 +150,41 @@
   $("profile-close").addEventListener("click", closePanel);
   const isOnline = (name) => (rooms.online || []).includes(name) || rooms.dms.some((d) => d.name === name && d.online);
   const run = async (fn) => { try { await fn(); } catch (e) { showErr($("err"), e); } };
+  // ---------- leave a group or a direct chat ----------
+  const leave = (key) => run(async () => {
+    const info = roomInfo(key); if (!info) return;
+    if (key[0] === "g") { if (!confirm("Leave " + info.name + "? You won't get its messages any more.")) return; await api("group/leave", { room: key }); }
+    else if (key[0] === "d") { if (!confirm("Leave your chat with " + info.name + "? It's taken off your list, and comes back if either of you sends a new message.")) return; await api("dm/leave", { room: key }); }
+    else return;
+    closePanel(); await loadRooms(); if (cur === key) open("");
+  });
+  $("leave-btn").addEventListener("click", () => cur && leave(cur));
+
+  // ---------- profile picture ----------
+  const shrink = (file) => new Promise((ok, no) => {
+    const img = new Image(), url = URL.createObjectURL(file);
+    img.onload = () => {
+      const side = Math.min(img.width, img.height), c = document.createElement("canvas"); c.width = c.height = 128;
+      c.getContext("2d").drawImage(img, (img.width - side) / 2, (img.height - side) / 2, side, side, 0, 0, 128, 128);
+      URL.revokeObjectURL(url); ok(c.toDataURL("image/jpeg", 0.85));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); no(new Error("This browser can't open that picture. Try a JPG or PNG.")); };
+    img.src = url;
+  });
+  const setAvatar = async (image) => { const r = await api("avatar", { image }); me.av = r.av; known[me.name] = { id: me.id, av: me.av }; showMe(); if (cur) open(cur); };
+  const pic = el("input"); pic.type = "file"; pic.accept = "image/*"; pic.hidden = true; document.body.append(pic);
+  pic.onchange = () => run(async () => { const f = pic.files[0]; pic.value = ""; if (f) await setAvatar(await shrink(f)); });
+  $("me-bar").addEventListener("click", (e) => {
+    if (!e.target.closest("#me-av")) return;
+    const old = document.getElementById("pic-menu"); if (old) return old.remove();
+    const m = el("div", "pic-menu"); m.id = "pic-menu";
+    const up = el("button", "", me.av ? "Change picture" : "Add a profile picture"); up.type = "button"; up.onclick = () => { m.remove(); pic.click(); };
+    m.append(up);
+    if (me.av) { const rm = el("button", "danger", "Remove picture"); rm.type = "button"; rm.onclick = () => { m.remove(); run(() => setAvatar("")); }; m.append(rm); }
+    $("me-bar").append(m);
+  });
+  document.addEventListener("click", (e) => { const m = document.getElementById("pic-menu"); if (m && !e.target.closest("#me-bar")) m.remove(); });
+
   function profile(name) {
     if (!name || name === me.name) return;
     const dm = rooms.dms.find((d) => d.name === name), blocked = rooms.blocks.includes(name), on = isOnline(name);
@@ -164,6 +205,7 @@
       if (!confirm("Remove " + name + " from your messages?")) return;
       await api("unfriend", { name }); await loadRooms(); open(""); closePanel();
     })));
+    if (dm) acts.append(act("leave", "Leave chat", () => leave("d:" + dm.id), true));
     card.append(acts);
     showPanel([card]);
   }
@@ -251,6 +293,7 @@
   };
   function render(m, pending) {
     const log = $("log");
+    if (m.av !== undefined && m.name) known[m.name] = { id: m.uid, av: m.av };
     if (!lastMsg || new Date(lastMsg.ts).toDateString() !== new Date(m.ts).toDateString()) {
       const d = document.createElement("div"); d.className = "day" + (pending ? " pending" : ""); d.textContent = dayName(m.ts); log.append(d); lastMsg = null;
     }

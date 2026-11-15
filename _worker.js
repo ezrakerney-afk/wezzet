@@ -2851,7 +2851,7 @@ const CH_SCHEMA = [
 ];
 const WZ_KEYS = ["ai"], WZ_MAX = 200000;
 // Public username shown to others ("display"); ch_users.name is the private login name.
-const CH_ALTER = ["ALTER TABLE ch_users ADD COLUMN display TEXT", "ALTER TABLE wz_links ADD COLUMN tok TEXT", "CREATE UNIQUE INDEX IF NOT EXISTS ch_users_display ON ch_users (display COLLATE NOCASE)"];
+const CH_ALTER = ["ALTER TABLE ch_users ADD COLUMN display TEXT", "ALTER TABLE wz_links ADD COLUMN tok TEXT", "CREATE UNIQUE INDEX IF NOT EXISTS ch_users_display ON ch_users (display COLLATE NOCASE)", "ALTER TABLE ch_users ADD COLUMN avatar TEXT", "ALTER TABLE ch_users ADD COLUMN av INTEGER DEFAULT 0", "CREATE TABLE IF NOT EXISTS ch_left (uid INTEGER, room TEXT, at INTEGER, PRIMARY KEY (uid, room))", "CREATE TABLE IF NOT EXISTS actions (who TEXT, action TEXT, created_at INTEGER)"];
 const CH_NAME = "COALESCE(u.display, u.name)";
 let chReady = false;
 const CH_MAX = 2000, CH_HIDE_AT = 3, CH_GROUP_MAX = 20;
@@ -3149,11 +3149,12 @@ async function chRoute(request, env, url, ctx) {
   if (p === "/rooms") {
     const ch = (await DB.prepare("SELECT id, name FROM ch_channels ORDER BY id").all()).results;
     // Friends (status ok) each get a DM room; pending requests show as incoming/outgoing.
-    const fr = (await DB.prepare(`SELECT f.status, f.by, ${CH_NAME} AS name, u.seen, d.id AS dm,
+    const fr = (await DB.prepare(`SELECT f.status, f.by, ${CH_NAME} AS name, u.seen, u.id AS uid, u.av, d.id AS dm,
       (SELECT COUNT(*) FROM ch_msgs m WHERE m.room = 'd:' || d.id AND m.uid <> ? AND m.hidden = 0 AND m.id > COALESCE((SELECT last FROM ch_reads WHERE uid = ? AND room = 'd:' || d.id), 0)) AS unread FROM ch_friends f
       JOIN ch_users u ON u.id = CASE WHEN f.a = ? THEN f.b ELSE f.a END LEFT JOIN ch_dms d ON d.a = f.a AND d.b = f.b
-      WHERE (f.a = ? OR f.b = ?) AND u.banned = 0 ORDER BY d.updated DESC, f.ts DESC LIMIT 300`).bind(me, me, me, me, me).all()).results;
-    const dms = fr.filter((x) => x.status === "ok" && x.dm).map((x) => ({ id: x.dm, name: x.name, unread: x.unread, online: now - (x.seen || 0) < 120e3 }));
+      WHERE (f.a = ? OR f.b = ?) AND u.banned = 0 AND NOT EXISTS (SELECT 1 FROM ch_left l WHERE l.uid = ? AND l.room = 'd:' || d.id AND l.at >= COALESCE(d.updated, 0))
+      ORDER BY d.updated DESC, f.ts DESC LIMIT 300`).bind(me, me, me, me, me, me).all()).results;
+    const dms = fr.filter((x) => x.status === "ok" && x.dm).map((x) => ({ id: x.dm, name: x.name, unread: x.unread, online: now - (x.seen || 0) < 120e3, uid: x.uid, av: x.av || 0 }));
     const requests = fr.filter((x) => x.status === "pending").map((x) => ({ name: x.name, incoming: x.by !== me }));
     const blocks = (await DB.prepare(`SELECT ${CH_NAME} AS name FROM ch_blocks b JOIN ch_users u ON u.id = b.blocked WHERE b.uid = ?`).bind(me).all()).results.map((x) => x.name);
     // Everyone seen in the last 2 minutes, minus me and anyone blocked either way.
@@ -3162,7 +3163,8 @@ async function chRoute(request, env, url, ctx) {
     const groups = (await DB.prepare(`SELECT g.id, g.name, (SELECT COUNT(*) FROM ch_members WHERE gid = g.id) AS n,
       (SELECT COUNT(*) FROM ch_msgs m WHERE m.room = 'g:' || g.id AND m.uid <> ? AND m.hidden = 0 AND m.id > COALESCE((SELECT last FROM ch_reads WHERE uid = ? AND room = 'g:' || g.id), 0)) AS unread
       FROM ch_groups g JOIN ch_members x ON x.gid = g.id AND x.uid = ? ORDER BY g.updated DESC LIMIT 100`).bind(me, me, me).all()).results;
-    return chOut({ channels: ch, dms, groups, requests, blocks, online });
+    const av = (await DB.prepare("SELECT av FROM ch_users WHERE id = ?").bind(me).first())?.av || 0;
+    return chOut({ channels: ch, dms, groups, requests, blocks, online, av });
   }
 
   // One poll returns new messages for the open room plus any call signals for me.
@@ -3183,7 +3185,7 @@ async function chRoute(request, env, url, ctx) {
     }
     let msgs = [];
     if (r) {
-      msgs = (await DB.prepare(`SELECT m.id, m.uid, ${CH_NAME} AS name, m.body, m.ts FROM ch_msgs m JOIN ch_users u ON u.id = m.uid
+      msgs = (await DB.prepare(`SELECT m.id, m.uid, ${CH_NAME} AS name, COALESCE(u.av, 0) AS av, m.body, m.ts FROM ch_msgs m JOIN ch_users u ON u.id = m.uid
         WHERE m.room = ? AND m.id > ? AND m.hidden = 0 AND m.uid NOT IN (SELECT blocked FROM ch_blocks WHERE uid = ?) ORDER BY m.id DESC LIMIT 100`)
         .bind(r.key, after, me).all()).results.reverse();
     }
@@ -3281,6 +3283,38 @@ async function chRoute(request, env, url, ctx) {
   }
 
   // Message anyone directly: opens (or reuses) a DM room without waiting for a friend request.
+  // Profile picture: a small square the browser already shrank. Stored with the account and shown only to signed-in people.
+  if (p === "/avatar" && !post) {
+    const row = await DB.prepare("SELECT avatar FROM ch_users WHERE id = ? AND banned = 0").bind(Math.round(Number(q.get("u"))) || 0).first();
+    const m = row && row.avatar && row.avatar.match(/^data:(image\/(?:jpeg|png|webp));base64,(.+)$/);
+    if (!m) return new Response("", { status: 404, headers: { "cache-control": "no-store" } });
+    const bin = Uint8Array.from(atob(m[2]), (c) => c.charCodeAt(0));
+    return new Response(bin, { headers: { "content-type": m[1], "cache-control": "private, max-age=31536000, immutable", "x-content-type-options": "nosniff", "content-security-policy": "default-src 'none'", "x-robots-tag": "noindex" } });
+  }
+  if (post && p === "/avatar") {
+    const img = String(d.image || "");
+    if (!img) { await DB.prepare("UPDATE ch_users SET avatar = NULL, av = 0 WHERE id = ?").bind(me).run(); return chOut({ av: 0 }); }
+    const m = img.match(/^data:image\/(jpeg|png|webp);base64,([A-Za-z0-9+/]+=*)$/);
+    if (!m || img.length > 60000) return chOut({ error: "That picture is too big, or isn't a JPG, PNG or WebP." }, 400);
+    let top = ""; try { top = atob(m[2].slice(0, 16)); } catch {}
+    const real = m[1] === "jpeg" ? top.startsWith("\xff\xd8\xff") : m[1] === "png" ? top.startsWith("\x89PNG") : top.startsWith("RIFF") && top.slice(8, 12) === "WEBP";
+    if (!real) return chOut({ error: "That file isn't a picture." }, 400);
+    const who = "chat-u" + me;
+    if ((await DB.prepare("SELECT COUNT(*) n FROM actions WHERE who = ? AND action = 'chat-avatar' AND created_at > ?").bind(who, now - 86400e3).first()).n >= 10) return chOut({ error: "You can change your picture 10 times a day. Try tomorrow." }, 429);
+    const av = Math.floor(now / 1000);
+    await DB.batch([
+      DB.prepare("UPDATE ch_users SET avatar = ?, av = ? WHERE id = ?").bind(img, av, me),
+      DB.prepare("INSERT INTO actions (who, action, created_at) VALUES (?, 'chat-avatar', ?)").bind(who, now),
+    ]);
+    return chOut({ av });
+  }
+  // Leave a direct chat: it goes from my list only, and comes back if either of us sends a new message.
+  if (post && p === "/dm/leave") {
+    const r = await room(d.room);
+    if (!r || !r.dm) return chOut({ error: "Chat not found." }, 404);
+    await DB.prepare("INSERT INTO ch_left (uid, room, at) VALUES (?, ?, ?) ON CONFLICT (uid, room) DO UPDATE SET at = excluded.at").bind(me, r.key, now).run();
+    return chOut({ ok: true });
+  }
   if (post && p === "/dm") {
     const u = await userByName(d.name);
     if (!u) return chOut({ error: "No one has that username." }, 404);
@@ -3295,6 +3329,7 @@ async function chRoute(request, env, url, ctx) {
     } else if (f.status !== "ok") await DB.prepare("UPDATE ch_friends SET status = 'ok', ts = ? WHERE a = ? AND b = ?").bind(now, a, b).run();
     await DB.prepare("INSERT OR IGNORE INTO ch_dms (a, b, updated) VALUES (?, ?, ?)").bind(a, b, now).run();
     const dm = await DB.prepare("SELECT id FROM ch_dms WHERE a = ? AND b = ?").bind(a, b).first();
+    await DB.prepare("DELETE FROM ch_left WHERE uid = ? AND room = ?").bind(me, "d:" + dm.id).run();
     return chOut({ room: "d:" + dm.id, name: u.name });
   }
 
@@ -3325,8 +3360,8 @@ async function chRoute(request, env, url, ctx) {
     const r = await room(post ? d.room : q.get("room"));
     if (!r || !r.group) return chOut({ error: "Group not found." }, 404);
     if (p === "/group/members") {
-      const members = (await DB.prepare(`SELECT ${CH_NAME} AS name, u.seen, u.id FROM ch_members x JOIN ch_users u ON u.id = x.uid WHERE x.gid = ? ORDER BY x.joined`).bind(r.group).all()).results
-        .map((x) => ({ name: x.name, online: now - (x.seen || 0) < 120e3, me: x.id === me }));
+      const members = (await DB.prepare(`SELECT ${CH_NAME} AS name, u.seen, u.id, u.av FROM ch_members x JOIN ch_users u ON u.id = x.uid WHERE x.gid = ? ORDER BY x.joined`).bind(r.group).all()).results
+        .map((x) => ({ name: x.name, online: now - (x.seen || 0) < 120e3, me: x.id === me, uid: x.id, av: x.av || 0 }));
       return chOut({ name: r.name, members });
     }
     if (post && p === "/group/add") {

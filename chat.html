@@ -43,6 +43,14 @@
   #err.error { background: var(--bad); color: #fff; }
   .av { flex: none; width: 32px; height: 32px; border-radius: 50%; display: inline-grid; place-items: center; color: #fff; font-weight: 700; font-size: .85rem; text-transform: uppercase; user-select: none; }
   .av.lg { width: 38px; height: 38px; font-size: .95rem; }
+  .av { position: relative; overflow: hidden; }
+  .av img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: inherit; }
+  #me-av { cursor: pointer; transition: box-shadow .15s; } #me-av:hover { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent); }
+  .me { position: relative; }
+  .pic-menu { position: absolute; left: 8px; bottom: calc(100% + 6px); z-index: 5; display: grid; gap: 2px; padding: 6px; min-width: 200px; border: 1px solid var(--line-strong); border-radius: 12px; background: var(--surface); box-shadow: 0 16px 34px -18px rgba(0, 0, 0, .5); }
+  .pic-menu button { border: 0; background: none; text-align: left; padding: 9px 10px; border-radius: 8px; font: inherit; color: var(--ink); cursor: pointer; }
+  .pic-menu button:hover { background: var(--line); } .pic-menu .danger { color: var(--bad); }
+  #leave-btn:hover { color: var(--bad); }
   .av-wrap { position: relative; display: inline-flex; }
   .av-wrap .dot { position: absolute; right: -1px; bottom: -1px; width: 11px; height: 11px; border-radius: 50%; border: 2px solid var(--surface); background: var(--line-strong); }
   .av-wrap .dot.on { background: #2eb67d; }
@@ -233,6 +241,7 @@
             <div class="who" id="who" role="button" tabindex="0" title="Open profile"><h2 id="room-title"></h2><div class="status" id="room-status"></div></div>
             <button class="icon-btn" type="button" id="call-btn" hidden aria-label="Call" title="Call"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M6.6 10.8a15.1 15.1 0 0 0 6.6 6.6l2.2-2.2a1 1 0 0 1 1-.25 11.4 11.4 0 0 0 3.6.57 1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.25.2 2.45.57 3.57a1 1 0 0 1-.25 1L6.6 10.8Z"/></svg></button>
             <button class="icon-btn" type="button" id="info-btn" hidden aria-label="Details" title="Details"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M11 7h2v2h-2V7Zm0 4h2v6h-2v-6Zm1-9a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm0 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16Z"/></svg></button>
+            <button class="icon-btn" type="button" id="leave-btn" hidden aria-label="Leave this chat" title="Leave this chat"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M10 3h9a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-9v-2h9V5h-9V3Zm-.6 4.6L10.8 9l-2 2H16v2H8.8l2 2-1.4 1.4L5 12l4.4-4.4Z"/></svg></button>
           </div>
           <div class="call" id="call-bar" hidden><span id="call-text"></span>
             <button class="btn" type="button" id="accept-btn" hidden>Answer</button>
@@ -264,7 +273,7 @@
     <div class="wz-foot-base"><span>© 2026 Wezzet</span><span>Press <kbd>Ctrl K</kbd> to search every tool</span></div>
   </div>
 </footer>
-<script src="/assets/chat.js?v=6" defer></script>
+<script src="/assets/chat.js?v=7" defer></script>
 <script src="/assets/ui.js?v=1" defer></script>
 <script src="/assets/theme.js?v=5" defer></script>
 </body>
