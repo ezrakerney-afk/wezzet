@@ -4239,7 +4239,8 @@ async function trDraft(DB, lead, profile = {}, dest = "fbi") {
   }
   L.push("", "I found this using public blockchain data only. I haven't contacted anyone involved and haven't touched any funds. I'm glad to answer questions or help further.");
   const contact = ["name", "email", "phone", "country"].map((k) => profile[k]).filter(Boolean);
-  L.push("", "Thank you,", ...(contact.length ? contact : []));
+  if (dest === "rfj") contact.push("Preferred language: English");
+  L.push("", "Thank you,", ...contact);
   return L.filter((x, i, a) => !(x === "" && a[i - 1] === "")).join("\n").trim();
 }
 
