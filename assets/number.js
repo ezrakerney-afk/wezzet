@@ -2,6 +2,8 @@
    two's complement, angles and binary codes. The page picks a mode with <div id="app" data-mode=...>. */
 (() => {
   const app = document.getElementById("app"), d = app.dataset;
+  // A merged page can open pre-set the other way round, for example /binary-to-decimal#from=10&to=2
+  for (const [k, v] of new URLSearchParams(location.hash.slice(1))) if (["from", "to", "reverse"].includes(k) && /^[a-z0-9]{1,8}$/i.test(v)) d[k] = v;
   const el = (tag, props = {}, kids = []) => { const n = Object.assign(document.createElement(tag), props); n.append(...kids); return n; };
   const field = (label, input) => { input.id = input.id || "f" + Math.random().toString(36).slice(2, 8); return el("div", { className: "field" }, [el("label", { htmlFor: input.id, textContent: label }), input]); };
   const inp = (v = "", ph = "") => el("input", { type: "text", value: v, placeholder: ph, spellcheck: false, autocomplete: "off" });

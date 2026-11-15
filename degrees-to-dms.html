@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Degrees to degrees, minutes, seconds converter: how it works, with examples | Wezzet</title>
-<meta name="description" content="Convert angles between decimal degrees, radians, gradians and degrees-minutes-seconds. Free, no sign up.">
+<title>Decimal degrees to DMS and DMS to decimal degrees converter | Wezzet</title>
+<meta name="description" content="Convert decimal degrees to degrees, minutes and seconds, or DMS back to decimal degrees, with the method and a worked coordinate example. Free, no sign-in.">
 <link rel="canonical" href="https://wezzet.com/degrees-to-dms">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Wezzet">
-<meta property="og:title" content="Degrees to degrees, minutes, seconds: Free Online | Wezzet">
+<meta property="og:title" content="Decimal degrees to DMS and DMS to decimal degrees converter">
 <meta property="og:url" content="https://wezzet.com/degrees-to-dms">
 <meta property="og:image" content="https://wezzet.com/assets/og/tip.png">
 <meta property="og:image:width" content="1200">
@@ -26,7 +26,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400..700&display=swap">
 <link rel="stylesheet" href="/assets/site.css?v=8">
-<link rel="stylesheet" href="/assets/skin.css?v=3">
+<link rel="stylesheet" href="/assets/skin.css?v=4">
 <script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"SoftwareApplication","name":"Degrees to degrees, minutes, seconds","url":"https://wezzet.com/degrees-to-dms","applicationCategory":"UtilitiesApplication","operatingSystem":"Any (web browser)","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"description":"Convert angles between decimal degrees, radians, gradians and degrees-minutes-seconds. Free, no sign up."}]}</script>
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1814434432126124" crossorigin="anonymous"></script>
 </head>
@@ -41,7 +41,7 @@
 <main data-gen="1">
   <div class="wrap">
     <div class="tool-head">
-      <h1>Degrees to degrees, minutes, seconds</h1>
+      <h1>Degrees and degrees, minutes, seconds</h1>
       <p class="lede">Convert angles between decimal degrees, radians, gradians and degrees-minutes-seconds.</p>
     </div>
     <div id="app" class="tight" data-mode="angle" data-from="deg"></div>
@@ -51,9 +51,16 @@
 <p>40.6892°: the degrees are 40. Then 0.6892 × 60 = 41.352, so 41 minutes. Then 0.352 × 60 = 21.12 seconds. The result is <strong>40° 41′ 21.12″</strong>.</p>
 <h3>Coordinates</h3>
 <p>For latitude and longitude, a negative decimal value means south or west. One second of latitude is about 31 meters on the ground.</p>
+<h2>How to convert degrees, minutes and seconds to decimal degrees</h2>
+
+<p>Use <code>decimal degrees = degrees + minutes ÷ 60 + seconds ÷ 3600</code>.</p>
+<h3>Worked example</h3>
+<p>40° 41′ 21.12″ = 40 + 41 ÷ 60 + 21.12 ÷ 3600 = 40 + 0.683333 + 0.005867 = <strong>40.6892°</strong>.</p>
+<h3>Coordinates</h3>
+<p>Mapping apps and GPS software expect decimal degrees. Make the value negative for south latitudes and west longitudes: 74° 2′ 40″ W becomes −74.0444°.</p>
 </section>
 
-    <section class="section related" aria-labelledby="related"><h2 id="related">Related tools</h2><ul><li><a href="/number">All numbers converters</a></li><li><a href="/dms-to-degrees">Degrees, minutes, seconds to decimal degrees</a></li><li><a href="/gray-code">Gray code and BCD converter</a></li><li><a href="/bcd-converter">BCD converter</a></li><li><a href="/decimal-to-binary">Decimal to binary converter</a></li><li><a href="/binary-to-decimal">Binary to decimal converter</a></li><li><a href="/decimal-to-hex">Decimal to hex converter</a></li><li><a href="/hex-to-decimal">Hex to decimal converter</a></li><li><a href="/decimal-to-octal">Decimal to octal converter</a></li><li><a href="/octal-to-decimal">Octal to decimal converter</a></li><li><a href="/binary-to-hex">Binary to hex converter</a></li></ul></section>
+    <section class="section related" aria-labelledby="related"><h2 id="related">Related tools</h2><ul><li><a href="/number">All numbers converters</a></li><li><a href="/gray-code">Gray code and BCD converter</a></li><li><a href="/bcd-converter">BCD converter</a></li><li><a href="/binary-to-decimal">Binary and decimal converter</a></li><li><a href="/hex-to-decimal">Hex and decimal converter</a></li><li><a href="/octal-to-decimal">Octal and decimal converter</a></li><li><a href="/binary-to-hex">Binary and hex converter</a></li></ul></section>
   </div>
 </main>
 
@@ -63,12 +70,12 @@
       <div><a class="brand" href="/"><img src="/assets/icon-48.png" width="26" height="26" alt="">wezzet<span class="brand-dot">.</span></a><p>Free tools for the work in front of you. Built by Ezra Kerney and Noah Puckett.</p></div>
       <div><strong class="wz-foot-h">Popular</strong><ul><li><a href="/heic-to-jpg">HEIC to JPG</a></li><li><a href="/compress-pdf">Compress PDF</a></li><li><a href="/mp4-to-mp3">MP4 to MP3</a></li><li><a href="/units">Unit converter</a></li><li><a href="/qr">QR code generator</a></li></ul></div>
       <div><strong class="wz-foot-h">Explore</strong><ul><li><a href="/#tools">All tools</a></li><li><a href="/converters">Converters by topic</a></li><li><a href="/transport">Live transport tracker</a></li><li><a href="/ai">WezzetAI</a></li><li><a href="/forum">Forum</a></li></ul></div>
-      <div><strong class="wz-foot-h">Wezzet</strong><ul><li><a href="/about">About</a></li><li><a href="/contact">Contact</a></li><li><a href="/privacy">Privacy</a></li><li><a href="https://x.com/WezzetX" rel="noopener">@WezzetX on X</a></li></ul></div>
+      <div><strong class="wz-foot-h">Wezzet</strong><ul><li><a href="/about">About</a></li><li><a href="/contact">Contact</a></li><li><a href="/privacy">Privacy</a></li><li><a href="https://x.com/WezzetX" rel="noopener">@WezzetX on X</a></li><li><a href="https://www.instagram.com/wezzetig/" rel="noopener">@wezzetig on Instagram</a></li><li><a href="https://www.tiktok.com/@wezzet_tt" rel="noopener">@wezzet_tt on TikTok</a></li></ul></div>
     </div>
     <div class="wz-foot-base"><span>© 2026 Wezzet</span><span>Press <kbd>Ctrl K</kbd> to search every tool</span></div>
   </div>
 </footer>
-<script src="/assets/number.js?v=1" defer></script>
+<script src="/assets/number.js?v=2" defer></script>
 <script src="/assets/ui.js?v=1" defer></script>
 <script src="/assets/theme.js?v=5" defer></script>
 </body>

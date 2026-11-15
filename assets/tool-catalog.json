@@ -1,5 +1,5 @@
 {
-  "count": 769,
+  "count": 753,
   "pages": [
     {
       "url": "/art-studio",
@@ -147,11 +147,11 @@
     },
     {
       "url": "/ascii-to-binary",
-      "name": "ascii text to binary"
+      "name": "text and binary converter"
     },
     {
       "url": "/ascii-to-hex",
-      "name": "ascii text to hex"
+      "name": "text and hex converter"
     },
     {
       "url": "/ascii-converter",
@@ -807,19 +807,15 @@
     },
     {
       "url": "/binary-to-decimal",
-      "name": "binary to decimal converter"
+      "name": "binary and decimal converter"
     },
     {
       "url": "/binary-to-hex",
-      "name": "binary to hex converter"
+      "name": "binary and hex converter"
     },
     {
       "url": "/binary-to-octal",
-      "name": "binary to octal converter"
-    },
-    {
-      "url": "/binary-to-text",
-      "name": "binary to text"
+      "name": "binary and octal converter"
     },
     {
       "url": "/bits-to-bytes",
@@ -1086,36 +1082,20 @@
       "name": "decibel (db) converter"
     },
     {
-      "url": "/decimal-to-binary",
-      "name": "decimal to binary converter"
-    },
-    {
       "url": "/decimal-to-fraction",
-      "name": "decimal to fraction converter"
-    },
-    {
-      "url": "/decimal-to-hex",
-      "name": "decimal to hex converter"
-    },
-    {
-      "url": "/decimal-to-octal",
-      "name": "decimal to octal converter"
+      "name": "decimal and fraction converter"
     },
     {
       "url": "/decimal-to-percent",
-      "name": "decimal to percent converter"
+      "name": "decimal and percent converter"
     },
     {
       "url": "/degrees-to-dms",
-      "name": "degrees to degrees, minutes, seconds"
+      "name": "degrees and dms converter"
     },
     {
       "url": "/degrees-to-radians",
       "name": "degrees to radians"
-    },
-    {
-      "url": "/dms-to-degrees",
-      "name": "degrees, minutes, seconds to decimal degrees"
     },
     {
       "url": "/density-converter",
@@ -1278,12 +1258,8 @@
       "name": "force converter"
     },
     {
-      "url": "/fraction-to-decimal",
-      "name": "fraction to decimal converter"
-    },
-    {
       "url": "/fraction-to-percent",
-      "name": "fraction to percent converter"
+      "name": "fraction and percent converter"
     },
     {
       "url": "/frequency-and-wavelength-converter",
@@ -1410,28 +1386,20 @@
       "name": "hex dump"
     },
     {
-      "url": "/hex-to-binary",
-      "name": "hex to binary converter"
-    },
-    {
       "url": "/hex-to-cmyk",
       "name": "hex to cmyk converter"
     },
     {
       "url": "/hex-to-decimal",
-      "name": "hex to decimal converter"
+      "name": "hex and decimal converter"
     },
     {
       "url": "/hex-to-octal",
-      "name": "hex to octal converter"
+      "name": "hex and octal converter"
     },
     {
       "url": "/hex-to-rgb",
       "name": "hex to rgb converter"
-    },
-    {
-      "url": "/hex-to-text",
-      "name": "hex to text"
     },
     {
       "url": "/hmac-generator",
@@ -2158,16 +2126,8 @@
       "name": "obj to stl"
     },
     {
-      "url": "/octal-to-binary",
-      "name": "octal to binary converter"
-    },
-    {
       "url": "/octal-to-decimal",
-      "name": "octal to decimal converter"
-    },
-    {
-      "url": "/octal-to-hex",
-      "name": "octal to hex converter"
+      "name": "octal and decimal converter"
     },
     {
       "url": "/ogg-to-mp3",
@@ -2222,18 +2182,6 @@
       "name": "pef to jpg"
     },
     {
-      "url": "/percent-to-decimal",
-      "name": "percent to decimal converter"
-    },
-    {
-      "url": "/percent-to-fraction",
-      "name": "percent to fraction converter"
-    },
-    {
-      "url": "/percent-to-ppm",
-      "name": "percent to ppm converter"
-    },
-    {
       "url": "/percent",
       "name": "percentage calculator"
     },
@@ -2286,20 +2234,8 @@
       "name": "power converter"
     },
     {
-      "url": "/ppb-to-ppm",
-      "name": "ppb to ppm converter"
-    },
-    {
-      "url": "/ppm-to-percent",
-      "name": "ppm to percent converter"
-    },
-    {
-      "url": "/ppm-to-ppb",
-      "name": "ppm to ppb converter"
-    },
-    {
       "url": "/ppm-converter",
-      "name": "ppm, ppb, ppt and percent converter"
+      "name": "ppm, ppb and percent converter"
     },
     {
       "url": "/prefixes-converter",
@@ -2328,6 +2264,10 @@
     {
       "url": "/psi-to-kpa",
       "name": "psi to kpa"
+    },
+    {
+      "url": "/tracker",
+      "name": "chain watch crypto tracker"
     },
     {
       "url": "/transport",
@@ -2628,10 +2568,6 @@
     {
       "url": "/text-to-morse",
       "name": "text file to morse code"
-    },
-    {
-      "url": "/binary",
-      "name": "text to binary"
     },
     {
       "url": "/text-to-binary",

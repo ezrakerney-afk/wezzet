@@ -89,7 +89,6 @@
   <url><loc>https://wezzet.com/countdown</loc><lastmod>2026-11-03</lastmod></url>
   <url><loc>https://wezzet.com/morse</loc><lastmod>2026-11-03</lastmod></url>
   <url><loc>https://wezzet.com/roman</loc><lastmod>2026-11-03</lastmod></url>
-  <url><loc>https://wezzet.com/binary</loc><lastmod>2026-11-03</lastmod></url>
   <url><loc>https://wezzet.com/lorem</loc><lastmod>2026-11-03</lastmod></url>
   <url><loc>https://wezzet.com/wheel</loc><lastmod>2026-11-03</lastmod></url>
   <url><loc>https://wezzet.com/csv-to-json</loc><lastmod>2026-11-04</lastmod></url>
@@ -157,43 +156,27 @@
   <url><loc>https://wezzet.com/sha1-checksum</loc><lastmod>2026-11-04</lastmod></url>
   <url><loc>https://wezzet.com/ai</loc><lastmod>2026-11-07</lastmod></url>
   <url><loc>https://wezzet.com/number</loc><lastmod>2026-11-04</lastmod></url>
-  <url><loc>https://wezzet.com/decimal-to-binary</loc><lastmod>2026-11-04</lastmod></url>
   <url><loc>https://wezzet.com/binary-to-decimal</loc><lastmod>2026-11-04</lastmod></url>
-  <url><loc>https://wezzet.com/decimal-to-hex</loc><lastmod>2026-11-04</lastmod></url>
   <url><loc>https://wezzet.com/hex-to-decimal</loc><lastmod>2026-11-04</lastmod></url>
-  <url><loc>https://wezzet.com/decimal-to-octal</loc><lastmod>2026-11-04</lastmod></url>
   <url><loc>https://wezzet.com/octal-to-decimal</loc><lastmod>2026-11-04</lastmod></url>
   <url><loc>https://wezzet.com/binary-to-hex</loc><lastmod>2026-11-04</lastmod></url>
-  <url><loc>https://wezzet.com/hex-to-binary</loc><lastmod>2026-11-04</lastmod></url>
   <url><loc>https://wezzet.com/binary-to-octal</loc><lastmod>2026-11-04</lastmod></url>
-  <url><loc>https://wezzet.com/octal-to-binary</loc><lastmod>2026-11-04</lastmod></url>
   <url><loc>https://wezzet.com/hex-to-octal</loc><lastmod>2026-11-04</lastmod></url>
-  <url><loc>https://wezzet.com/octal-to-hex</loc><lastmod>2026-11-04</lastmod></url>
   <url><loc>https://wezzet.com/ascii-to-binary</loc><lastmod>2026-11-04</lastmod></url>
-  <url><loc>https://wezzet.com/binary-to-text</loc><lastmod>2026-11-04</lastmod></url>
   <url><loc>https://wezzet.com/ascii-to-hex</loc><lastmod>2026-11-04</lastmod></url>
-  <url><loc>https://wezzet.com/hex-to-text</loc><lastmod>2026-11-04</lastmod></url>
   <url><loc>https://wezzet.com/text-to-decimal</loc><lastmod>2026-11-04</lastmod></url>
   <url><loc>https://wezzet.com/text-to-octal</loc><lastmod>2026-11-04</lastmod></url>
   <url><loc>https://wezzet.com/ascii-converter</loc><lastmod>2026-11-04</lastmod></url>
   <url><loc>https://wezzet.com/text-to-unicode</loc><lastmod>2026-11-04</lastmod></url>
   <url><loc>https://wezzet.com/decimal-to-fraction</loc><lastmod>2026-11-04</lastmod></url>
-  <url><loc>https://wezzet.com/fraction-to-decimal</loc><lastmod>2026-11-04</lastmod></url>
   <url><loc>https://wezzet.com/decimal-to-percent</loc><lastmod>2026-11-04</lastmod></url>
-  <url><loc>https://wezzet.com/percent-to-decimal</loc><lastmod>2026-11-04</lastmod></url>
   <url><loc>https://wezzet.com/fraction-to-percent</loc><lastmod>2026-11-04</lastmod></url>
-  <url><loc>https://wezzet.com/percent-to-fraction</loc><lastmod>2026-11-04</lastmod></url>
   <url><loc>https://wezzet.com/ppm-converter</loc><lastmod>2026-11-04</lastmod></url>
-  <url><loc>https://wezzet.com/percent-to-ppm</loc><lastmod>2026-11-04</lastmod></url>
-  <url><loc>https://wezzet.com/ppm-to-percent</loc><lastmod>2026-11-04</lastmod></url>
-  <url><loc>https://wezzet.com/ppm-to-ppb</loc><lastmod>2026-11-04</lastmod></url>
-  <url><loc>https://wezzet.com/ppb-to-ppm</loc><lastmod>2026-11-04</lastmod></url>
   <url><loc>https://wezzet.com/scientific-notation</loc><lastmod>2026-11-04</lastmod></url>
   <url><loc>https://wezzet.com/twos-complement</loc><lastmod>2026-11-04</lastmod></url>
   <url><loc>https://wezzet.com/degrees-to-radians</loc><lastmod>2026-11-04</lastmod></url>
   <url><loc>https://wezzet.com/radians-to-degrees</loc><lastmod>2026-11-04</lastmod></url>
   <url><loc>https://wezzet.com/degrees-to-dms</loc><lastmod>2026-11-04</lastmod></url>
-  <url><loc>https://wezzet.com/dms-to-degrees</loc><lastmod>2026-11-04</lastmod></url>
   <url><loc>https://wezzet.com/gray-code</loc><lastmod>2026-11-04</lastmod></url>
   <url><loc>https://wezzet.com/bcd-converter</loc><lastmod>2026-11-04</lastmod></url>
   <url><loc>https://wezzet.com/cm-to-inches</loc><lastmod>2026-11-04</lastmod></url>

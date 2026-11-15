@@ -14,6 +14,9 @@ export default {
     if (env.TRACKER_OWNER && env.DB && Date.now() > trNextTry) { trNextTry = Date.now() + 30e3; ctx.waitUntil(trTick(env).catch((e) => trLogError(env, e))); }
     // One canonical host: www.wezzet.com permanently redirects to wezzet.com so Google indexes a single copy.
     if (url.hostname.startsWith("www.")) { url.hostname = url.hostname.slice(4); return Response.redirect(url.toString(), 301); }
+    // Pages merged into a two-way converter: old addresses go to the new page, pre-set the same way round.
+    const mergedTo = WZ_MERGED[url.pathname.replace(/[.]html$/, "").replace(/[/]$/, "")];
+    if (mergedTo) return Response.redirect(url.origin + mergedTo, 301);
     if (url.pathname === "/api/tool-stats") return toolStats(request, env);
     if (url.pathname.startsWith("/api/aicomms")) return aicomms(request, env, url, ctx);
     if (/^\/api\/(paste|read|calc|json|csv|hash|base64|uuid|dns|status|headers|cron|regex|diff|count|password|random)(\/|$)/.test(url.pathname) || url.pathname === "/api" || url.pathname === "/api/") return tools(request, env, url);
@@ -4655,3 +4658,5 @@ async function trNotify(env, s, fresh) {
       body: JSON.stringify({ chat_id: chat, disable_web_page_preview: true, text: "Chain Watch: " + head + "\n\n" + fresh.slice(0, 5).map((a) => "• [" + a.tag + "] " + a.summary + (a.ai ? "\nAI: " + a.ai : "")).join("\n\n") + "\n\nhttps://wezzet.com/tracker#alerts" }) });
   }
 }
+
+const WZ_MERGED = {"/decimal-to-binary": "/binary-to-decimal#from=10&to=2", "/hex-to-binary": "/binary-to-hex#from=16&to=2", "/octal-to-binary": "/binary-to-octal#from=8&to=2", "/decimal-to-hex": "/hex-to-decimal#from=10&to=16", "/decimal-to-octal": "/octal-to-decimal#from=10&to=8", "/octal-to-hex": "/hex-to-octal#from=8&to=16", "/binary-to-text": "/ascii-to-binary#reverse=1", "/binary": "/ascii-to-binary", "/hex-to-text": "/ascii-to-hex#reverse=1", "/fraction-to-decimal": "/decimal-to-fraction#from=frac", "/percent-to-decimal": "/decimal-to-percent#from=pct", "/percent-to-fraction": "/fraction-to-percent#from=pct", "/ppm-to-percent": "/ppm-converter#from=ppm", "/percent-to-ppm": "/ppm-converter#from=pct", "/ppm-to-ppb": "/ppm-converter#from=ppm", "/ppb-to-ppm": "/ppm-converter#from=ppb", "/dms-to-degrees": "/degrees-to-dms#from=dms"};

@@ -240,3 +240,12 @@ body:not(.dashboard) .tool-head > *:nth-child(2) { animation-delay: .06s; }
   .wz-js .wz-reveal { opacity: 1; transform: none; }
 }
 body:not(.dashboard) #app.tight .btn { padding: 8px 14px; font-size: .9rem; }
+
+/* hub directory: groups of tool cards */
+body:not(.dashboard) .wz-dir h3 { margin-top: 34px; font-size: 1.15rem; }
+body:not(.dashboard) .wz-dir-intro { color: var(--ink-soft); margin: 0 0 12px; max-width: 62ch; }
+.wz-cards { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
+body:not(.dashboard) .wz-cards a { display: flex; flex-direction: column; gap: 3px; height: 100%; padding: 14px 16px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); color: var(--ink); text-decoration: none; transition: border-color .15s, transform .15s, box-shadow .15s; }
+body:not(.dashboard) .wz-cards a:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: var(--shadow); }
+.wz-cards strong { font-weight: 650; }
+.wz-cards span { color: var(--ink-soft); font-size: .88rem; line-height: 1.45; }

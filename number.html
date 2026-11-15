@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Number base converter: free online, with examples | Wezzet</title>
+<title>Number converters: bases, binary, fractions, percent and more | Wezzet</title>
 <meta name="description" content="Convert numbers between any bases from 2 to 36: binary, octal, decimal, hex and more. Free, no sign up.">
 <link rel="canonical" href="https://wezzet.com/number">
 <meta property="og:type" content="website">
@@ -26,7 +26,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400..700&display=swap">
 <link rel="stylesheet" href="/assets/site.css?v=8">
-<link rel="stylesheet" href="/assets/skin.css?v=3">
+<link rel="stylesheet" href="/assets/skin.css?v=4">
 <script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"SoftwareApplication","name":"Number base converter","url":"https://wezzet.com/number","applicationCategory":"UtilitiesApplication","operatingSystem":"Any (web browser)","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"description":"Convert numbers between any bases from 2 to 36: binary, octal, decimal, hex and more. Free, no sign up."}]}</script>
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1814434432126124" crossorigin="anonymous"></script>
 </head>
@@ -45,6 +45,23 @@
       <p class="lede">Convert numbers between any bases from 2 to 36: binary, octal, decimal, hex and more.</p>
     </div>
     <div id="app" class="tight" data-mode="base"></div>
+    <section class="section wz-dir" aria-labelledby="all-number">
+      <h2 id="all-number">All number converters</h2>
+      <h3>Number bases</h3>
+      <p class="wz-dir-intro">Binary, octal, decimal and hex are the same numbers written with a different count of digits.</p>
+      <ul class="wz-cards"><li><a href="/binary-to-decimal"><strong>Binary and decimal</strong><span>Both directions, with the place-value and division methods.</span></a></li><li><a href="/binary-to-hex"><strong>Binary and hex</strong><span>Four bits per hex digit, both directions.</span></a></li><li><a href="/binary-to-octal"><strong>Binary and octal</strong><span>Three bits per octal digit, both directions.</span></a></li><li><a href="/hex-to-decimal"><strong>Hex and decimal</strong><span>Read hex values as ordinary numbers, and back.</span></a></li><li><a href="/octal-to-decimal"><strong>Octal and decimal</strong><span>Useful for Unix file permissions.</span></a></li><li><a href="/hex-to-octal"><strong>Hex and octal</strong><span>Converted through binary.</span></a></li></ul>
+      <h3>Text and character codes</h3>
+      <p class="wz-dir-intro">Every character is stored as a number. These show the codes behind your text.</p>
+      <ul class="wz-cards"><li><a href="/ascii-to-binary"><strong>Text and binary</strong><span>Text to ones and zeros, and back to text.</span></a></li><li><a href="/ascii-to-hex"><strong>Text and hex</strong><span>Two hex digits per byte, both directions.</span></a></li><li><a href="/text-to-decimal"><strong>Text to decimal codes</strong><span>The ASCII number of each character.</span></a></li><li><a href="/text-to-octal"><strong>Text to octal</strong><span>Character codes in base 8.</span></a></li><li><a href="/text-to-unicode"><strong>Text to Unicode</strong><span>Code points such as U+0041, for any language or emoji.</span></a></li><li><a href="/ascii-converter"><strong>ASCII converter</strong><span>Binary, hex, decimal, octal and Base64 in one place.</span></a></li></ul>
+      <h3>Fractions, decimals and percent</h3>
+      <p class="wz-dir-intro">Three ways to write the same part of a whole, plus parts per million for very small amounts.</p>
+      <ul class="wz-cards"><li><a href="/decimal-to-fraction"><strong>Decimal and fraction</strong><span>0.375 is 3/8. Handles repeating decimals.</span></a></li><li><a href="/decimal-to-percent"><strong>Decimal and percent</strong><span>Move the decimal point two places.</span></a></li><li><a href="/fraction-to-percent"><strong>Fraction and percent</strong><span>3/8 is 37.5%, and back.</span></a></li><li><a href="/ppm-converter"><strong>PPM, ppb and percent</strong><span>Parts per million, billion and trillion.</span></a></li><li><a href="/percent"><strong>Percentage calculator</strong><span>Percent of a number, percent change and more.</span></a></li></ul>
+      <h3>How computers store numbers</h3>
+      <p class="wz-dir-intro">Formats used inside processors, displays and sensors.</p>
+      <ul class="wz-cards"><li><a href="/twos-complement"><strong>Two's complement</strong><span>How negative whole numbers are stored.</span></a></li><li><a href="/bcd-converter"><strong>Binary-coded decimal</strong><span>Four bits for each decimal digit.</span></a></li><li><a href="/gray-code"><strong>Gray code</strong><span>Neighbouring values differ by one bit.</span></a></li><li><a href="/scientific-notation"><strong>Scientific notation</strong><span>Very large and very small numbers, and E notation.</span></a></li></ul>
+      <h3>Angles and other number systems</h3>
+      <ul class="wz-cards"><li><a href="/degrees-to-dms"><strong>Degrees and DMS</strong><span>Decimal degrees and degrees, minutes, seconds for coordinates.</span></a></li><li><a href="/roman"><strong>Roman numerals</strong><span>1 to 3,999, both directions.</span></a></li><li><a href="/large-numbers-converter"><strong>Large numbers</strong><span>Millions, billions, lakhs and crores.</span></a></li></ul>
+    </section>
     <section class="guide" aria-labelledby="how"><h2 id="how">About number bases</h2>
 <p>A number base is how many different digits a system uses. Decimal (base 10) uses 0 to 9; binary (base 2) uses 0 and 1; octal (base 8) uses 0 to 7; hexadecimal (base 16) uses 0 to 9 and A to F for ten to fifteen.</p>
 <p>In every base, a digit's position is worth a power of the base. Decimal 156 is 1×100 + 5×10 + 6×1; the same value is 10011100 in binary, 234 in octal and 9C in hex.</p>
@@ -52,7 +69,7 @@
 <p>Computers store everything in binary. Hex is a compact way to write it, since one hex digit is exactly four bits and one byte is two hex digits. Octal, three bits per digit, survives in Unix file permissions.</p>
 </section>
 
-    <section class="section related" aria-labelledby="related"><h2 id="related">Related tools</h2><ul><li><a href="/decimal-to-binary">Decimal to binary converter</a></li><li><a href="/binary-to-decimal">Binary to decimal converter</a></li><li><a href="/decimal-to-hex">Decimal to hex converter</a></li><li><a href="/hex-to-decimal">Hex to decimal converter</a></li><li><a href="/decimal-to-octal">Decimal to octal converter</a></li><li><a href="/octal-to-decimal">Octal to decimal converter</a></li><li><a href="/binary-to-hex">Binary to hex converter</a></li><li><a href="/hex-to-binary">Hex to binary converter</a></li><li><a href="/binary-to-octal">Binary to octal converter</a></li><li><a href="/octal-to-binary">Octal to binary converter</a></li><li><a href="/hex-to-octal">Hex to octal converter</a></li></ul></section>
+    <section class="section related" aria-labelledby="related"><h2 id="related">Related tools</h2><ul><li><a href="/binary-to-decimal">Binary and decimal converter</a></li><li><a href="/hex-to-decimal">Hex and decimal converter</a></li><li><a href="/octal-to-decimal">Octal and decimal converter</a></li><li><a href="/binary-to-hex">Binary and hex converter</a></li><li><a href="/binary-to-octal">Binary and octal converter</a></li><li><a href="/hex-to-octal">Hex and octal converter</a></li></ul></section>
   </div>
 </main>
 
@@ -62,12 +79,12 @@
       <div><a class="brand" href="/"><img src="/assets/icon-48.png" width="26" height="26" alt="">wezzet<span class="brand-dot">.</span></a><p>Free tools for the work in front of you. Built by Ezra Kerney and Noah Puckett.</p></div>
       <div><strong class="wz-foot-h">Popular</strong><ul><li><a href="/heic-to-jpg">HEIC to JPG</a></li><li><a href="/compress-pdf">Compress PDF</a></li><li><a href="/mp4-to-mp3">MP4 to MP3</a></li><li><a href="/units">Unit converter</a></li><li><a href="/qr">QR code generator</a></li></ul></div>
       <div><strong class="wz-foot-h">Explore</strong><ul><li><a href="/#tools">All tools</a></li><li><a href="/converters">Converters by topic</a></li><li><a href="/transport">Live transport tracker</a></li><li><a href="/ai">WezzetAI</a></li><li><a href="/forum">Forum</a></li></ul></div>
-      <div><strong class="wz-foot-h">Wezzet</strong><ul><li><a href="/about">About</a></li><li><a href="/contact">Contact</a></li><li><a href="/privacy">Privacy</a></li><li><a href="https://x.com/WezzetX" rel="noopener">@WezzetX on X</a></li></ul></div>
+      <div><strong class="wz-foot-h">Wezzet</strong><ul><li><a href="/about">About</a></li><li><a href="/contact">Contact</a></li><li><a href="/privacy">Privacy</a></li><li><a href="https://x.com/WezzetX" rel="noopener">@WezzetX on X</a></li><li><a href="https://www.instagram.com/wezzetig/" rel="noopener">@wezzetig on Instagram</a></li><li><a href="https://www.tiktok.com/@wezzet_tt" rel="noopener">@wezzet_tt on TikTok</a></li></ul></div>
     </div>
     <div class="wz-foot-base"><span>© 2026 Wezzet</span><span>Press <kbd>Ctrl K</kbd> to search every tool</span></div>
   </div>
 </footer>
-<script src="/assets/number.js?v=1" defer></script>
+<script src="/assets/number.js?v=2" defer></script>
 <script src="/assets/ui.js?v=1" defer></script>
 <script src="/assets/theme.js?v=5" defer></script>
 </body>
