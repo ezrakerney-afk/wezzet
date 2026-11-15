@@ -15,7 +15,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400..700&display=swap">
 <link rel="stylesheet" href="/assets/site.css?v=8">
 <link rel="stylesheet" href="/assets/skin.css?v=4">
-<link rel="stylesheet" href="/assets/tracker.css?v=9">
+<link rel="stylesheet" href="/assets/tracker.css?v=10">
 </head>
 <body>
 <header class="site-header">
@@ -29,8 +29,18 @@
     <div class="tr-head">
       <div>
         <p class="tr-eyebrow">Private · Read-only</p>
-        <div class="tr-h1" role="heading" aria-level="1">Chain Watch</div>
-        <p class="tr-sub">Watches every crypto wallet on the US sanctions list and in FBI notices, follows the money on its own, and drafts tips for you to send yourself.</p>
+        <div class="tr-titlerow">
+          <div class="tr-bellwrap" id="tr-bellwrap" hidden>
+            <button type="button" class="tr-bell" id="tr-bell" aria-label="Notifications" aria-expanded="false" aria-controls="tr-bellpanel"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 16V11a6 6 0 1 1 12 0v5l2 2H4l2-2Zm4 5h4"/></svg><span class="n" id="tr-bell-n" hidden></span></button>
+            <div class="tr-bellpanel" id="tr-bellpanel" hidden>
+              <div class="tr-bellhead"><b>Notifications</b><span class="tr-sm">Only things worth acting on</span></div>
+              <ol id="tr-bell-list"></ol>
+              <p class="tr-empty" id="tr-bell-empty">Nothing worth reporting right now. You'll get a notification here when there is.</p>
+            </div>
+          </div>
+          <div class="tr-h1" role="heading" aria-level="1">Chain Watch</div>
+        </div>
+        <p class="tr-sub">Watches every crypto wallet on the US sanctions list and in FBI notices, follows the money on its own, and tells you what is worth reporting and where, and builds the report for you.</p>
       </div>
       <div class="tr-headside"><div class="tr-pill" id="tr-health" hidden><span class="dot"></span><span id="tr-last"></span></div><button class="btn btn-quiet" type="button" data-act="run" id="tr-run" hidden>Check now</button></div>
     </div>
@@ -198,6 +208,16 @@
             <label class="tr-switch"><input type="checkbox" name="paused"><span></span></label>
           </div>
           <div class="tr-card">
+            <h2 class="tr-h2">Reporter profile</h2>
+            <p class="tr-help">Added to the bottom of every report, so you never type it again. The FBI, Rewards for Justice and Lazarus Bounty don't let other apps sign in or send reports for you, so Chain Watch does everything up to the last step: it writes the full report, copies it and opens the right form. You paste and press send. Saved encrypted.</p>
+            <div class="tr-grid">
+              <label>Full name<input type="text" name="p_name" autocomplete="name"></label>
+              <label>Email<input type="text" name="p_email" autocomplete="email" inputmode="email"></label>
+              <label>Phone<input type="text" name="p_phone" autocomplete="tel" inputmode="tel"></label>
+              <label>Country<input type="text" name="p_country" autocomplete="country-name"></label>
+            </div>
+          </div>
+          <div class="tr-card">
             <h2 class="tr-h2">Automation</h2>
             <p class="tr-help">Built in means Wezzet does the checking itself and you don't need to set up anything else.</p>
             <div class="tr-grid">
@@ -246,6 +266,18 @@
           <div id="t-box" class="tr-token" hidden><code id="t-out"></code><button class="btn" type="button" data-act="t-copy">Copy</button></div>
         </div>
       </section>
+      <dialog class="tr-dialog" id="tr-report" aria-labelledby="rp-title">
+        <form method="dialog" class="tr-dclose"><button class="tr-link" aria-label="Close">Close</button></form>
+        <div id="rp-verdict"></div>
+        <h2 class="tr-h2" id="rp-title"></h2>
+        <p id="rp-why"></p>
+        <h3 class="tr-h3">Where and how to report it</h3>
+        <p class="tr-help">Press a button: the full report (with your contact details) is copied and the form opens. Paste it with Ctrl+V (or long-press, Paste) and send. That's it.</p>
+        <ol id="rp-dests" class="tr-dests"></ol>
+        <p class="tr-note" id="rp-status" role="status" aria-live="polite"></p>
+        <details class="tr-rpview"><summary>See the report</summary><textarea id="rp-text" rows="14" readonly spellcheck="false"></textarea></details>
+        <p class="tr-sm" id="rp-profile"></p>
+      </dialog>
       <datalist id="tr-chains"><option value="eth"><option value="bsc"><option value="arb"><option value="base"><option value="polygon"><option value="op"><option value="avax"><option value="btc"><option value="tron"></datalist>
       </div>
     </div>
@@ -264,7 +296,7 @@
   </div>
 </footer>
 <script src="/assets/account.js?v=3" defer></script>
-<script src="/assets/tracker.js?v=8" defer></script>
+<script src="/assets/tracker.js?v=9" defer></script>
 <script src="/assets/ui.js?v=1" defer></script>
 <script src="/assets/theme.js?v=5" defer></script>
 </body>

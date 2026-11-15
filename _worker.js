@@ -3935,12 +3935,38 @@ async function trBrowser(request, env, p, d, q, sess) {
   if (post && p === "/watch/lead") {
     const w = await DB.prepare("SELECT * FROM tr_watch WHERE id = ?").bind(Math.round(Number(d.id)) || 0).first();
     if (!w) return trOut({ error: "That address is gone." }, 404);
-    const usd = (n) => "$" + Math.round(n || 0).toLocaleString("en-US");
-    const notes = `Address: ${w.chain} ${w.address}\nNamed in: ${w.source || "?"}${w.source_url ? " " + w.source_url : ""}${w.hop ? " (hop " + w.hop + " from a named address)" : ""}\nHolding: ${w.balance || "?"} (about ${usd(w.bal_usd)}, checked ${w.bal_at ? new Date(w.bal_at).toISOString().slice(0, 16).replace("T", " ") + " UTC" : "?"})\n` +
-      (w.frozen === 1 ? "Already frozen by the issuer, so funds can't move. Lower value as a tip.\n" : "") + (w.freeze_usd >= 1 ? `Freezable: about ${usd(w.freeze_usd)} in stablecoins. The issuer (Tether for USDT, Circle for USDC) can freeze these at law enforcement's request, so this is worth reporting to the FBI (ic3.gov or tips.fbi.gov) and mentioning the token and address.\n` : "") +
-      "Check first: is this address already frozen or already in a public report? Look it up on the explorer and search the address online.";
-    const now2 = Date.now();
-    await DB.prepare("INSERT INTO tr_leads (title, notes, status, alert_ids, created, updated) VALUES (?, ?, 'investigating', '[]', ?, ?)").bind(`${w.freeze_usd >= 1000 ? "Freezable funds" : "Funds sitting"}: ${usd(w.freeze_usd >= 1000 ? w.freeze_usd : w.bal_usd)} at ${w.chain} ${w.address.slice(0, 10)}…`, notes, now2, now2).run();
+    return trOut({ ok: true, id: await trLeadFromWatch(DB, w) });
+  }
+  // One-click report: make (or reuse) the lead, build the full report with the owner's contact details, nothing to fill in.
+  if (post && p === "/report") {
+    let lead = null;
+    if (d.alert_id) {
+      const aid = Math.round(Number(d.alert_id)) || 0;
+      const a = await DB.prepare("SELECT * FROM tr_alerts WHERE id = ?").bind(aid).first();
+      if (!a) return trOut({ error: "That alert is gone." }, 404);
+      lead = await DB.prepare("SELECT * FROM tr_leads WHERE EXISTS (SELECT 1 FROM json_each(tr_leads.alert_ids) WHERE value = ?) ORDER BY id DESC").bind(aid).first();
+      if (!lead) {
+        const r = await DB.prepare("INSERT INTO tr_leads (title, notes, status, alert_ids, created, updated) VALUES (?, '', 'ready', ?, ?, ?)").bind(clean(`${TR_TAG_WORD[a.tag] || "Movement"}: ${a.amount || ""} ${a.asset || ""} from ${a.chain} ${a.address.slice(0, 10)}…`, 120), JSON.stringify([aid]), now, now).run();
+        await DB.prepare("UPDATE tr_alerts SET status = 'promoted' WHERE id = ?").bind(aid).run();
+        lead = await DB.prepare("SELECT * FROM tr_leads WHERE id = ?").bind(r.meta.last_row_id).first();
+      }
+    } else if (d.watch_id) {
+      const w = await DB.prepare("SELECT * FROM tr_watch WHERE id = ?").bind(Math.round(Number(d.watch_id)) || 0).first();
+      if (!w) return trOut({ error: "That address is gone." }, 404);
+      lead = await DB.prepare("SELECT * FROM tr_leads WHERE alert_ids = '[]' AND instr(notes, ?) > 0 ORDER BY id DESC").bind(w.address).first();
+      if (!lead) lead = await DB.prepare("SELECT * FROM tr_leads WHERE id = ?").bind(await trLeadFromWatch(DB, w)).first();
+    } else if (d.lead_id) lead = await DB.prepare("SELECT * FROM tr_leads WHERE id = ?").bind(Math.round(Number(d.lead_id)) || 0).first();
+    if (!lead) return trOut({ error: "Nothing to report." }, 404);
+    const draft = await trDraft(DB, lead, await trProfile(env, DB), d.dest);
+    await DB.prepare("UPDATE tr_leads SET draft = ?, updated = ? WHERE id = ?").bind(draft, now, lead.id).run();
+    return trOut({ lead_id: lead.id, draft });
+  }
+  // The owner opened a reporting form with the report copied: record where it went.
+  if (post && p === "/report/sent") {
+    const lead = await DB.prepare("SELECT * FROM tr_leads WHERE id = ?").bind(Math.round(Number(d.lead_id)) || 0).first();
+    if (!lead) return trOut({ error: "That lead is gone." }, 404);
+    const line = `Sent to ${clean(d.dest, 60) || "?"} on ${new Date(now).toISOString().slice(0, 16).replace("T", " ")} UTC (one-click report).`;
+    await DB.prepare("UPDATE tr_leads SET status = 'submitted', notes = ?, updated = ? WHERE id = ?").bind(((lead.notes || "") + "\n" + line).trim().slice(0, 10000), now, lead.id).run();
     return trOut({ ok: true });
   }
   if (post && p === "/run") { try { return trOut({ result: await trTick(env, true) }); } catch (e) { return trOut({ error: "The check failed: " + String(e.message).slice(0, 120) }, 500); } }
@@ -4002,7 +4028,7 @@ async function trBrowser(request, env, p, d, q, sess) {
     if (TR_TAGS.includes(q.get("tag"))) { where.push("tag = ?"); args.push(q.get("tag")); }
     if (TR_ALERT_ST.includes(q.get("status"))) { where.push("status = ?"); args.push(q.get("status")); }
     const before = Number(q.get("before")); if (before > 0) { where.push("id < ?"); args.push(before); }
-    const rows = (await DB.prepare(`SELECT * FROM tr_alerts ${where.length ? "WHERE " + where.join(" AND ") : ""} ORDER BY ${q.get("sort") === "top" ? "COALESCE(score, 0) DESC, " : ""}id DESC LIMIT ${Math.min(200, Math.max(1, Number(q.get("limit")) || 200))}`).bind(...args).all()).results;
+    const rows = (await DB.prepare(`SELECT *, (SELECT source || ' ' || COALESCE(label, '') FROM tr_watch WHERE tr_watch.id = tr_alerts.watch_id) AS wsrc FROM tr_alerts ${where.length ? "WHERE " + where.join(" AND ") : ""} ORDER BY ${q.get("sort") === "top" ? "COALESCE(score, 0) DESC, " : ""}id DESC LIMIT ${Math.min(200, Math.max(1, Number(q.get("limit")) || 200))}`).bind(...args).all()).results;
     const counts = (await DB.prepare("SELECT status, COUNT(*) n FROM tr_alerts GROUP BY status").all()).results;
     return trOut({ alerts: rows, counts, explorer: TR_EXPLORER });
   }
@@ -4060,7 +4086,7 @@ async function trBrowser(request, env, p, d, q, sess) {
   if (post && p === "/leads/draft") {
     const lead = await DB.prepare("SELECT * FROM tr_leads WHERE id = ?").bind(Math.round(Number(d.id)) || 0).first();
     if (!lead) return trOut({ error: "That lead is gone." }, 404);
-    let draft = await trDraft(DB, lead);
+    let draft = await trDraft(DB, lead, await trProfile(env, DB));
     let note = "";
     if (d.ai) {
       const key = await acUnseal(env, (await DB.prepare("SELECT v FROM tr_settings WHERE k = 'key:claude'").first())?.v);
@@ -4088,7 +4114,7 @@ async function trBrowser(request, env, p, d, q, sess) {
       keys[k] = s["key:" + k] ? (v ? "saved, ends in ..." + v.slice(-4) : "saved (can't be read: check TOKEN_SEAL_KEY)") : "";
     }
     const out = {}; for (const k of Object.keys(TR_DEFAULTS)) out[k] = s[k];
-    return trOut({ settings: out, keys, token: s.token_hash ? "set " + new Date(Number(s.token_at || 0)).toISOString().slice(0, 10) : "", seal: !!(await acSealKey(env)) });
+    return trOut({ settings: out, profile: await trProfile(env, DB), keys, token: s.token_hash ? "set " + new Date(Number(s.token_at || 0)).toISOString().slice(0, 10) : "", seal: !!(await acSealKey(env)) });
   }
   if (post && p === "/settings") {
     const stmts = [];
@@ -4104,6 +4130,12 @@ async function trBrowser(request, env, p, d, q, sess) {
     if (d.ai_alerts !== undefined) stmts.push(trSet(DB, "ai_alerts", d.ai_alerts ? 1 : 0));
     if (d.lookback_days !== undefined) stmts.push(trSet(DB, "lookback_days", trInt(d.lookback_days, 1, 3650, 90)));
     if (d.keys_mode !== undefined) stmts.push(trSet(DB, "keys_mode", d.keys_mode === "github" ? "github" : "wezzet"));
+    if (d.profile && typeof d.profile === "object") {
+      const pr = {}; for (const k of TR_PROFILE) { const v = clean(d.profile[k], 120); if (v) pr[k] = v; }
+      const sealed = await acSeal(env, JSON.stringify(pr));
+      if (!sealed) return trOut({ error: "Your profile can't be saved until the site's sealing secret is set." }, 503);
+      stmts.push(trSet(DB, "profile", sealed));
+    }
     for (const k of TR_KEYS) {
       const v = d.keys && d.keys[k];
       if (v === null || v === "") { if (d.keys && k in d.keys && v === null) stmts.push(DB.prepare("DELETE FROM tr_settings WHERE k = ?").bind("key:" + k)); continue; }
@@ -4129,8 +4161,22 @@ async function trBrowser(request, env, p, d, q, sess) {
   return trOut({ error: "Not found." }, 404);
 }
 
+const TR_TAG_WORD = { exchange: "Exchange deposit", bridge: "Bridge", mixer: "Mixer", dex_swap: "Swap", dispersal: "Dispersal", dormant_wake: "Dormant wallet moved", inflow: "Money in", transfer: "Transfer" };
+async function trLeadFromWatch(DB, w) {
+  const usd = (n) => "$" + Math.round(n || 0).toLocaleString("en-US"), now2 = Date.now();
+  const notes = `Address: ${w.chain} ${w.address}\nNamed in: ${w.source || "?"}${w.source_url ? " " + w.source_url : ""}${w.hop ? " (hop " + w.hop + " from a named address)" : ""}\nHolding: ${w.balance || "?"} (about ${usd(w.bal_usd)}, checked ${w.bal_at ? new Date(w.bal_at).toISOString().slice(0, 16).replace("T", " ") + " UTC" : "?"})\n` +
+    (w.frozen === 1 ? "Already frozen by the issuer, so funds can't move.\n" : "") + (w.freeze_usd >= 1 ? `Freezable: about ${usd(w.freeze_usd)} in stablecoins (USDT is issued by Tether, USDC by Circle). The issuer can freeze these at law enforcement's request.\n` : "");
+  const r = await DB.prepare("INSERT INTO tr_leads (title, notes, status, alert_ids, created, updated) VALUES (?, ?, 'ready', '[]', ?, ?)").bind(`${w.freeze_usd >= 1000 ? "Freezable funds" : "Funds sitting"}: ${usd(w.freeze_usd >= 1000 ? w.freeze_usd : w.bal_usd)} at ${w.chain} ${w.address.slice(0, 10)}…`, notes, now2, now2).run();
+  return r.meta.last_row_id;
+}
+// The owner's contact details for reports, sealed at rest.
+const TR_PROFILE = ["name", "email", "phone", "country"];
+async function trProfile(env, DB) {
+  const v = (await DB.prepare("SELECT v FROM tr_settings WHERE k = 'profile'").first())?.v;
+  try { return v ? JSON.parse(await acUnseal(env, v) || "{}") : {}; } catch { return {}; }
+}
 // Build a one-page plain-text tip from a lead. Draft only: the owner reviews it and submits it by hand.
-async function trDraft(DB, lead) {
+async function trDraft(DB, lead, profile = {}, dest = "") {
   const aids = JSON.parse(lead.alert_ids || "[]").slice(0, 200);
   const alerts = aids.length ? (await DB.prepare(`SELECT * FROM tr_alerts WHERE id IN (${aids.map(() => "?").join(",")}) ORDER BY ts`).bind(...aids).all()).results : [];
   const iso = (t) => (t ? new Date(t).toISOString().replace("T", " ").slice(0, 16) + " UTC" : "unknown time");
@@ -4141,26 +4187,29 @@ async function trDraft(DB, lead) {
     if (w && !seeds.some((s) => s.id === w.id)) seeds.push(w);
   }
   const L = [];
-  L.push("TIP DRAFT: " + lead.title, "Prepared " + iso(Date.now()) + " from public blockchain data. Review every line before sending.", "");
-  L.push("SUMMARY", "");
-  L.push("SEED ADDRESS(ES) AND WHERE THEY ARE NAMED");
-  if (!seeds.length) L.push("- (none linked yet)");
+  L.push("REPORT: " + lead.title, "Prepared " + iso(Date.now()) + " from public blockchain data" + (dest ? " for " + dest : "") + ".", "");
+  const lastA = alerts[alerts.length - 1];
+  const auto = lastA ? `On ${iso(lastA.ts)}, funds from an address named in a US government notice moved: ${lastA.summary || (lastA.amount + " " + (lastA.asset || ""))}${lastA.usd >= 1 ? " (about $" + Math.round(lastA.usd).toLocaleString("en-US") + ")" : ""}. The transactions and addresses are listed below so they can be checked and, where possible, frozen.`
+    : `Funds are still sitting at an address named in a US government notice. Details below so they can be checked and, where possible, frozen.`;
+  L.push("SUMMARY", auto, "");
+  if (seeds.length) L.push("SEED ADDRESS(ES) AND WHERE THEY ARE NAMED");
   for (const s of seeds) L.push(`- ${s.chain} ${s.address}${s.label ? " (" + s.label + ")" : ""}: named in ${s.source || "[which notice?]"}${s.source_url ? " " + s.source_url : ""}`);
-  L.push("", "MOVEMENTS (oldest first)");
-  if (!alerts.length) L.push("- (no alerts linked)");
+  if (alerts.length) L.push("", "MOVEMENTS (oldest first)");
   alerts.forEach((a, i) => {
     L.push(`${i + 1}. ${iso(a.ts)} | ${a.chain} | ${a.amount || "?"} ${a.asset || ""} | ${a.tag || "activity"}`.replace(/\s+\|/g, " |"));
     L.push(`   from ${a.address}${a.counterparty ? " to " + a.counterparty : ""}`);
     L.push(`   tx ${a.tx}${TR_EXPLORER[a.chain] ? " " + TR_EXPLORER[a.chain] + a.tx : ""}`);
   });
   const last = alerts[alerts.length - 1];
-  L.push("", "WHERE THE FUNDS ARE NOW", last ? `- ${last.counterparty || last.address} on ${last.chain}${last.tag === "exchange" ? " (looks like an exchange deposit: [name the exchange if known])" : ""}` : "- [fill in]");
-  L.push("", "WHY THIS SEEMS NEW", "- [Explain why this movement isn't already in a public notice.]");
-  if (lead.notes) L.push("", "NOTES", lead.notes);
-  L.push("", "FLOW MAP", "- [Attach a screenshot of the flow map here.]");
-  L.push("", "WHERE TO SEND THIS (pick what fits, send it yourself)", "- FBI: ic3.gov or tips.fbi.gov. Best when funds can still be frozen.", "- Rewards for Justice: rewardsforjustice.net (North Korea page). Pays for information that disrupts DPRK money laundering.", "- The exchange's compliance or law-enforcement contact, when funds are landing there right now.", "- Lazarus Bounty (lazarusbounty.com) when the funds trace back to the Bybit theft.");
+  if (last) {
+    L.push("", "WHERE THE FUNDS ARE NOW", `- ${last.counterparty || last.address} on ${last.chain}${last.tag === "exchange" ? " (an exchange deposit address: the exchange can freeze the account and identify its owner)" : last.tag === "bridge" ? " (sent through a bridge to another chain)" : ""}`);
+    L.push("", "WHY THIS IS NEW", `- The movement happened ${iso(last.ts)}, after the address was publicly named, and was spotted by an automatic watcher within minutes of being confirmed.`);
+  }
+  if (lead.notes) L.push("", "DETAILS", lead.notes);
+  const who = TR_PROFILE.filter((k) => profile[k]).map((k) => `${k[0].toUpperCase() + k.slice(1)}: ${profile[k]}`);
+  L.push("", "CONTACT", ...(who.length ? who : ["(add your contact details in Chain Watch Settings, Reporter profile)"]));
   L.push("", "This tip is from a private individual using public on-chain data only. No funds were touched and no one was contacted.");
-  return L.join("\n");
+  return L.join("\n").replace(/\n{3,}/g, "\n\n");
 }
 
 // ---- Watcher side: /api/tracker/* with Authorization: Bearer <token> (no cookie) ----
