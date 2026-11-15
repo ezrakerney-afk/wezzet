@@ -2,7 +2,7 @@
    Forum data lives in the Cloudflare D1 database bound as DB. */
 
 const MAX = { title: 120, body: 5000, comment: 3000, author: 30 };
-const LIMITS = { topic: [5, 3600], comment: [40, 3600], vote: [400, 3600], report: [30, 3600] };
+const LIMITS = { topic: [5, 3600], comment: [40, 3600], vote: [400, 3600], report: [30, 3600], image: [10, 86400], community: [3, 86400], join: [60, 3600], delete: [60, 3600] };
 const HIDE_AT_REPORTS = 3;
 const PAGE = 30;
 const SALT = "wezzet-forum-v1";
@@ -28,8 +28,20 @@ export default {
     if (url.pathname === "/.well-known/openai-apps-challenge") return new Response("v8vAC3Vl010wGRCljQ8liZm8T5PNNIGD8ORw4yqaz0A", { headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store" } });
     if (url.pathname === "/mcp/app" || url.pathname === "/mcp/app/") return mcpApp(request, env, ctx);
     if (url.pathname.startsWith("/oauth/") || url.pathname.startsWith("/.well-known/oauth-") || url.pathname === "/.well-known/openid-configuration") return oauth(request, env, url);
+    // The site login cookie is scoped to /api/chat, so the forum is also served under /api/chat/forum/* to see it.
+    if (url.pathname.startsWith("/api/chat/forum/") && env.DB) {
+      const fu = new URL(url); fu.pathname = "/api/forum/" + url.pathname.slice("/api/chat/forum/".length);
+      try { return await api(request, env, fu, ctx); } catch (e) { return json({ error: "Something went wrong on our side. Try again in a moment." }, 500); }
+    }
     if (url.pathname.startsWith("/api/chat/")) return chat(request, env, url, ctx);
     if (url.pathname === "/api/tracker" || url.pathname.startsWith("/api/tracker/")) return trWatcher(request, env, url);
+    // Community pages: /forum/<slug> is the same single page as /forum.
+    if (/^\/forum\/[a-z0-9-]{3,24}\/?$/.test(url.pathname) && request.method === "GET") {
+      const page = await env.ASSETS.fetch(new Request(url.origin + "/forum", request));
+      const out = new Response(page.body, page);
+      out.headers.set("X-Content-Type-Options", "nosniff"); out.headers.set("X-Frame-Options", "SAMEORIGIN"); out.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+      return out;
+    }
     if (url.pathname.startsWith("/api/forum/")) {
       if (!env.DB) return json({ error: "The forum database isn't connected yet." }, 503);
       try {
@@ -129,7 +141,104 @@ async function myVotes(env, voter, kind, ids) {
   return out;
 }
 
-const TOPIC_FIELDS = "id, title, body, author, created_at, score, comment_count, pinned";
+const TF = "t.id, t.title, t.body, t.author, t.created_at, t.score, t.comment_count, t.pinned, COALESCE(t.kind, 'discussion') AS kind, t.image, t.uid, c.slug AS c_slug, c.name AS c_name";
+const TOPIC_JOIN = "topics t LEFT JOIN communities c ON c.id = t.community_id";
+
+// ---- Communities: groups of topics, each with a Posts tab (images, articles, news) and a Discussions tab. ----
+const POST_KINDS = ["discussion", "image", "article", "news"];
+const COMM_HIDE_AT = 5, IMG_MAX = 1200000, IMG_TOTAL = 500 * 1048576;
+const COMM_RESERVED = /^(wezzet|admin|official|mod|mods|moderator|staff|support|api|new|create|all|popular|forum|c|t|u|user|users|settings|help)(-|$)/;
+// Official communities, created on first use. Existing topics without a community are filed here once.
+const COMM_SEED = [
+  ["general", "General", "Anything about Wezzet, or anything at all.", 1],
+  ["tools", "Tool improvements", "Ideas for new tools, fixes for old ones, and the daily feature vote.", 2],
+  ["blockchain", "Blockchain Tracking", "Chain Watch, wallets, tokens and tips for following on-chain activity.", 3],
+  ["art", "Art Studio", "Share what you made in the Wezzet Art Studio, and get feedback.", 4],
+  ["ai", "WezzetAI", "Prompts, answers and feedback on WezzetAI.", 5],
+  ["aicomms", "AI Comms", "Building and running AI agents on AI Comms.", 6],
+  ["converters", "File conversion", "Help with converting images, video, audio, PDFs and data.", 7],
+];
+let forumReady = false;
+async function forumInit(env) {
+  if (forumReady) return;
+  const DB = env.DB;
+  await DB.batch([
+    "CREATE TABLE IF NOT EXISTS communities (id INTEGER PRIMARY KEY, slug TEXT UNIQUE COLLATE NOCASE, name TEXT NOT NULL, about TEXT, owner INTEGER, official INTEGER DEFAULT 0, sort INTEGER DEFAULT 100, members INTEGER DEFAULT 0, reports INTEGER DEFAULT 0, hidden INTEGER DEFAULT 0, created INTEGER)",
+    "CREATE TABLE IF NOT EXISTS community_members (cid INTEGER, uid INTEGER, joined INTEGER, PRIMARY KEY (cid, uid))",
+    "CREATE INDEX IF NOT EXISTS community_members_uid ON community_members (uid)",
+    "CREATE TABLE IF NOT EXISTS forum_images (id TEXT PRIMARY KEY, type TEXT NOT NULL, size INTEGER NOT NULL, parts INTEGER NOT NULL, topic INTEGER, uid INTEGER, created INTEGER)",
+    "CREATE TABLE IF NOT EXISTS forum_image_parts (image TEXT, n INTEGER, data TEXT, PRIMARY KEY (image, n))",
+  ].map((q) => DB.prepare(q)));
+  for (const q of ["ALTER TABLE topics ADD COLUMN community_id INTEGER", "ALTER TABLE topics ADD COLUMN kind TEXT DEFAULT 'discussion'", "ALTER TABLE topics ADD COLUMN image TEXT", "ALTER TABLE topics ADD COLUMN uid INTEGER", "ALTER TABLE comments ADD COLUMN uid INTEGER"]) {
+    try { await DB.prepare(q).run(); } catch {}
+  }
+  const now = Date.now();
+  await DB.batch([
+    DB.prepare("CREATE INDEX IF NOT EXISTS topics_community ON topics (community_id, created_at)"),
+    ...COMM_SEED.map(([slug, name, about, sort]) => DB.prepare("INSERT OR IGNORE INTO communities (slug, name, about, official, sort, created) VALUES (?, ?, ?, 1, ?, ?)").bind(slug, name, about, sort, now)),
+    // One-time filing of the topics from before communities: feature requests to Tool improvements, the AI one to WezzetAI.
+    DB.prepare("UPDATE topics SET community_id = (SELECT id FROM communities WHERE slug = 'tools') WHERE community_id IS NULL AND (id IN (2, 8) OR title = 'Request a Feature')"),
+    DB.prepare("UPDATE topics SET community_id = (SELECT id FROM communities WHERE slug = 'ai') WHERE community_id IS NULL AND id = 11"),
+    DB.prepare("UPDATE topics SET community_id = (SELECT id FROM communities WHERE slug = 'general') WHERE community_id IS NULL"),
+  ]);
+  forumReady = true;
+}
+
+// The shared site login (the /chat account), or null. Admins: role 'admin', or the accounts linked to the project's agents.
+async function forumMe(request, env) {
+  const raw = (request.headers.get("cookie") || "").match(/(?:^|;\s*)wzc=([a-f0-9-]{64,80})/);
+  if (!raw) return null;
+  try {
+    const u = await env.DB.prepare(`SELECT u.id, ${CH_NAME} AS name, u.role, u.banned FROM ch_sessions s JOIN ch_users u ON u.id = s.uid WHERE s.token = ? AND s.created > ?`)
+      .bind(await acHash(raw[1]), Date.now() - 30 * 86400e3).first();
+    if (!u || u.banned) return null;
+    const linked = await env.DB.prepare("SELECT 1 FROM wz_links WHERE uid = ? AND agent IN ('hubert', 'john') LIMIT 1").bind(u.id).first().catch(() => null);
+    return { id: u.id, name: u.name, admin: u.role === "admin" || !!linked };
+  } catch { return null; }
+}
+
+function slugify(name) {
+  return name.toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g, "").replace(/&/g, " and ").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 24).replace(/-+$/, "");
+}
+
+const IMG_SIG = { "image/jpeg": [0xff, 0xd8, 0xff], "image/png": [0x89, 0x50, 0x4e, 0x47], "image/gif": [0x47, 0x49, 0x46, 0x38], "image/webp": [0x52, 0x49, 0x46, 0x46] };
+function readImage(dataUrl) {
+  const m = typeof dataUrl === "string" && dataUrl.match(/^data:(image\/(?:jpeg|png|gif|webp));base64,([A-Za-z0-9+/]+={0,2})$/);
+  if (!m) return { error: "Images must be JPEG, PNG, GIF or WebP." };
+  let bytes;
+  try { bytes = acUnB64(m[2]); } catch { return { error: "That image couldn't be read." }; }
+  if (bytes.length > IMG_MAX) return { error: "Images can be up to 1.2 MB." };
+  const sig = IMG_SIG[m[1]];
+  if (bytes.length < 16 || !sig.every((b, i) => bytes[i] === b) || (m[1] === "image/webp" && String.fromCharCode(...bytes.slice(8, 12)) !== "WEBP")) return { error: "That file isn't a valid image." };
+  return { type: m[1], b64: m[2], bytes };
+}
+
+// Background check of an uploaded image with the vision model. A flagged image counts as 2 reports, so one person's report hides it.
+function aiModerateImage(env, ctx, bytes, topicId) {
+  if (!env.AI || bytes.length > 3e6) return;
+  const job = env.AI.run(VISION_MODEL, {
+    messages: [{ role: "system", content: "You are an image moderator for a public forum. Reply with one word: FLAG if the image shows nudity, sexual content, graphic gore, hate symbols or illegal content; otherwise OK. When unsure reply OK." }, { role: "user", content: "Check this image." }],
+    image: [...bytes], max_tokens: 4,
+  }).then((r) => /^\W*FLAG/i.test((r && r.response) || "") && env.DB.prepare("UPDATE topics SET reports = reports + 2 WHERE id = ?").bind(topicId).run()).catch(() => {});
+  if (ctx && ctx.waitUntil) ctx.waitUntil(job);
+}
+
+function commOut(c, me) {
+  return { slug: c.slug, name: c.name, about: c.about || "", official: !!c.official, members: c.members || 0, posts: c.posts || 0, created: c.created, joined: !!c.joined, can_mod: !!me && (me.admin || c.owner === me.id) };
+}
+
+async function dropImage(env, id) {
+  if (!id) return;
+  await env.DB.batch([env.DB.prepare("DELETE FROM forum_image_parts WHERE image = ?").bind(id), env.DB.prepare("DELETE FROM forum_images WHERE id = ?").bind(id)]);
+}
+
+function topicOut(t, me, canModIds) {
+  const out = { id: t.id, title: t.title, body: t.body, author: t.author, created_at: t.created_at, score: t.score, comment_count: t.comment_count, pinned: t.pinned, kind: t.kind || "discussion",
+    image: t.image ? `/api/forum/img/${t.image}` : null, community: t.c_slug ? { slug: t.c_slug, name: t.c_name } : null };
+  out.mine = !!me && t.uid === me.id;
+  out.can_delete = !!me && (out.mine || me.admin || (canModIds && canModIds.has(t.community_id)));
+  return out;
+}
 
 async function api(request, env, url, ctx) {
   const id = await identity(request);
@@ -137,32 +246,148 @@ async function api(request, env, url, ctx) {
   const reply = (data, status = 200) => json(data, status, extra);
   const path = url.pathname.replace(/\/+$/, "");
   const method = request.method;
+  await forumInit(env);
+  if (method === "POST") {
+    // CSRF guard: JSON only, and same origin when the browser says where it came from.
+    const origin = request.headers.get("origin");
+    if (!/application\/json/.test(request.headers.get("content-type") || "") || (origin && new URL(origin).host !== url.host)) return reply({ error: "Bad request." }, 400);
+  }
+  const me = await forumMe(request, env);
+
+  // Community images
+  let im = path.match(/^\/api\/forum\/img\/(i[0-9a-f]{16})$/);
+  if (im && method === "GET") {
+    const img = await env.DB.prepare("SELECT i.type, i.parts, t.hidden FROM forum_images i LEFT JOIN topics t ON t.id = i.topic WHERE i.id = ?").bind(im[1]).first();
+    if (!img || img.hidden) return new Response("Not found", { status: 404, headers: { "cache-control": "no-store" } });
+    const parts = (await env.DB.prepare("SELECT data FROM forum_image_parts WHERE image = ? ORDER BY n").bind(im[1]).all()).results || [];
+    return new Response(acUnB64(parts.map((x) => x.data).join("")), { headers: { "content-type": img.type, "cache-control": "public, max-age=86400", "x-content-type-options": "nosniff", "content-security-policy": "default-src 'none'; sandbox" } });
+  }
+
+  // List communities (with the signed-in account's memberships)
+  if (path === "/api/forum/communities" && method === "GET") {
+    const rows = await env.DB.prepare(`SELECT c.id, c.slug, c.name, c.about, c.owner, c.official, c.sort, c.members, c.created,
+        (SELECT COUNT(*) FROM topics t WHERE t.community_id = c.id AND t.hidden = 0) AS posts,
+        ${me ? "EXISTS (SELECT 1 FROM community_members m WHERE m.cid = c.id AND m.uid = ?)" : "0"} AS joined
+      FROM communities c WHERE c.hidden = 0 ORDER BY c.official DESC, c.sort ASC, c.members DESC, c.created ASC LIMIT 300`).bind(...(me ? [me.id] : [])).all();
+    return reply({ communities: (rows.results || []).map((c) => commOut(c, me)), me });
+  }
+
+  // Create a community (needs the site login)
+  if (path === "/api/forum/communities" && method === "POST") {
+    if (!me) return reply({ error: "Sign in to create a community." }, 401);
+    const b = await body(request);
+    const name = clean(b.name, 40).replace(/\s+/g, " ");
+    const about = clean(b.about, 300).replace(/\s+/g, " ");
+    const slug = slugify(clean(b.slug, 40) || name);
+    if (name.length < 3) return reply({ error: "Give your community a name of at least 3 characters." }, 400);
+    if (slug.length < 3) return reply({ error: "Use at least 3 letters or numbers in the name." }, 400);
+    if (COMM_RESERVED.test(slug)) return reply({ error: "That name is reserved. Try another." }, 400);
+    if (tooManyLinks(about) || /https?:\/\//i.test(name)) return reply({ error: "Community names can't include links." }, 400);
+    if (!(await allowed(env, "u" + me.id, "community")) || !(await allowed(env, id.who, "community"))) return reply({ error: "You can create 3 communities a day. Try again tomorrow." }, 429);
+    if (await env.DB.prepare("SELECT 1 FROM communities WHERE slug = ?").bind(slug).first()) return reply({ error: "A community with that name already exists." }, 409);
+    const now = Date.now();
+    const row = await env.DB.prepare("INSERT INTO communities (slug, name, about, owner, official, sort, members, created) VALUES (?, ?, ?, ?, 0, 100, 1, ?) RETURNING id").bind(slug, name, about, me.id, now).first();
+    await env.DB.batch([
+      env.DB.prepare("INSERT OR IGNORE INTO community_members (cid, uid, joined) VALUES (?, ?, ?)").bind(row.id, me.id, now),
+      logAction(env, "u" + me.id, "community"), logAction(env, id.who, "community"),
+    ]);
+    aiModerate(env, ctx, name + "\n" + about, "UPDATE communities SET reports = reports + 2 WHERE id = ?", row.id);
+    return reply({ slug }, 201);
+  }
+
+  // One community
+  let cm = path.match(/^\/api\/forum\/communities\/([a-z0-9-]{3,24})$/);
+  if (cm && method === "GET") {
+    const c = await env.DB.prepare(`SELECT c.*, (SELECT COUNT(*) FROM topics t WHERE t.community_id = c.id AND t.hidden = 0) AS posts,
+        (SELECT COUNT(*) FROM topics t WHERE t.community_id = c.id AND t.hidden = 0 AND COALESCE(t.kind, 'discussion') <> 'discussion') AS media,
+        ${me ? "EXISTS (SELECT 1 FROM community_members m WHERE m.cid = c.id AND m.uid = ?)" : "0"} AS joined FROM communities c WHERE c.slug = ? AND c.hidden = 0`).bind(...(me ? [me.id] : []), cm[1]).first();
+    if (!c) return reply({ error: "This community doesn't exist or was removed." }, 404);
+    const owner = c.owner ? await env.DB.prepare(`SELECT ${CH_NAME} AS name FROM ch_users u WHERE u.id = ?`).bind(c.owner).first().catch(() => null) : null;
+    return reply({ community: { ...commOut(c, me), owner: owner ? owner.name : null, media: c.media }, me });
+  }
+
+  // Join or leave
+  cm = path.match(/^\/api\/forum\/communities\/([a-z0-9-]{3,24})\/(join|leave|delete)$/);
+  if (cm && method === "POST") {
+    if (!me) return reply({ error: cm[2] === "delete" ? "Sign in first." : "Sign in to join communities." }, 401);
+    const c = await env.DB.prepare("SELECT id, owner, official FROM communities WHERE slug = ? AND hidden = 0").bind(cm[1]).first();
+    if (!c) return reply({ error: "This community doesn't exist or was removed." }, 404);
+    if (cm[2] === "delete") {
+      if (c.official || !(me.admin || c.owner === me.id)) return reply({ error: "Only the community's creator can remove it." }, 403);
+      await env.DB.prepare("UPDATE communities SET hidden = 1 WHERE id = ?").bind(c.id).run();
+      return reply({ ok: true });
+    }
+    if (!(await allowed(env, "u" + me.id, "join"))) return reply({ error: "Slow down a little and try again." }, 429);
+    const stmts = [cm[2] === "join"
+      ? env.DB.prepare("INSERT OR IGNORE INTO community_members (cid, uid, joined) VALUES (?, ?, ?)").bind(c.id, me.id, Date.now())
+      : env.DB.prepare("DELETE FROM community_members WHERE cid = ? AND uid = ?").bind(c.id, me.id),
+      env.DB.prepare("UPDATE communities SET members = (SELECT COUNT(*) FROM community_members WHERE cid = ?) WHERE id = ?").bind(c.id, c.id),
+      logAction(env, "u" + me.id, "join")];
+    await env.DB.batch(stmts);
+    const n = await env.DB.prepare("SELECT members FROM communities WHERE id = ?").bind(c.id).first();
+    return reply({ joined: cm[2] === "join", members: n.members });
+  }
+
+  // Remove a post or comment: its author (signed in), the community's creator, or an admin.
+  if (path === "/api/forum/delete" && method === "POST") {
+    if (!me) return reply({ error: "Sign in to remove posts." }, 401);
+    const b = await body(request);
+    const target = parseInt(b.id, 10);
+    if (!target || !["topic", "comment"].includes(b.kind)) return reply({ error: "That request couldn't be read." }, 400);
+    const row = b.kind === "topic"
+      ? await env.DB.prepare("SELECT t.id, t.uid, t.image, c.owner FROM topics t LEFT JOIN communities c ON c.id = t.community_id WHERE t.id = ? AND t.hidden = 0").bind(target).first()
+      : await env.DB.prepare("SELECT x.id, x.uid, x.topic_id, c.owner FROM comments x JOIN topics t ON t.id = x.topic_id LEFT JOIN communities c ON c.id = t.community_id WHERE x.id = ? AND x.hidden = 0").bind(target).first();
+    if (!row) return reply({ error: "This post no longer exists." }, 404);
+    if (!(me.admin || row.uid === me.id || (row.owner && row.owner === me.id))) return reply({ error: "You can only remove your own posts." }, 403);
+    if (b.kind === "topic") {
+      await env.DB.prepare("UPDATE topics SET hidden = 1 WHERE id = ?").bind(target).run();
+      await dropImage(env, row.image);
+    } else {
+      await env.DB.prepare("UPDATE comments SET hidden = 1 WHERE id = ?").bind(target).run();
+    }
+    return reply({ ok: true });
+  }
 
   // List topics
   if (path === "/api/forum/topics" && method === "GET") {
     const sort = ["hot", "new", "top"].includes(url.searchParams.get("sort")) ? url.searchParams.get("sort") : "hot";
     const page = Math.max(0, Math.min(50, parseInt(url.searchParams.get("page") || "0", 10) || 0));
+    // ?c=<community slug> and ?tab=posts (images, articles, news) or discussions. With no community: every visible community.
+    const tab = ["posts", "discussions"].includes(url.searchParams.get("tab")) ? url.searchParams.get("tab") : "";
+    let where = "t.hidden = 0 AND COALESCE(c.hidden, 0) = 0";
+    const binds = [];
+    const slug = url.searchParams.get("c");
+    let comm = null;
+    if (slug) {
+      comm = await env.DB.prepare("SELECT id, owner FROM communities WHERE slug = ? AND hidden = 0").bind(slug).first();
+      if (!comm) return reply({ error: "This community doesn't exist or was removed." }, 404);
+      where += " AND t.community_id = ?"; binds.push(comm.id);
+    }
+    if (tab === "posts") where += " AND COALESCE(t.kind, 'discussion') <> 'discussion'";
+    if (tab === "discussions") where += " AND COALESCE(t.kind, 'discussion') = 'discussion'";
+    const pinsHere = page === 0 && comm && tab !== "posts";
     let topics;
     if (sort === "hot") {
-      const rows = await env.DB.prepare(`SELECT ${TOPIC_FIELDS} FROM topics WHERE hidden = 0 AND pinned = 0 ORDER BY created_at DESC LIMIT 500`).all();
+      const rows = await env.DB.prepare(`SELECT ${TF}, t.community_id FROM ${TOPIC_JOIN} WHERE ${where} AND t.pinned = 0 ORDER BY t.created_at DESC LIMIT 500`).bind(...binds).all();
       const now = Date.now();
       topics = (rows.results || []).sort((a, b) => hotRank(b, now) - hotRank(a, now)).slice(page * PAGE, page * PAGE + PAGE + 1);
     } else {
-      const order = sort === "new" ? "created_at DESC" : "score DESC, created_at DESC";
-      const rows = await env.DB.prepare(`SELECT ${TOPIC_FIELDS} FROM topics WHERE hidden = 0 AND pinned = 0 ORDER BY ${order} LIMIT ? OFFSET ?`)
-        .bind(PAGE + 1, page * PAGE).all();
+      const order = sort === "new" ? "t.created_at DESC" : "t.score DESC, t.created_at DESC";
+      const rows = await env.DB.prepare(`SELECT ${TF}, t.community_id FROM ${TOPIC_JOIN} WHERE ${where} AND t.pinned = 0 ORDER BY ${order} LIMIT ? OFFSET ?`)
+        .bind(...binds, PAGE + 1, page * PAGE).all();
       topics = rows.results || [];
     }
     const more = topics.length > PAGE;
     topics = topics.slice(0, PAGE);
-    if (page === 0) {
-      const pins = await env.DB.prepare(`SELECT ${TOPIC_FIELDS} FROM topics WHERE hidden = 0 AND pinned = 1 ORDER BY created_at ASC`).all();
+    if (pinsHere) {
+      const pins = await env.DB.prepare(`SELECT ${TF}, t.community_id FROM ${TOPIC_JOIN} WHERE ${where} AND t.pinned = 1 ORDER BY t.created_at ASC`).bind(...binds).all();
       topics = [...(pins.results || []), ...topics];
     }
-    topics = topics.map((t) => ({ ...t, body: t.body.slice(0, 240) }));
+    const mods = new Set(comm && me && comm.owner === me.id ? [comm.id] : []);
+    topics = topics.map((t) => ({ ...topicOut(t, me, mods), body: t.body.slice(0, 280) }));
     const votes = await myVotes(env, id.voter, "t", topics.map((t) => t.id));
     for (const t of topics) t.my_vote = votes[t.id] || 0;
-    return reply({ topics, more, sort, page });
+    return reply({ topics, more, sort, page, tab });
   }
 
   // Create topic
@@ -170,37 +395,69 @@ async function api(request, env, url, ctx) {
     const b = await body(request);
     const title = clean(b.title, MAX.title).replace(/\s+/g, " ");
     const text = clean(b.body, MAX.body);
-    const author = clean(b.author, MAX.author).replace(/\s+/g, " ") || "Anonymous";
-    if (title.length < 3) return reply({ error: "Give your topic a title of at least 3 characters." }, 400);
+    const author = me ? me.name : clean(b.author, MAX.author).replace(/\s+/g, " ") || "Anonymous";
+    const comm = await env.DB.prepare("SELECT id, slug FROM communities WHERE slug = ? AND hidden = 0").bind(String(b.community || "general")).first();
+    if (!comm) return reply({ error: "That community doesn't exist or was removed." }, 404);
+    let kind = POST_KINDS.includes(b.kind) ? b.kind : "discussion";
+    let img = null;
+    if (b.image) {
+      if (!me) return reply({ error: "Sign in to post images." }, 401);
+      img = readImage(b.image);
+      if (img.error) return reply({ error: img.error }, 400);
+      if (kind === "discussion") kind = "image";
+    }
+    if (kind === "image" && !img) return reply({ error: "Add an image, or post it as an article." }, 400);
+    if (title.length < 3) return reply({ error: kind === "image" ? "Give your image a caption of at least 3 characters." : "Give your post a title of at least 3 characters." }, 400);
     if (tooManyLinks(title + " " + text)) return reply({ error: "Posts can include up to 3 links." }, 400);
-    if (!(await allowed(env, id.who, "topic"))) return reply({ error: "You've started several topics recently. Try again in an hour." }, 429);
+    if (!(await allowed(env, id.who, "topic"))) return reply({ error: "You've posted several times recently. Try again in an hour." }, 429);
+    if (img) {
+      if (!(await allowed(env, "u" + me.id, "image")) || !(await allowed(env, id.who, "image"))) return reply({ error: "You can post 10 images a day. Try again tomorrow." }, 429);
+      const used = await env.DB.prepare("SELECT COALESCE(SUM(size), 0) AS s FROM forum_images").first();
+      if (used.s + img.bytes.length > IMG_TOTAL) return reply({ error: "Image storage is full right now. Try again later." }, 507);
+    }
     const now = Date.now();
-    const res = await env.DB.prepare("INSERT INTO topics (title, body, author, created_at, score, poster) VALUES (?, ?, ?, ?, 1, ?)")
-      .bind(title, text, author, now, id.who).run();
+    const imageId = img ? "i" + [...crypto.getRandomValues(new Uint8Array(8))].map((x) => x.toString(16).padStart(2, "0")).join("") : null;
+    const res = await env.DB.prepare("INSERT INTO topics (title, body, author, created_at, score, poster, community_id, kind, image, uid) VALUES (?, ?, ?, ?, 1, ?, ?, ?, ?, ?)")
+      .bind(title, text, author, now, id.who, comm.id, kind, imageId, me ? me.id : null).run();
     const topicId = res.meta.last_row_id;
     aiModerate(env, ctx, title + "\n" + text, "UPDATE topics SET reports = reports + 2 WHERE id = ?", topicId);
-    await env.DB.batch([
+    const stmts = [
       env.DB.prepare("INSERT OR REPLACE INTO votes (kind, target_id, voter, value) VALUES ('t', ?, ?, 1)").bind(topicId, id.voter),
       logAction(env, id.who, "topic"),
-    ]);
-    return reply({ id: topicId }, 201);
+    ];
+    if (img) {
+      const parts = [];
+      for (let i = 0; i < img.b64.length; i += AC_FILE_PART) parts.push(img.b64.slice(i, i + AC_FILE_PART));
+      stmts.push(env.DB.prepare("INSERT INTO forum_images (id, type, size, parts, topic, uid, created) VALUES (?, ?, ?, ?, ?, ?, ?)").bind(imageId, img.type, img.bytes.length, parts.length, topicId, me.id, now),
+        ...parts.map((x, n) => env.DB.prepare("INSERT INTO forum_image_parts (image, n, data) VALUES (?, ?, ?)").bind(imageId, n, x)),
+        logAction(env, "u" + me.id, "image"), logAction(env, id.who, "image"));
+      aiModerateImage(env, ctx, img.bytes, topicId);
+    }
+    await env.DB.batch(stmts);
+    return reply({ id: topicId, community: comm.slug }, 201);
   }
 
   // Read one topic with its comments
   let m = path.match(/^\/api\/forum\/topics\/(\d+)$/);
   if (m && method === "GET") {
     const topicId = parseInt(m[1], 10);
-    const topic = await env.DB.prepare(`SELECT ${TOPIC_FIELDS}, hidden FROM topics WHERE id = ?`).bind(topicId).first();
-    if (!topic || topic.hidden) return reply({ error: "This topic doesn't exist or was removed." }, 404);
-    const rows = await env.DB.prepare("SELECT id, parent_id, body, author, created_at, score, hidden FROM comments WHERE topic_id = ? ORDER BY created_at ASC LIMIT 2000")
+    const row = await env.DB.prepare(`SELECT ${TF}, t.community_id, t.hidden, c.owner AS c_owner, c.about AS c_about, c.hidden AS c_hidden FROM ${TOPIC_JOIN} WHERE t.id = ?`).bind(topicId).first();
+    if (!row || row.hidden || row.c_hidden) return reply({ error: "This topic doesn't exist or was removed." }, 404);
+    const modHere = !!me && (me.admin || row.c_owner === me.id);
+    const topic = topicOut(row, me, new Set(modHere ? [row.community_id] : []));
+    const rows = await env.DB.prepare("SELECT id, parent_id, body, author, created_at, score, hidden, uid FROM comments WHERE topic_id = ? ORDER BY created_at ASC LIMIT 2000")
       .bind(topicId).all();
-    const comments = (rows.results || []).map((c) => (c.hidden ? { ...c, body: "", author: "" } : c));
+    const comments = (rows.results || []).map((c) => {
+      const out = c.hidden ? { ...c, body: "", author: "" } : { ...c };
+      out.can_delete = !c.hidden && !!me && (modHere || c.uid === me.id);
+      delete out.uid;
+      return out;
+    });
     const tv = await myVotes(env, id.voter, "t", [topicId]);
     const cv = await myVotes(env, id.voter, "c", comments.map((c) => c.id));
-    delete topic.hidden;
     topic.my_vote = tv[topicId] || 0;
     for (const c of comments) c.my_vote = cv[c.id] || 0;
-    return reply({ topic, comments });
+    return reply({ topic, comments, me });
   }
 
   // Add a comment or reply
@@ -209,7 +466,7 @@ async function api(request, env, url, ctx) {
     const topicId = parseInt(m[1], 10);
     const b = await body(request);
     const text = clean(b.body, MAX.comment);
-    const author = clean(b.author, MAX.author).replace(/\s+/g, " ") || "Anonymous";
+    const author = me ? me.name : clean(b.author, MAX.author).replace(/\s+/g, " ") || "Anonymous";
     const parent = b.parent_id ? parseInt(b.parent_id, 10) : null;
     if (!text) return reply({ error: "Write something before posting." }, 400);
     if (tooManyLinks(text)) return reply({ error: "Comments can include up to 3 links." }, 400);
@@ -220,8 +477,8 @@ async function api(request, env, url, ctx) {
       if (!p) return reply({ error: "The comment you're replying to no longer exists." }, 400);
     }
     if (!(await allowed(env, id.who, "comment"))) return reply({ error: "You're commenting very fast. Try again in a little while." }, 429);
-    const res = await env.DB.prepare("INSERT INTO comments (topic_id, parent_id, body, author, created_at, score, poster) VALUES (?, ?, ?, ?, ?, 1, ?)")
-      .bind(topicId, parent, text, author, Date.now(), id.who).run();
+    const res = await env.DB.prepare("INSERT INTO comments (topic_id, parent_id, body, author, created_at, score, poster, uid) VALUES (?, ?, ?, ?, ?, 1, ?, ?)")
+      .bind(topicId, parent, text, author, Date.now(), id.who, me ? me.id : null).run();
     const cid = res.meta.last_row_id;
     aiModerate(env, ctx, text, "UPDATE comments SET reports = reports + 2 WHERE id = ?", cid);
     await env.DB.batch([
@@ -257,17 +514,18 @@ async function api(request, env, url, ctx) {
   // Report: hides a post after several different people report it
   if (path === "/api/forum/report" && method === "POST") {
     const b = await body(request);
-    const kind = b.kind === "comment" ? "c" : b.kind === "topic" ? "t" : null;
-    const target = parseInt(b.id, 10);
+    const kind = b.kind === "comment" ? "c" : b.kind === "topic" ? "t" : b.kind === "community" ? "m" : null;
+    let target = parseInt(b.id, 10);
+    if (kind === "m") target = (await env.DB.prepare("SELECT id FROM communities WHERE slug = ? AND official = 0").bind(String(b.id || "")).first())?.id;
     if (!kind || !target) return reply({ error: "That report couldn't be read." }, 400);
     if (!(await allowed(env, id.who, "report"))) return reply({ error: "You've sent a lot of reports. Try again later." }, 429);
-    const table = kind === "t" ? "topics" : "comments";
+    const table = kind === "t" ? "topics" : kind === "m" ? "communities" : "comments";
     const res = await env.DB.prepare("INSERT OR IGNORE INTO reports (kind, target_id, voter, created_at) VALUES (?, ?, ?, ?)")
       .bind(kind, target, id.voter, Date.now()).run();
     if (res.meta.changes) {
       await env.DB.batch([
         env.DB.prepare(`UPDATE ${table} SET reports = reports + 1 WHERE id = ?`).bind(target),
-        env.DB.prepare(`UPDATE ${table} SET hidden = 1 WHERE id = ? AND reports >= ?`).bind(target, HIDE_AT_REPORTS),
+        env.DB.prepare(`UPDATE ${table} SET hidden = 1 WHERE id = ? AND reports >= ?`).bind(target, kind === "m" ? COMM_HIDE_AT : HIDE_AT_REPORTS),
         logAction(env, id.who, "report"),
       ]);
     }
