@@ -74,6 +74,14 @@
       <details><summary>What does Scale do?</summary><p>It multiplies every size. Use 25.4 to turn an inch model into millimeters, or 0.03937 for the reverse.</p></details>
       <details><summary>Is my model uploaded?</summary><p>No. The file is converted in your browser.</p></details>
     </section>
+    <section class="guide" aria-labelledby="how"><h2 id="how">About 3D model formats</h2>
+<p><strong>STL</strong> describes a surface as triangles and is accepted by every 3D printing slicer, but carries no color or units. <strong>3MF</strong> is the modern printing format: one compact file with units, colors, materials and several objects. <strong>OBJ</strong> is a plain-text format with texture coordinates, used to move models between modeling programs. <strong>PLY</strong> is the usual output of 3D scanners and can store a color per vertex.</p>
+<h3>Units</h3>
+<p>STL does not record whether its numbers are millimeters or inches. If a model imports 25.4 times too big or too small, that is the cause; most slicers assume millimeters.</p>
+<h3>Before printing</h3>
+<p>A printable mesh must be watertight (no holes) and manifold. Slicers warn about problems and can repair simple ones.</p>
+</section>
+
     <section class="section related" aria-labelledby="related">
       <h2 id="related">Related tools</h2>
       <ul><li><a href="/stl-to-obj">STL to OBJ</a></li><li><a href="/obj-to-stl">OBJ to STL</a></li><li><a href="/3mf-to-stl">3MF to STL</a></li><li><a href="/stl-to-3mf">STL to 3MF</a></li><li><a href="/ply-to-stl">PLY to STL</a></li><li><a href="/obj-to-3mf">OBJ to 3MF</a></li><li><a href="/units">Unit converter</a></li></ul>

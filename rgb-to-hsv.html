@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>RGB to HSV converter converter: formula, table and examples | Wezzet</title>
+<title>RGB to HSV converter: free online, with examples | Wezzet</title>
 <meta name="description" content="Convert colors between HEX, RGB, HSL, HSV and CMYK. Type in any box or pick a color. Free, no sign up.">
 <link rel="canonical" href="https://wezzet.com/rgb-to-hsv">
 <meta property="og:type" content="website">
@@ -42,6 +42,14 @@
       <p class="lede">Convert colors between HEX, RGB, HSL, HSV and CMYK. Type in any box or pick a color.</p>
     </div>
     <div id="app" class="tight" data-from="rgb"></div>
+    <section class="guide" aria-labelledby="how"><h2 id="how">How to convert RGB to HSV</h2>
+<p>Scale red, green and blue to 0 to 1 and find the largest (max) and smallest (min).</p>
+<p>Value: <code>V = max</code><br>Saturation: <code>S = (max − min) ÷ max</code>, or 0 for black<br>Hue is worked out the same way as in HSL, from which channel is largest.</p>
+<h3>Worked example</h3>
+<p>rgb(255, 136, 0) scales to (1, 0.533, 0). V = 1, S = 1 and the hue is 32°, giving <strong>hsv(32°, 100%, 100%)</strong>.</p>
+<p>HSV (also called HSB) is the model behind most color pickers: the square shows saturation and value, and the slider shows hue.</p>
+</section>
+
     <section class="section related" aria-labelledby="related"><h2 id="related">Related tools</h2><ul><li><a href="/color-converter">All color converters</a></li><li><a href="/hsv-to-rgb">HSV to RGB converter</a></li><li><a href="/rgb-to-cmyk">RGB to CMYK converter</a></li><li><a href="/cmyk-to-rgb">CMYK to RGB converter</a></li><li><a href="/hex-to-cmyk">Hex to CMYK converter</a></li><li><a href="/hex-to-rgb">Hex to RGB converter</a></li><li><a href="/rgb-to-hex">RGB to hex converter</a></li><li><a href="/rgb-to-hsl">RGB to HSL converter</a></li><li><a href="/hsl-to-rgb">HSL to RGB converter</a></li></ul></section>
   </div>
 </main>

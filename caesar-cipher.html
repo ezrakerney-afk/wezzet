@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Caesar cipher converter: formula, table and examples | Wezzet</title>
+<title>Caesar cipher: encoder, decoder and how it works | Wezzet</title>
 <meta name="description" content="Runs entirely in your browser with the Web Crypto API. Nothing is sent or stored. Free, no sign up.">
 <link rel="canonical" href="https://wezzet.com/caesar-cipher">
 <meta property="og:type" content="website">
@@ -42,6 +42,14 @@
       <p class="lede">Runs entirely in your browser with the Web Crypto API. Nothing is sent or stored.</p>
     </div>
     <div id="app" class="tight" data-mode="caesar" data-cipher="caesar"></div>
+    <section class="guide" aria-labelledby="how"><h2 id="how">How the Caesar cipher works</h2>
+<p>The Caesar cipher shifts every letter a fixed number of places along the alphabet. Julius Caesar is said to have used a shift of 3, so A became D and B became E. To decode, shift back by the same amount.</p>
+<h3>Example</h3>
+<p>With a shift of 3, HELLO becomes KHOOR.</p>
+<p>There are only 25 possible shifts, so it can be broken by trying them all, or by noticing that the most common letter probably stands for E. ROT13 is the special case with a shift of 13, where encoding twice returns the original.</p>
+<p>Use it for puzzles and teaching, never for real secrets.</p>
+</section>
+
     <section class="section related" aria-labelledby="related"><h2 id="related">Related tools</h2><ul><li><a href="/crypto">All cryptography converters</a></li><li><a href="/vigenere-cipher">Vigenère cipher</a></li><li><a href="/atbash-cipher">Atbash cipher</a></li><li><a href="/rot47">ROT47</a></li><li><a href="/affine-cipher">Affine cipher</a></li><li><a href="/rail-fence-cipher">Rail fence cipher</a></li><li><a href="/xor-cipher">XOR cipher</a></li><li><a href="/base64-encode">Base64 encode and decode</a></li><li><a href="/base32">Base32 encode and decode</a></li><li><a href="/base58">Base58 encode and decode</a></li><li><a href="/url-encode">URL encode and decode</a></li><li><a href="/html-entities">HTML entity encoder</a></li></ul></section>
   </div>
 </main>

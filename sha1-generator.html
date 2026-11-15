@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SHA-1 hash generator converter: formula, table and examples | Wezzet</title>
+<title>SHA-1 hash generator: free online, with examples | Wezzet</title>
 <meta name="description" content="Runs entirely in your browser with the Web Crypto API. Nothing is sent or stored. Free, no sign up.">
 <link rel="canonical" href="https://wezzet.com/sha1-generator">
 <meta property="og:type" content="website">
@@ -42,6 +42,15 @@
       <p class="lede">Runs entirely in your browser with the Web Crypto API. Nothing is sent or stored.</p>
     </div>
     <div id="app" class="tight" data-mode="hash" data-alg="SHA-1"></div>
+    <section class="guide" aria-labelledby="how"><h2 id="how">About SHA-1</h2>
+<p>SHA-1 was published by NIST in 1995. It produces a 160-bit hash, written as 40 hex digits.</p>
+<h3>Example</h3>
+<p>The SHA-1 of <code>hello</code> is <code>aaf4c61ddcc5e8a2dabede0f3b482cd9aea9434d</code>.</p>
+<h3>Is SHA-1 safe?</h3>
+<p>No longer. Google and CWI produced the first real collision (two different PDFs with the same hash) in 2017, and browsers stopped accepting SHA-1 certificates the same year. Use SHA-256 for anything new.</p>
+<p>SHA-1 is still seen in older systems and in Git, which uses it to name commits and is moving to SHA-256.</p>
+</section>
+
     <section class="section related" aria-labelledby="related"><h2 id="related">Related tools</h2><ul><li><a href="/crypto">All cryptography converters</a></li><li><a href="/sha256-generator">SHA-256 hash generator</a></li><li><a href="/sha384-generator">SHA-384 hash generator</a></li><li><a href="/sha512-generator">SHA-512 hash generator</a></li><li><a href="/crc32">CRC32 checksum</a></li><li><a href="/md5-checksum">MD5 file checksum</a></li><li><a href="/sha256-checksum">SHA-256 file checksum</a></li><li><a href="/hmac-generator">HMAC generator</a></li><li><a href="/aes-encryption">AES encryption and decryption</a></li><li><a href="/caesar-cipher">Caesar cipher</a></li><li><a href="/vigenere-cipher">Vigenère cipher</a></li><li><a href="/atbash-cipher">Atbash cipher</a></li></ul></section>
   </div>
 </main>

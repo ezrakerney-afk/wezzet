@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Vigenère cipher converter: formula, table and examples | Wezzet</title>
+<title>Vigenère cipher: encoder, decoder and how it works | Wezzet</title>
 <meta name="description" content="Runs entirely in your browser with the Web Crypto API. Nothing is sent or stored. Free, no sign up.">
 <link rel="canonical" href="https://wezzet.com/vigenere-cipher">
 <meta property="og:type" content="website">
@@ -42,6 +42,14 @@
       <p class="lede">Runs entirely in your browser with the Web Crypto API. Nothing is sent or stored.</p>
     </div>
     <div id="app" class="tight" data-mode="caesar" data-cipher="vigenere"></div>
+    <section class="guide" aria-labelledby="how"><h2 id="how">How the Vigenère cipher works</h2>
+<p>The Vigenère cipher uses a keyword to shift each letter by a different amount. Write the keyword repeatedly under the message; each key letter gives the shift for the letter above it (A = 0, B = 1 and so on).</p>
+<h3>Example</h3>
+<p>ATTACKATDAWN with the key LEMON becomes <strong>LXFOPVEFRNHR</strong>.</p>
+<p>It was described in the 16th century and was long called the indecipherable cipher. Friedrich Kasiski published a general attack in 1863: repeated patterns reveal the keyword's length, and each position then falls to frequency analysis.</p>
+<p>It is a good cipher for learning and puzzles, but not for real secrets.</p>
+</section>
+
     <section class="section related" aria-labelledby="related"><h2 id="related">Related tools</h2><ul><li><a href="/crypto">All cryptography converters</a></li><li><a href="/atbash-cipher">Atbash cipher</a></li><li><a href="/rot47">ROT47</a></li><li><a href="/affine-cipher">Affine cipher</a></li><li><a href="/rail-fence-cipher">Rail fence cipher</a></li><li><a href="/xor-cipher">XOR cipher</a></li><li><a href="/base64-encode">Base64 encode and decode</a></li><li><a href="/base32">Base32 encode and decode</a></li><li><a href="/base58">Base58 encode and decode</a></li><li><a href="/url-encode">URL encode and decode</a></li><li><a href="/html-entities">HTML entity encoder</a></li><li><a href="/jwt-decoder">JWT decoder</a></li></ul></section>
   </div>
 </main>

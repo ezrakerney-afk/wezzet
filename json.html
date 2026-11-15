@@ -54,6 +54,16 @@
       <h2 id="faq">Questions</h2>
       <details><summary>Is my JSON sent to a server?</summary><p>No. It&#x27;s checked and formatted in your browser. Only Fix with AI sends it, to WezzetAI, when you click it.</p></details><details><summary>Can AI agents use it?</summary><p>Yes, through <code>wezzet.com/api/json?data=...</code>. See <a href="/tools.txt">tools.txt</a>.</p></details>
     </section>
+    <section class="guide" aria-labelledby="how"><h2 id="how">About JSON</h2>
+<p>JSON (JavaScript Object Notation) is the text format most web APIs use to exchange data. It has six kinds of value: objects in curly braces, arrays in square brackets, strings, numbers, true or false, and null.</p>
+<h3>Rules that catch people out</h3>
+<p>Keys and strings need double quotes, not single. No comma is allowed after the last item. Comments are not allowed. Numbers cannot have leading zeros.</p>
+<h3>Formatting and minifying</h3>
+<p>Formatting (pretty-printing) adds line breaks and indentation so people can read the data. Minifying removes that whitespace to make the file smaller for sending. Neither changes the data.</p>
+<h3>Reading error messages</h3>
+<p>A parse error reports the position where the parser gave up, which is often just after the real mistake, so check the line before it too.</p>
+</section>
+
     <section class="section related" aria-labelledby="related">
       <h2 id="related">Related tools</h2>
       <ul><li><a href="/words">Word counter</a></li><li><a href="/case">Case converter</a></li><li><a href="/data">CSV, JSON and Excel</a></li><li><a href="/regex">Regex tester</a></li><li><a href="/diff">Text compare</a></li><li><a href="/timestamp">Unix timestamp</a></li></ul>

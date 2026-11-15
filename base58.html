@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Base58 encode and decode converter: formula, table and examples | Wezzet</title>
+<title>Base58 encode and decode: encoder, decoder and how it works | Wezzet</title>
 <meta name="description" content="Runs entirely in your browser with the Web Crypto API. Nothing is sent or stored. Free, no sign up.">
 <link rel="canonical" href="https://wezzet.com/base58">
 <meta property="og:type" content="website">
@@ -42,6 +42,12 @@
       <p class="lede">Runs entirely in your browser with the Web Crypto API. Nothing is sent or stored.</p>
     </div>
     <div id="app" class="tight" data-mode="encode" data-format="b58"></div>
+    <section class="guide" aria-labelledby="how"><h2 id="how">About Base58</h2>
+<p>Base58 is Base64 with the confusing characters removed: no 0 (zero), O (capital o), I (capital i) or l (lowercase L), and no + or /. That leaves 58 letters and digits that can be double-clicked and copied as one word.</p>
+<p>It was introduced with Bitcoin for wallet addresses and is also used by IPFS content IDs and Solana addresses.</p>
+<p>Unlike Base64 it treats the input as one big number, so it is slower for large data and is meant for short identifiers.</p>
+</section>
+
     <section class="section related" aria-labelledby="related"><h2 id="related">Related tools</h2><ul><li><a href="/crypto">All cryptography converters</a></li><li><a href="/url-encode">URL encode and decode</a></li><li><a href="/html-entities">HTML entity encoder</a></li><li><a href="/jwt-decoder">JWT decoder</a></li><li><a href="/rsa-key-generator">RSA key pair generator</a></li><li><a href="/uuid-generator">UUID generator</a></li><li><a href="/encryption-key-generator">Encryption key generator</a></li><li><a href="/md5-generator">MD5 hash generator</a></li><li><a href="/sha1-generator">SHA-1 hash generator</a></li><li><a href="/sha256-generator">SHA-256 hash generator</a></li><li><a href="/sha384-generator">SHA-384 hash generator</a></li></ul></section>
   </div>
 </main>

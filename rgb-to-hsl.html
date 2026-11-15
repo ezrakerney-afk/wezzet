@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>RGB to HSL converter converter: formula, table and examples | Wezzet</title>
+<title>RGB to HSL converter: free online, with examples | Wezzet</title>
 <meta name="description" content="Convert colors between HEX, RGB, HSL, HSV and CMYK. Type in any box or pick a color. Free, no sign up.">
 <link rel="canonical" href="https://wezzet.com/rgb-to-hsl">
 <meta property="og:type" content="website">
@@ -42,6 +42,16 @@
       <p class="lede">Convert colors between HEX, RGB, HSL, HSV and CMYK. Type in any box or pick a color.</p>
     </div>
     <div id="app" class="tight" data-from="rgb"></div>
+    <section class="guide" aria-labelledby="how"><h2 id="how">How to convert RGB to HSL</h2>
+<p>Scale red, green and blue to the range 0 to 1 and find the largest (max) and smallest (min).</p>
+<p>Lightness: <code>L = (max + min) ÷ 2</code><br>Saturation: <code>S = (max − min) ÷ (1 − </p>
+<p>2L − 1</p>
+<p>)</code>, or 0 for grays<br>Hue depends on which channel is largest; for red it is <code>60° × ((G − B) ÷ (max − min))</code>, with 120° added when green is largest and 240° when blue is.</p>
+<h3>Worked example</h3>
+<p>rgb(255, 136, 0) scales to (1, 0.533, 0). L = 0.5, S = 1 and the hue is 60 × 0.533 = 32°, giving <strong>hsl(32°, 100%, 50%)</strong>.</p>
+<p>HSL is handy in CSS: keep the hue and change only the lightness to get tints and shades of one color.</p>
+</section>
+
     <section class="section related" aria-labelledby="related"><h2 id="related">Related tools</h2><ul><li><a href="/color-converter">All color converters</a></li><li><a href="/hsl-to-rgb">HSL to RGB converter</a></li><li><a href="/rgb-to-hsv">RGB to HSV converter</a></li><li><a href="/hsv-to-rgb">HSV to RGB converter</a></li><li><a href="/rgb-to-cmyk">RGB to CMYK converter</a></li><li><a href="/cmyk-to-rgb">CMYK to RGB converter</a></li><li><a href="/hex-to-cmyk">Hex to CMYK converter</a></li><li><a href="/hex-to-rgb">Hex to RGB converter</a></li><li><a href="/rgb-to-hex">RGB to hex converter</a></li></ul></section>
   </div>
 </main>

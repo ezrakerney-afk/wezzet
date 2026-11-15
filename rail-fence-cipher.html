@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Rail fence cipher converter: formula, table and examples | Wezzet</title>
+<title>Rail fence cipher: encoder, decoder and how it works | Wezzet</title>
 <meta name="description" content="Runs entirely in your browser with the Web Crypto API. Nothing is sent or stored. Free, no sign up.">
 <link rel="canonical" href="https://wezzet.com/rail-fence-cipher">
 <meta property="og:type" content="website">
@@ -42,6 +42,13 @@
       <p class="lede">Runs entirely in your browser with the Web Crypto API. Nothing is sent or stored.</p>
     </div>
     <div id="app" class="tight" data-mode="caesar" data-cipher="rail"></div>
+    <section class="guide" aria-labelledby="how"><h2 id="how">How the rail fence cipher works</h2>
+<p>The rail fence cipher is a transposition cipher: it keeps the same letters and rearranges them. Write the message in a zigzag down and up across a number of rows (rails), then read each row from left to right.</p>
+<h3>Example</h3>
+<p>WEAREDISCOVERED on 3 rails is written as W . . . E . . . C . . . R . . on the top rail, . E . R . D . S . O . E . E . on the middle and . . A . . . I . . . V . . . D on the bottom, giving <strong>WECRERDSOEEAIVD</strong>.</p>
+<p>The key is just the number of rails, so there are few possibilities to try. It is a puzzle cipher, not a secure one.</p>
+</section>
+
     <section class="section related" aria-labelledby="related"><h2 id="related">Related tools</h2><ul><li><a href="/crypto">All cryptography converters</a></li><li><a href="/xor-cipher">XOR cipher</a></li><li><a href="/base64-encode">Base64 encode and decode</a></li><li><a href="/base32">Base32 encode and decode</a></li><li><a href="/base58">Base58 encode and decode</a></li><li><a href="/url-encode">URL encode and decode</a></li><li><a href="/html-entities">HTML entity encoder</a></li><li><a href="/jwt-decoder">JWT decoder</a></li><li><a href="/rsa-key-generator">RSA key pair generator</a></li><li><a href="/uuid-generator">UUID generator</a></li><li><a href="/encryption-key-generator">Encryption key generator</a></li></ul></section>
   </div>
 </main>

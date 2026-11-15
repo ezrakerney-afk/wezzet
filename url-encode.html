@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>URL encode and decode converter: formula, table and examples | Wezzet</title>
+<title>URL encode and decode: encoder, decoder and how it works | Wezzet</title>
 <meta name="description" content="Runs entirely in your browser with the Web Crypto API. Nothing is sent or stored. Free, no sign up.">
 <link rel="canonical" href="https://wezzet.com/url-encode">
 <meta property="og:type" content="website">
@@ -42,6 +42,15 @@
       <p class="lede">Runs entirely in your browser with the Web Crypto API. Nothing is sent or stored.</p>
     </div>
     <div id="app" class="tight" data-mode="encode" data-format="url"></div>
+    <section class="guide" aria-labelledby="how"><h2 id="how">About URL encoding</h2>
+<p>URLs may only contain a limited set of characters. Anything else is percent-encoded: written as % followed by the two hex digits of each UTF-8 byte (RFC 3986).</p>
+<h3>Examples</h3>
+<p>A space becomes <code>%20</code>, &amp; becomes <code>%26</code>, ? becomes <code>%3F</code> and é becomes <code>%C3%A9</code>.</p>
+<p>Letters, digits and the four characters - _ . ~ never need encoding. In form submissions a space may be written as + instead of %20.</p>
+<h3>When to encode</h3>
+<p>Encode each query value separately before joining them, so that an &amp; or = inside a value is not mistaken for a separator. Encoding a whole URL at once breaks its structure.</p>
+</section>
+
     <section class="section related" aria-labelledby="related"><h2 id="related">Related tools</h2><ul><li><a href="/crypto">All cryptography converters</a></li><li><a href="/html-entities">HTML entity encoder</a></li><li><a href="/jwt-decoder">JWT decoder</a></li><li><a href="/rsa-key-generator">RSA key pair generator</a></li><li><a href="/uuid-generator">UUID generator</a></li><li><a href="/encryption-key-generator">Encryption key generator</a></li><li><a href="/md5-generator">MD5 hash generator</a></li><li><a href="/sha1-generator">SHA-1 hash generator</a></li><li><a href="/sha256-generator">SHA-256 hash generator</a></li><li><a href="/sha384-generator">SHA-384 hash generator</a></li><li><a href="/sha512-generator">SHA-512 hash generator</a></li></ul></section>
   </div>
 </main>

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Cryptography tools converter: formula, table and examples | Wezzet</title>
+<title>Cryptography tools: free online, how it works | Wezzet</title>
 <meta name="description" content="Hashes, HMAC, AES encryption, classic ciphers, Base32/58/64, JWT decoding and key generation, all in your browser. Free, no sign up.">
 <link rel="canonical" href="https://wezzet.com/crypto">
 <meta property="og:type" content="website">
@@ -42,6 +42,14 @@
       <p class="lede">Hashes, HMAC, AES encryption, classic ciphers, Base32/58/64, JWT decoding and key generation, all in your browser.</p>
     </div>
     <div id="app" class="tight" data-mode="hash"></div>
+    <section class="guide" aria-labelledby="how"><h2 id="how">About hash functions</h2>
+<p>A hash function turns any amount of data into a short fixed-length fingerprint. The same input always gives the same hash, a tiny change gives a completely different one, and the original cannot be worked back from the result.</p>
+<h3>Which one to use</h3>
+<p>SHA-256 is the safe default for verifying files and signing data. SHA-384 and SHA-512 are longer members of the same family. MD5 and SHA-1 are broken for security and should only be used to match old checksums. CRC32 only detects accidental errors.</p>
+<h3>Passwords</h3>
+<p>Do not store passwords with a plain fast hash. Use a purpose-built slow function such as Argon2, scrypt or bcrypt, with a salt.</p>
+</section>
+
     <section class="section related" aria-labelledby="related"><h2 id="related">Related tools</h2><ul><li><a href="/md5-generator">MD5 hash generator</a></li><li><a href="/sha1-generator">SHA-1 hash generator</a></li><li><a href="/sha256-generator">SHA-256 hash generator</a></li><li><a href="/sha384-generator">SHA-384 hash generator</a></li><li><a href="/sha512-generator">SHA-512 hash generator</a></li><li><a href="/crc32">CRC32 checksum</a></li><li><a href="/md5-checksum">MD5 file checksum</a></li><li><a href="/sha256-checksum">SHA-256 file checksum</a></li><li><a href="/hmac-generator">HMAC generator</a></li><li><a href="/aes-encryption">AES encryption and decryption</a></li><li><a href="/caesar-cipher">Caesar cipher</a></li></ul></section>
   </div>
 </main>

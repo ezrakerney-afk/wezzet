@@ -55,6 +55,16 @@
       <h2 id="faq">Questions</h2>
       <details><summary>What do the status codes mean?</summary><p>2xx is success, 3xx is a redirect, 4xx means the page was not found or is blocked (404, 403) and 5xx is a server error.</p></details><details><summary>Why does my site show 403 here but work in my browser?</summary><p>Some sites block automated checks or visitors from data centers. The check runs from Cloudflare, not from your computer.</p></details><details><summary>How many redirects are followed?</summary><p>Up to 10, so you can spot redirect loops and long chains that slow pages down.</p></details><details><summary>Is there an API?</summary><p>Yes: wezzet.com/api/status?url=example.com returns the chain and headers as text or JSON.</p></details>
     </section>
+    <section class="guide" aria-labelledby="how"><h2 id="how">About HTTP status codes</h2>
+<p>Every web response starts with a three-digit status code.</p>
+<h3>The five groups</h3>
+<p>1xx is informational. 2xx means success: 200 OK. 3xx is a redirect: 301 is permanent and 302 temporary. 4xx is a problem with the request: 404 not found, 403 forbidden, 401 sign-in required and 429 too many requests. 5xx is a server failure: 500 internal error, 502 bad gateway, 503 unavailable and 504 gateway timeout.</p>
+<h3>Is it down for everyone?</h3>
+<p>If a site fails for you but a check from elsewhere succeeds, the cause is probably your network, DNS cache, VPN or a regional block. If the check fails too, the site itself is having trouble.</p>
+<h3>Response time</h3>
+<p>Under about 200 milliseconds feels instant. Over one second is noticeably slow.</p>
+</section>
+
     <section class="section related" aria-labelledby="related">
       <h2 id="related">Related tools</h2>
       <ul><li><a href="/dns">DNS lookup</a></li><li><a href="/read">Web page to text</a></li><li><a href="/url-parser">URL parser</a></li><li><a href="/extract-links">Extract links</a></li><li><a href="/domains">Domain name search</a></li><li><a href="/json">JSON formatter</a></li></ul>

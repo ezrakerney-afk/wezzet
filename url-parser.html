@@ -52,6 +52,15 @@
       <h2 id="faq">Questions</h2>
       <details><summary>Is the URL sent anywhere?</summary><p>No. It is parsed in your browser.</p></details><details><summary>Are values decoded?</summary><p>Yes. %%20 becomes a space and + in the query becomes a space, so you can read the real values.</p></details><details><summary>What if I leave out https://?</summary><p>It is added for you, so example.com/page works.</p></details>
     </section>
+    <section class="guide" aria-labelledby="how"><h2 id="how">The parts of a URL</h2>
+<p>Take <code>https://user@example.com:8080/path/page?id=5&amp;sort=asc#top</code>.</p>
+<p>The <strong>scheme</strong> (https) is the protocol. The <strong>host</strong> (example.com) is the server, optionally with a <strong>port</strong> (8080); the defaults are 443 for https and 80 for http. The <strong>path</strong> (/path/page) names the resource. The <strong>query</strong> after the ? is a list of key=value pairs joined by &amp;. The <strong>fragment</strong> after the # points to a spot in the page and is never sent to the server.</p>
+<h3>Encoding</h3>
+<p>Characters that are not allowed in a URL are percent-encoded, so a space becomes %20.</p>
+<h3>Tracking parameters</h3>
+<p>Query keys such as utm_source and fbclid only record where a visitor came from. They can be removed without changing the page that loads.</p>
+</section>
+
     <section class="section related" aria-labelledby="related">
       <h2 id="related">Related tools</h2>
       <ul><li><a href="/url-encode">URL encode</a></li><li><a href="/dns">DNS lookup</a></li><li><a href="/status">HTTP status checker</a></li><li><a href="/extract-links">Extract links</a></li><li><a href="/json">JSON formatter</a></li><li><a href="/base64-encode">Base64 encode</a></li></ul>

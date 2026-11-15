@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SHA-256 hash generator converter: formula, table and examples | Wezzet</title>
+<title>SHA-256 hash generator: free online, with examples | Wezzet</title>
 <meta name="description" content="Runs entirely in your browser with the Web Crypto API. Nothing is sent or stored. Free, no sign up.">
 <link rel="canonical" href="https://wezzet.com/sha256-generator">
 <meta property="og:type" content="website">
@@ -42,6 +42,15 @@
       <p class="lede">Runs entirely in your browser with the Web Crypto API. Nothing is sent or stored.</p>
     </div>
     <div id="app" class="tight" data-mode="hash" data-alg="SHA-256"></div>
+    <section class="guide" aria-labelledby="how"><h2 id="how">About SHA-256</h2>
+<p>SHA-256 is part of the SHA-2 family, published by NIST in 2001. It produces a 256-bit hash, written as 64 hex digits.</p>
+<h3>Example</h3>
+<p>The SHA-256 of <code>hello</code> is <code>2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824</code>.</p>
+<h3>Where it is used</h3>
+<p>TLS certificates, Bitcoin mining and addresses, code signing, Git's newer object format and file checksums.</p>
+<p>No practical attack on SHA-256 is known. For storing passwords, though, use a slow function such as Argon2 or bcrypt: SHA-256 is fast by design, which helps an attacker guess.</p>
+</section>
+
     <section class="section related" aria-labelledby="related"><h2 id="related">Related tools</h2><ul><li><a href="/crypto">All cryptography converters</a></li><li><a href="/sha384-generator">SHA-384 hash generator</a></li><li><a href="/sha512-generator">SHA-512 hash generator</a></li><li><a href="/crc32">CRC32 checksum</a></li><li><a href="/md5-checksum">MD5 file checksum</a></li><li><a href="/sha256-checksum">SHA-256 file checksum</a></li><li><a href="/hmac-generator">HMAC generator</a></li><li><a href="/aes-encryption">AES encryption and decryption</a></li><li><a href="/caesar-cipher">Caesar cipher</a></li><li><a href="/vigenere-cipher">Vigenère cipher</a></li><li><a href="/atbash-cipher">Atbash cipher</a></li><li><a href="/rot47">ROT47</a></li></ul></section>
   </div>
 </main>

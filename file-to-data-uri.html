@@ -65,6 +65,16 @@
       <h2 id="related">Related tools</h2>
       <ul><li><a href="/file-checksum">File Checksum (SHA-256)</a></li><li><a href="/file-to-base64">Convert to Base64</a></li><li><a href="/gzip-file">To gzip (.gz)</a></li><li><a href="/hex-viewer">Hex dump</a></li><li><a href="/sha1-checksum">SHA-1 checksum</a></li><li><a href="/sha512-checksum">SHA-512 checksum</a></li></ul>
     </section>
+    <section class="guide" aria-labelledby="how"><h2 id="how">About file and data URI</h2>
+<h3>What is file?</h3>
+<p>Any file is a sequence of bytes, whatever its type.</p>
+<h3>What is data URI?</h3>
+<p>A data URI puts a whole file inside a URL, in the form data:type;base64,content. Browsers load it without a separate request.</p>
+<h3>When to convert file to data URI</h3>
+<p>Choose a data URI to inline a small image or font in HTML or CSS. It suits files under a few kilobytes; larger ones bloat the page.</p>
+<h3>How to convert</h3>
+<p>Choose your file file or drop it on the page, check the output setting, and download the data URI result. You can add several files at once.</p>
+</section>
   </div>
 </main>
 

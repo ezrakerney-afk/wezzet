@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Gray code and BCD converter converter: formula, table and examples | Wezzet</title>
+<title>Gray code and BCD converter: free online, with examples | Wezzet</title>
 <meta name="description" content="Convert decimal numbers to binary, Gray code and binary-coded decimal (BCD), and back. Free, no sign up.">
 <link rel="canonical" href="https://wezzet.com/gray-code">
 <meta property="og:type" content="website">
@@ -42,6 +42,16 @@
       <p class="lede">Convert decimal numbers to binary, Gray code and binary-coded decimal (BCD), and back.</p>
     </div>
     <div id="app" class="tight" data-mode="codes"></div>
+    <section class="guide" aria-labelledby="how"><h2 id="how">About Gray code</h2>
+<p>Gray code orders binary numbers so that each value differs from the next by exactly one bit. It is named after Frank Gray of Bell Labs, who patented it in 1953.</p>
+<h3>Converting</h3>
+<p>Binary to Gray: <code>gray = binary XOR (binary shifted right by one)</code>. Going back, each binary bit is the XOR of all Gray bits to its left, including itself.</p>
+<h3>Worked example</h3>
+<p>5 is 101 in binary. 101 XOR 010 = <strong>111</strong> in Gray code.</p>
+<h3>Where it is used</h3>
+<p>Rotary and position encoders, where several bits changing at once could be misread halfway through a step, and Karnaugh maps for simplifying logic.</p>
+</section>
+
     <section class="section related" aria-labelledby="related"><h2 id="related">Related tools</h2><ul><li><a href="/number">All numbers converters</a></li><li><a href="/bcd-converter">BCD converter</a></li><li><a href="/decimal-to-binary">Decimal to binary converter</a></li><li><a href="/binary-to-decimal">Binary to decimal converter</a></li><li><a href="/decimal-to-hex">Decimal to hex converter</a></li><li><a href="/hex-to-decimal">Hex to decimal converter</a></li><li><a href="/decimal-to-octal">Decimal to octal converter</a></li><li><a href="/octal-to-decimal">Octal to decimal converter</a></li><li><a href="/binary-to-hex">Binary to hex converter</a></li><li><a href="/hex-to-binary">Hex to binary converter</a></li><li><a href="/binary-to-octal">Binary to octal converter</a></li></ul></section>
   </div>
 </main>

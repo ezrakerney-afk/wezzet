@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SHA-256 file checksum converter: formula, table and examples | Wezzet</title>
+<title>SHA-256 file checksum: free online, with examples | Wezzet</title>
 <meta name="description" content="Runs entirely in your browser with the Web Crypto API. Nothing is sent or stored. Free, no sign up.">
 <link rel="canonical" href="https://wezzet.com/sha256-checksum">
 <meta property="og:type" content="website">
@@ -42,6 +42,13 @@
       <p class="lede">Runs entirely in your browser with the Web Crypto API. Nothing is sent or stored.</p>
     </div>
     <div id="app" class="tight" data-mode="file" data-alg="SHA-256"></div>
+    <section class="guide" aria-labelledby="how"><h2 id="how">About SHA-256 file checksums</h2>
+<p>A SHA-256 checksum is a 256-bit fingerprint of a file, written as 64 hex digits. It is the standard way software publishers let you confirm a download is complete and untampered.</p>
+<h3>How to verify a download</h3>
+<p>Compute the checksum of the file and compare it with the value on the publisher's site. Every character must match; one different byte anywhere in the file changes the whole checksum.</p>
+<p>No two different files with the same SHA-256 have ever been found, so a match means the file is the one the publisher released. Get the expected value from the official site, not from the same place as the download mirror.</p>
+</section>
+
     <section class="section related" aria-labelledby="related"><h2 id="related">Related tools</h2><ul><li><a href="/crypto">All cryptography converters</a></li><li><a href="/hmac-generator">HMAC generator</a></li><li><a href="/aes-encryption">AES encryption and decryption</a></li><li><a href="/caesar-cipher">Caesar cipher</a></li><li><a href="/vigenere-cipher">Vigenère cipher</a></li><li><a href="/atbash-cipher">Atbash cipher</a></li><li><a href="/rot47">ROT47</a></li><li><a href="/affine-cipher">Affine cipher</a></li><li><a href="/rail-fence-cipher">Rail fence cipher</a></li><li><a href="/xor-cipher">XOR cipher</a></li><li><a href="/base64-encode">Base64 encode and decode</a></li><li><a href="/base32">Base32 encode and decode</a></li></ul></section>
   </div>
 </main>

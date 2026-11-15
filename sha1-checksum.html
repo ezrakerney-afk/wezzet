@@ -65,6 +65,13 @@
       <h2 id="related">Related tools</h2>
       <ul><li><a href="/file-checksum">File Checksum (SHA-256)</a></li><li><a href="/file-to-base64">Convert to Base64</a></li><li><a href="/file-to-data-uri">To data URI</a></li><li><a href="/gzip-file">To gzip (.gz)</a></li><li><a href="/hex-viewer">Hex dump</a></li><li><a href="/sha512-checksum">SHA-512 checksum</a></li></ul>
     </section>
+    <section class="guide" aria-labelledby="how"><h2 id="how">About SHA-1 file checksums</h2>
+<p>A SHA-1 checksum is a 160-bit fingerprint of a file, written as 40 hex digits. Some older download pages still publish one.</p>
+<h3>How to verify a download</h3>
+<p>Compute the checksum of your file and compare it with the published value; every character must match.</p>
+<h3>Limits</h3>
+<p>SHA-1 reliably catches accidental corruption, but collisions have been demonstrated since 2017, so it cannot prove a file was not deliberately tampered with. Prefer SHA-256 when the publisher offers it.</p>
+</section>
   </div>
 </main>
 

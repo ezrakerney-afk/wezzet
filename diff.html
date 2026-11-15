@@ -53,6 +53,16 @@
       <h2 id="faq">Questions</h2>
       <details><summary>Is my text sent anywhere?</summary><p>No. The comparison runs in your browser.</p></details><details><summary>How big can the texts be?</summary><p>Tens of thousands of lines work fine on most devices.</p></details><details><summary>What do the colors mean?</summary><p>Green lines were added, red lines were removed. Bold parts show the exact words that changed.</p></details>
     </section>
+    <section class="guide" aria-labelledby="how"><h2 id="how">How text comparison works</h2>
+<p>A diff shows what changed between two versions of a text. It finds the longest sequence of lines the two share and marks everything else as removed from the old version or added to the new one.</p>
+<h3>Reading the result</h3>
+<p>Lines marked with a minus, usually red, exist only in the first text. Lines marked with a plus, usually green, exist only in the second. A changed line appears as a removal followed by an addition.</p>
+<h3>Tips</h3>
+<p>Differences in spaces, tabs or line endings count as changes, so normalize them if only the words matter. Sort lists before comparing when the order is unimportant.</p>
+<h3>Uses</h3>
+<p>Reviewing edits to contracts and essays, checking what changed in a configuration file, and comparing two exports of the same data.</p>
+</section>
+
     <section class="section related" aria-labelledby="related">
       <h2 id="related">Related tools</h2>
       <ul><li><a href="/words">Word counter</a></li><li><a href="/case">Case converter</a></li><li><a href="/sort-lines">Sort lines</a></li><li><a href="/regex">Regex tester</a></li><li><a href="/json">JSON formatter</a></li><li><a href="/notepad">Notepad</a></li></ul>

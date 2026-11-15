@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Base32 encode and decode converter: formula, table and examples | Wezzet</title>
+<title>Base32 encode and decode: encoder, decoder and how it works | Wezzet</title>
 <meta name="description" content="Runs entirely in your browser with the Web Crypto API. Nothing is sent or stored. Free, no sign up.">
 <link rel="canonical" href="https://wezzet.com/base32">
 <meta property="og:type" content="website">
@@ -42,6 +42,13 @@
       <p class="lede">Runs entirely in your browser with the Web Crypto API. Nothing is sent or stored.</p>
     </div>
     <div id="app" class="tight" data-mode="encode" data-format="b32"></div>
+    <section class="guide" aria-labelledby="how"><h2 id="how">About Base32</h2>
+<p>Base32 writes binary data with 32 characters: A to Z and 2 to 7 (RFC 4648). Each character carries 5 bits, so every 5 bytes become 8 characters and the output is 60 percent larger than the input.</p>
+<p>It avoids the digits 0, 1 and 8, which are easy to confuse with O, I and B, and it is case-insensitive. That makes it good for codes people type or read aloud.</p>
+<h3>Where it is used</h3>
+<p>The secret keys behind authenticator apps (TOTP) are Base32, as are Tor onion addresses.</p>
+</section>
+
     <section class="section related" aria-labelledby="related"><h2 id="related">Related tools</h2><ul><li><a href="/crypto">All cryptography converters</a></li><li><a href="/base58">Base58 encode and decode</a></li><li><a href="/url-encode">URL encode and decode</a></li><li><a href="/html-entities">HTML entity encoder</a></li><li><a href="/jwt-decoder">JWT decoder</a></li><li><a href="/rsa-key-generator">RSA key pair generator</a></li><li><a href="/uuid-generator">UUID generator</a></li><li><a href="/encryption-key-generator">Encryption key generator</a></li><li><a href="/md5-generator">MD5 hash generator</a></li><li><a href="/sha1-generator">SHA-1 hash generator</a></li><li><a href="/sha256-generator">SHA-256 hash generator</a></li></ul></section>
   </div>
 </main>

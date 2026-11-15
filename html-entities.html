@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>HTML entity encoder converter: formula, table and examples | Wezzet</title>
+<title>HTML entity encoder: encoder, decoder and how it works | Wezzet</title>
 <meta name="description" content="Runs entirely in your browser with the Web Crypto API. Nothing is sent or stored. Free, no sign up.">
 <link rel="canonical" href="https://wezzet.com/html-entities">
 <meta property="og:type" content="website">
@@ -42,6 +42,13 @@
       <p class="lede">Runs entirely in your browser with the Web Crypto API. Nothing is sent or stored.</p>
     </div>
     <div id="app" class="tight" data-mode="encode" data-format="html"></div>
+    <section class="guide" aria-labelledby="how"><h2 id="how">About HTML entities</h2>
+<p>Some characters have a special meaning in HTML, so they are written as entities when they should appear as text: <code>&amp;lt;</code> for &lt;, <code>&amp;gt;</code> for &gt;, <code>&amp;amp;</code> for &amp; and <code>&amp;quot;</code> for a double quote.</p>
+<p>Entities can be named (<code>&amp;copy;</code>), decimal (<code>&amp;#169;</code>) or hex (<code>&amp;#xA9;</code>); all three show ©.</p>
+<h3>Why it matters</h3>
+<p>Escaping user-supplied text before putting it in a page is the basic defense against cross-site scripting (XSS): it stops the browser from treating that text as markup or script.</p>
+</section>
+
     <section class="section related" aria-labelledby="related"><h2 id="related">Related tools</h2><ul><li><a href="/crypto">All cryptography converters</a></li><li><a href="/jwt-decoder">JWT decoder</a></li><li><a href="/rsa-key-generator">RSA key pair generator</a></li><li><a href="/uuid-generator">UUID generator</a></li><li><a href="/encryption-key-generator">Encryption key generator</a></li><li><a href="/md5-generator">MD5 hash generator</a></li><li><a href="/sha1-generator">SHA-1 hash generator</a></li><li><a href="/sha256-generator">SHA-256 hash generator</a></li><li><a href="/sha384-generator">SHA-384 hash generator</a></li><li><a href="/sha512-generator">SHA-512 hash generator</a></li><li><a href="/crc32">CRC32 checksum</a></li></ul></section>
   </div>
 </main>

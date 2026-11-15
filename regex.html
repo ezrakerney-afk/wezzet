@@ -53,6 +53,22 @@
       <h2 id="faq">Questions</h2>
       <details><summary>Which regex flavor is this?</summary><p>JavaScript (ECMAScript). Most patterns also work in Python, PHP and Java, but lookbehind and named groups differ slightly.</p></details><details><summary>How do I match across lines?</summary><p>Use the m flag so ^ and $ match at each line, or the s flag so . also matches newlines.</p></details><details><summary>Is my text sent anywhere?</summary><p>No. Everything runs in your browser.</p></details>
     </section>
+    <section class="guide" aria-labelledby="how"><h2 id="how">About regular expressions</h2>
+<p>A regular expression (regex) is a pattern that describes text to search for.</p>
+<h3>Basics</h3>
+<p><code>.</code> matches any character, <code>\d</code> a digit, <code>\w</code> a letter, digit or underscore and <code>\s</code> whitespace. <code>[abc]</code> matches one of the listed characters.</p>
+<h3>How many</h3>
+<p><code>*</code> means zero or more, <code>+</code> one or more, <code>?</code> optional and <code>{2,4}</code> between two and four.</p>
+<h3>Position and groups</h3>
+<p><code>^</code> and <code>$</code> match the start and end. Parentheses capture part of a match, and <code></p>
+<p></code> means or.</p>
+<h3>Example</h3>
+<p><code>^\d{4}-\d{2}-\d{2}$</code> matches a date written like 2025-03-14.</p>
+<h3>Flags</h3>
+<p>g finds every match, i ignores case and m makes ^ and $ work on each line.</p>
+<p>Quantifiers are greedy and take as much as they can; add ? after one to make it take as little as possible. Syntax differs slightly between languages, so test in the flavor you will use.</p>
+</section>
+
     <section class="section related" aria-labelledby="related">
       <h2 id="related">Related tools</h2>
       <ul><li><a href="/diff">Text compare</a></li><li><a href="/json">JSON formatter</a></li><li><a href="/case">Case converter</a></li><li><a href="/extract-links">Extract links</a></li><li><a href="/url-encode">URL encode</a></li><li><a href="/words">Word counter</a></li></ul>

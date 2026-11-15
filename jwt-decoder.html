@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>JWT decoder converter: formula, table and examples | Wezzet</title>
+<title>JWT decoder: free online, with examples | Wezzet</title>
 <meta name="description" content="Runs entirely in your browser with the Web Crypto API. Nothing is sent or stored. Free, no sign up.">
 <link rel="canonical" href="https://wezzet.com/jwt-decoder">
 <meta property="og:type" content="website">
@@ -42,6 +42,14 @@
       <p class="lede">Runs entirely in your browser with the Web Crypto API. Nothing is sent or stored.</p>
     </div>
     <div id="app" class="tight" data-mode="jwt"></div>
+    <section class="guide" aria-labelledby="how"><h2 id="how">About JSON Web Tokens</h2>
+<p>A JWT has three parts separated by dots: a header, a payload and a signature, each Base64URL-encoded. The header names the signing algorithm, and the payload carries claims such as sub (subject), iat (issued at) and exp (expiry, in Unix seconds).</p>
+<h3>Decoding is not verifying</h3>
+<p>Anyone can read a JWT's payload; it is encoded, not encrypted. What makes a token trustworthy is the signature, which must be checked with the secret or public key on the server.</p>
+<h3>Handling tokens</h3>
+<p>Do not put passwords or private data in a payload, and treat a live token like a password: anyone holding it can act as that user until it expires.</p>
+</section>
+
     <section class="section related" aria-labelledby="related"><h2 id="related">Related tools</h2><ul><li><a href="/crypto">All cryptography converters</a></li><li><a href="/rsa-key-generator">RSA key pair generator</a></li><li><a href="/uuid-generator">UUID generator</a></li><li><a href="/encryption-key-generator">Encryption key generator</a></li><li><a href="/md5-generator">MD5 hash generator</a></li><li><a href="/sha1-generator">SHA-1 hash generator</a></li><li><a href="/sha256-generator">SHA-256 hash generator</a></li><li><a href="/sha384-generator">SHA-384 hash generator</a></li><li><a href="/sha512-generator">SHA-512 hash generator</a></li><li><a href="/crc32">CRC32 checksum</a></li><li><a href="/md5-checksum">MD5 file checksum</a></li></ul></section>
   </div>
 </main>

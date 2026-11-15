@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>RSA key pair generator converter: formula, table and examples | Wezzet</title>
+<title>RSA key pair generator: free online, with examples | Wezzet</title>
 <meta name="description" content="Runs entirely in your browser with the Web Crypto API. Nothing is sent or stored. Free, no sign up.">
 <link rel="canonical" href="https://wezzet.com/rsa-key-generator">
 <meta property="og:type" content="website">
@@ -42,6 +42,16 @@
       <p class="lede">Runs entirely in your browser with the Web Crypto API. Nothing is sent or stored.</p>
     </div>
     <div id="app" class="tight" data-mode="keys" data-kind="rsa"></div>
+    <section class="guide" aria-labelledby="how"><h2 id="how">About RSA keys</h2>
+<p>RSA, published by Rivest, Shamir and Adleman in 1977, is a public-key system. It uses a pair of keys: a public key you can share with anyone and a private key you keep secret. Data encrypted with one can only be decrypted with the other, and its security rests on the difficulty of factoring the product of two large primes.</p>
+<h3>Key sizes</h3>
+<p>2048 bits is the minimum recommended today; 3072 or 4096 bits give a longer safety margin at the cost of slower operations.</p>
+<h3>Formats</h3>
+<p>Keys are usually saved as PEM text, which begins with a line such as BEGIN PUBLIC KEY.</p>
+<h3>Handling</h3>
+<p>Never share or paste a private key anywhere you do not control. If it leaks, generate a new pair and replace the public key everywhere it was installed.</p>
+</section>
+
     <section class="section related" aria-labelledby="related"><h2 id="related">Related tools</h2><ul><li><a href="/crypto">All cryptography converters</a></li><li><a href="/uuid-generator">UUID generator</a></li><li><a href="/encryption-key-generator">Encryption key generator</a></li><li><a href="/md5-generator">MD5 hash generator</a></li><li><a href="/sha1-generator">SHA-1 hash generator</a></li><li><a href="/sha256-generator">SHA-256 hash generator</a></li><li><a href="/sha384-generator">SHA-384 hash generator</a></li><li><a href="/sha512-generator">SHA-512 hash generator</a></li><li><a href="/crc32">CRC32 checksum</a></li><li><a href="/md5-checksum">MD5 file checksum</a></li><li><a href="/sha256-checksum">SHA-256 file checksum</a></li></ul></section>
   </div>
 </main>

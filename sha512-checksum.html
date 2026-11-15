@@ -65,6 +65,12 @@
       <h2 id="related">Related tools</h2>
       <ul><li><a href="/file-checksum">File Checksum (SHA-256)</a></li><li><a href="/file-to-base64">Convert to Base64</a></li><li><a href="/file-to-data-uri">To data URI</a></li><li><a href="/gzip-file">To gzip (.gz)</a></li><li><a href="/hex-viewer">Hex dump</a></li><li><a href="/sha1-checksum">SHA-1 checksum</a></li></ul>
     </section>
+    <section class="guide" aria-labelledby="how"><h2 id="how">About SHA-512 file checksums</h2>
+<p>A SHA-512 checksum is a 512-bit fingerprint of a file, written as 128 hex digits. Linux distributions and many open-source projects publish one beside their downloads.</p>
+<h3>How to verify a download</h3>
+<p>Compute the checksum of the file and compare it with the published value. Every character must match.</p>
+<p>No collisions are known for SHA-512, so a match means the file is exactly what the publisher released.</p>
+</section>
   </div>
 </main>
 

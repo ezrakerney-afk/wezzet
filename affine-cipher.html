@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Affine cipher converter: formula, table and examples | Wezzet</title>
+<title>Affine cipher: encoder, decoder and how it works | Wezzet</title>
 <meta name="description" content="Runs entirely in your browser with the Web Crypto API. Nothing is sent or stored. Free, no sign up.">
 <link rel="canonical" href="https://wezzet.com/affine-cipher">
 <meta property="og:type" content="website">
@@ -42,6 +42,14 @@
       <p class="lede">Runs entirely in your browser with the Web Crypto API. Nothing is sent or stored.</p>
     </div>
     <div id="app" class="tight" data-mode="caesar" data-cipher="affine"></div>
+    <section class="guide" aria-labelledby="how"><h2 id="how">How the affine cipher works</h2>
+<p>The affine cipher turns each letter into a number (A = 0 to Z = 25) and applies <code>E(x) = (a·x + b) mod 26</code>. To decrypt, use <code>D(y) = a⁻¹ · (y − b) mod 26</code>.</p>
+<p>The multiplier a must share no factor with 26, which leaves 12 choices (1, 3, 5, 7, 9, 11, 15, 17, 19, 21, 23, 25). With 26 shifts for b that makes only 312 keys.</p>
+<h3>Example</h3>
+<p>With a = 5 and b = 8, the letter C (2) becomes 5 × 2 + 8 = 18, which is S.</p>
+<p>It is a classroom cipher: letter-frequency analysis breaks it in moments, so do not use it to protect anything real.</p>
+</section>
+
     <section class="section related" aria-labelledby="related"><h2 id="related">Related tools</h2><ul><li><a href="/crypto">All cryptography converters</a></li><li><a href="/rail-fence-cipher">Rail fence cipher</a></li><li><a href="/xor-cipher">XOR cipher</a></li><li><a href="/base64-encode">Base64 encode and decode</a></li><li><a href="/base32">Base32 encode and decode</a></li><li><a href="/base58">Base58 encode and decode</a></li><li><a href="/url-encode">URL encode and decode</a></li><li><a href="/html-entities">HTML entity encoder</a></li><li><a href="/jwt-decoder">JWT decoder</a></li><li><a href="/rsa-key-generator">RSA key pair generator</a></li><li><a href="/uuid-generator">UUID generator</a></li><li><a href="/encryption-key-generator">Encryption key generator</a></li></ul></section>
   </div>
 </main>

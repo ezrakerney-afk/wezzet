@@ -56,6 +56,18 @@
       <h2 id="faq">Questions</h2>
       <details><summary>What is a Unix timestamp?</summary><p>The number of seconds since 1 January 1970 00:00 UTC. It is also called epoch time or POSIX time.</p></details><details><summary>Seconds or milliseconds?</summary><p>Both work. Up to 11 digits is read as seconds, 12 to 14 digits as milliseconds (what JavaScript uses), longer as micro or nanoseconds.</p></details><details><summary>What is the year 2038 problem?</summary><p>Systems that store the timestamp in a signed 32-bit number overflow on 19 January 2038.</p></details>
     </section>
+    <section class="guide" aria-labelledby="how"><h2 id="how">About Unix timestamps</h2>
+<p>A Unix timestamp is the number of seconds since 00:00:00 UTC on 1 January 1970, known as the epoch. It is a single number with no time zone, which makes it easy for computers to store and compare.</p>
+<h3>Seconds or milliseconds</h3>
+<p>A 10-digit value is in seconds (1700000000 is 14 November 2023). A 13-digit value is in milliseconds, as used by JavaScript and many APIs.</p>
+<h3>Time zones</h3>
+<p>The timestamp itself is always UTC. Converting it to a date applies a time zone, so the same timestamp shows as different local times around the world.</p>
+<h3>The year 2038 problem</h3>
+<p>Systems that store the value as a signed 32-bit number overflow on 19 January 2038. Modern systems use 64 bits, which lasts for billions of years.</p>
+<h3>ISO 8601</h3>
+<p>The standard text form for dates is like 2025-03-14T09:30:00Z, where Z means UTC.</p>
+</section>
+
     <section class="section related" aria-labelledby="related">
       <h2 id="related">Related tools</h2>
       <ul><li><a href="/calc">Calculator</a></li><li><a href="/age">Age calculator</a></li><li><a href="/countdown">Countdown</a></li><li><a href="/timer">Timer</a></li><li><a href="/time-converter">Time converter</a></li><li><a href="/uuid-generator">UUID generator</a></li></ul>

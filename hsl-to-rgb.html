@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>HSL to RGB converter converter: formula, table and examples | Wezzet</title>
+<title>HSL to RGB converter: free online, with examples | Wezzet</title>
 <meta name="description" content="Convert colors between HEX, RGB, HSL, HSV and CMYK. Type in any box or pick a color. Free, no sign up.">
 <link rel="canonical" href="https://wezzet.com/hsl-to-rgb">
 <meta property="og:type" content="website">
@@ -42,6 +42,19 @@
       <p class="lede">Convert colors between HEX, RGB, HSL, HSV and CMYK. Type in any box or pick a color.</p>
     </div>
     <div id="app" class="tight" data-from="hsl"></div>
+    <section class="guide" aria-labelledby="how"><h2 id="how">How to convert HSL to RGB</h2>
+<p>First find the chroma: <code>C = (1 − </p>
+<p>2L − 1</p>
+<p>) × S</code>. Then <code>X = C × (1 − </p>
+<p>(H ÷ 60°) mod 2 − 1</p>
+<p>)</code> and <code>m = L − C ÷ 2</code>.</p>
+<p>The hue picks which channels get C, X and 0: from 0° to 60° it is (C, X, 0), from 60° to 120° (X, C, 0), and so on around the wheel. Add m to each and multiply by 255.</p>
+<h3>Worked example</h3>
+<p>hsl(32°, 100%, 50%): C = 1, X = 0.533, m = 0, so the color is (1, 0.533, 0), which is <strong>rgb(255, 136, 0)</strong>.</p>
+<h3>Reading HSL</h3>
+<p>Hue 0° is red, 120° green and 240° blue. Saturation 0% is gray. Lightness 0% is black, 100% is white and 50% is the pure color.</p>
+</section>
+
     <section class="section related" aria-labelledby="related"><h2 id="related">Related tools</h2><ul><li><a href="/color-converter">All color converters</a></li><li><a href="/rgb-to-hsv">RGB to HSV converter</a></li><li><a href="/hsv-to-rgb">HSV to RGB converter</a></li><li><a href="/rgb-to-cmyk">RGB to CMYK converter</a></li><li><a href="/cmyk-to-rgb">CMYK to RGB converter</a></li><li><a href="/hex-to-cmyk">Hex to CMYK converter</a></li><li><a href="/hex-to-rgb">Hex to RGB converter</a></li><li><a href="/rgb-to-hex">RGB to hex converter</a></li><li><a href="/rgb-to-hsl">RGB to HSL converter</a></li></ul></section>
   </div>
 </main>

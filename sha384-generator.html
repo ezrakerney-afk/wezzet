@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SHA-384 hash generator converter: formula, table and examples | Wezzet</title>
+<title>SHA-384 hash generator: free online, with examples | Wezzet</title>
 <meta name="description" content="Runs entirely in your browser with the Web Crypto API. Nothing is sent or stored. Free, no sign up.">
 <link rel="canonical" href="https://wezzet.com/sha384-generator">
 <meta property="og:type" content="website">
@@ -42,6 +42,12 @@
       <p class="lede">Runs entirely in your browser with the Web Crypto API. Nothing is sent or stored.</p>
     </div>
     <div id="app" class="tight" data-mode="hash" data-alg="SHA-384"></div>
+    <section class="guide" aria-labelledby="how"><h2 id="how">About SHA-384</h2>
+<p>SHA-384 is a SHA-2 hash that produces 384 bits, written as 96 hex digits. Internally it is SHA-512 with different starting values and the output cut to 384 bits.</p>
+<p>It is used in TLS cipher suites and in Subresource Integrity attributes, where a web page pins the exact hash of a script it loads.</p>
+<p>Because the output is truncated, SHA-384 is not open to length-extension attacks, which affect SHA-256 and SHA-512 when they are misused as a simple keyed hash.</p>
+</section>
+
     <section class="section related" aria-labelledby="related"><h2 id="related">Related tools</h2><ul><li><a href="/crypto">All cryptography converters</a></li><li><a href="/sha512-generator">SHA-512 hash generator</a></li><li><a href="/crc32">CRC32 checksum</a></li><li><a href="/md5-checksum">MD5 file checksum</a></li><li><a href="/sha256-checksum">SHA-256 file checksum</a></li><li><a href="/hmac-generator">HMAC generator</a></li><li><a href="/aes-encryption">AES encryption and decryption</a></li><li><a href="/caesar-cipher">Caesar cipher</a></li><li><a href="/vigenere-cipher">Vigenère cipher</a></li><li><a href="/atbash-cipher">Atbash cipher</a></li><li><a href="/rot47">ROT47</a></li><li><a href="/affine-cipher">Affine cipher</a></li></ul></section>
   </div>
 </main>

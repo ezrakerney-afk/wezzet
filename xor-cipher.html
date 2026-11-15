@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>XOR cipher converter: formula, table and examples | Wezzet</title>
+<title>XOR cipher: encoder, decoder and how it works | Wezzet</title>
 <meta name="description" content="Runs entirely in your browser with the Web Crypto API. Nothing is sent or stored. Free, no sign up.">
 <link rel="canonical" href="https://wezzet.com/xor-cipher">
 <meta property="og:type" content="website">
@@ -42,6 +42,14 @@
       <p class="lede">Runs entirely in your browser with the Web Crypto API. Nothing is sent or stored.</p>
     </div>
     <div id="app" class="tight" data-mode="caesar" data-cipher="xor"></div>
+    <section class="guide" aria-labelledby="how"><h2 id="how">How the XOR cipher works</h2>
+<p>XOR (exclusive or) compares two bits and gives 1 when they differ. An XOR cipher combines each byte of the message with a byte of the key; doing the same thing again with the same key restores the message.</p>
+<h3>Example</h3>
+<p>The letter A is 01000001. XOR with the key K (01001011) gives 00001010; XOR that with K again and A comes back.</p>
+<h3>Security</h3>
+<p>With a short repeating key, XOR is easy to break by frequency analysis. With a truly random key as long as the message and never reused, it is the one-time pad, which is unbreakable in theory but impractical. Real ciphers such as AES use XOR as one step among many.</p>
+</section>
+
     <section class="section related" aria-labelledby="related"><h2 id="related">Related tools</h2><ul><li><a href="/crypto">All cryptography converters</a></li><li><a href="/base64-encode">Base64 encode and decode</a></li><li><a href="/base32">Base32 encode and decode</a></li><li><a href="/base58">Base58 encode and decode</a></li><li><a href="/url-encode">URL encode and decode</a></li><li><a href="/html-entities">HTML entity encoder</a></li><li><a href="/jwt-decoder">JWT decoder</a></li><li><a href="/rsa-key-generator">RSA key pair generator</a></li><li><a href="/uuid-generator">UUID generator</a></li><li><a href="/encryption-key-generator">Encryption key generator</a></li><li><a href="/md5-generator">MD5 hash generator</a></li></ul></section>
   </div>
 </main>
