@@ -3338,9 +3338,9 @@ async function chRoute(request, env, url, ctx) {
   if (p === "/account") {
     const agents = (await DB.prepare("SELECT agent FROM wz_links WHERE uid = ? ORDER BY ts LIMIT 50").bind(me).all()).results.map((r) => r.agent);
     const u = await DB.prepare("SELECT name, created, (SELECT 1 FROM ch_google g WHERE g.uid = ch_users.id) AS google FROM ch_users WHERE id = ?").bind(me).first();
-    const owner = String(env.TRACKER_OWNER || "").trim().toLowerCase();
+    const ownerId = await trOwnerId(env);
     // login = the private sign-in name, shown only to its own account. Google-only accounts have none.
-    return chOut({ me: { id: me, name: sess.name }, agents, login: u.name.startsWith("google:") ? "" : u.name, created: u.created, google: !!u.google, tracker: !!owner && u.name.toLowerCase() === owner });
+    return chOut({ me: { id: me, name: sess.name }, agents, login: u.name.startsWith("google:") ? "" : u.name, created: u.created, google: !!u.google, tracker: ownerId === me });
   }
   // Link an AI Comms agent by proving its token once. The token itself is never stored (only its hash, as before).
   if (post && p === "/account/link") {
@@ -4197,11 +4197,19 @@ async function trSettings(DB) {
 }
 const trSet = (DB, k, v) => DB.prepare("INSERT INTO tr_settings (k, v) VALUES (?, ?) ON CONFLICT(k) DO UPDATE SET v = excluded.v").bind(k, String(v));
 
+// Owner = login name in TRACKER_OWNER, or the account id saved in tr_settings 'owner_uid' (so renaming the login keeps access).
+async function trOwnerId(env) {
+  const owner = String(env.TRACKER_OWNER || "").trim();
+  if (!owner || !env.DB) return 0;
+  const r = await env.DB.prepare("SELECT v FROM tr_settings WHERE k = 'owner_uid'").first().catch(() => null);
+  if (r && Number(r.v) > 0) return Number(r.v);
+  const u = await env.DB.prepare("SELECT id FROM ch_users WHERE name = ?").bind(owner).first().catch(() => null);
+  return u ? u.id : 0;
+}
+
 // ---- Browser side: /api/chat/tracker/* (cookie session from chRoute, its CSRF guard already ran) ----
 async function trBrowser(request, env, p, d, q, sess) {
-  const owner = String(env.TRACKER_OWNER || "").trim().toLowerCase();
-  const login = await env.DB.prepare("SELECT name FROM ch_users WHERE id = ?").bind(sess.id).first();
-  if (!owner || !login || String(login.name).toLowerCase() !== owner) return trOut({ error: "Not available." }, 403);
+  if (sess.id !== await trOwnerId(env)) return trOut({ error: "Not available." }, 403);
   await trInit(env);
   const DB = env.DB, post = request.method === "POST", now = Date.now();
   const ids = (v) => (Array.isArray(v) ? v : [v]).map((x) => Math.round(Number(x))).filter((x) => x > 0).slice(0, 500);
@@ -5095,8 +5103,8 @@ async function trExplain(env, DB, a, key) {
 async function trNotify(env, s, fresh) {
   const DB = env.DB, head = fresh.length === 1 ? "1 new alert" : fresh.length + " new alerts";
   if (s.channel !== "page") {
-    const u = await DB.prepare("SELECT id FROM ch_users WHERE name = ?").bind(String(env.TRACKER_OWNER).trim()).first();
-    if (u) { await DB.prepare("INSERT INTO ch_notes (uid, room, kind, title, body, ts) VALUES (?, 'tracker', 'tracker', ?, ?, ?)").bind(u.id, "Chain Watch: " + head, fresh[0].summary.slice(0, 140), Date.now()).run(); await pushTo(DB, u.id); }
+    const u = { id: await trOwnerId(env) };
+    if (u.id) { await DB.prepare("INSERT INTO ch_notes (uid, room, kind, title, body, ts) VALUES (?, 'tracker', 'tracker', ?, ?, ?)").bind(u.id, "Chain Watch: " + head, fresh[0].summary.slice(0, 140), Date.now()).run(); await pushTo(DB, u.id); }
   }
   if ((s.channel === "telegram" || s.channel === "both") && s["key:telegram_token"] && s["key:telegram_chat"]) {
     const tok = await acUnseal(env, s["key:telegram_token"]), chat = await acUnseal(env, s["key:telegram_chat"]);
