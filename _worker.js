@@ -3757,6 +3757,20 @@ async function toolStats(request, env) {
 // Pulled from free, keyless public sources only when asked; nothing is stored. Responses are cached 30s at the edge.
 // Flights: OpenSky Network. Trains: Transitous (MOTIS, open transit data). Ships: Digitraffic AIS (Baltic/Nordic waters).
 // Airports, ports, stations and railways: OpenStreetMap via Overpass (the data behind OpenRailwayMap).
+// OpenSky sign-in for the flight tracker: a short-lived token from the account's API client, kept in memory until it nears expiry.
+let skyTok = { v: '', exp: 0 };
+async function skyAuth(env) {
+  if (!env.OPENSKY_CLIENT_ID || !env.OPENSKY_CLIENT_SECRET) return null;
+  if (skyTok.v && Date.now() < skyTok.exp) return skyTok.v;
+  const r = await fetch('https://auth.opensky-network.org/auth/realms/opensky-network/protocol/openid-connect/token', { method: 'POST', signal: AbortSignal.timeout(6000),
+    headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ grant_type: 'client_credentials', client_id: env.OPENSKY_CLIENT_ID, client_secret: env.OPENSKY_CLIENT_SECRET }) });
+  if (!r.ok) return null;
+  const j = await r.json();
+  if (!j.access_token) return null;
+  skyTok = { v: j.access_token, exp: Date.now() + Math.max(60, (j.expires_in || 1800) - 120) * 1000 };
+  return skyTok.v;
+}
+
 async function transport(request, url, env) {
   const q = (url.searchParams.get('q') || '').trim().slice(0, 80), mode = url.searchParams.get('mode') || 'flights';
   const limit = Math.min(200, Math.max(1, +url.searchParams.get('limit') || 100));
@@ -3767,43 +3781,58 @@ async function transport(request, url, env) {
   const lc = q.toLowerCase();
   try {
     if (mode === 'flights') {
-      // adsb.lol: live aircraft by callsign, registration or hex code, or everything near an airport.
-      const AIR = 'https://api.adsb.lol/v2/';
+      // Three live sources, asked at once; the first good answer wins. adsb.lol and adsb.fi need no account.
+      // OpenSky is far more dependable from Cloudflare when OPENSKY_CLIENT_ID and OPENSKY_CLIENT_SECRET are set (a free account).
+      const AIR = 'https://api.adsb.lol/v2/', FI = 'https://opendata.adsb.fi/api/', SKY = 'https://opensky-network.org/api/states/all';
       const shape = (a, from) => { const km = from && a.lat != null ? Math.round(111.2 * Math.hypot(a.lat - from[0], (a.lon - from[1]) * Math.cos(from[0] * Math.PI / 180))) : null;
         return { id: a.hex, callsign: (a.flight || '').trim(), reg: a.r || '', type: a.t || '', lat: a.lat ?? null, lon: a.lon ?? null, ground: a.alt_baro === 'ground', alt_m: typeof a.alt_baro === 'number' ? Math.round(a.alt_baro * 0.3048) : null,
           speed_kmh: a.gs == null ? null : Math.round(a.gs * 1.852), heading: a.track == null ? null : Math.round(a.track), squawk: a.squawk || '', dist_km: km }; };
-      // Two public sources with the same data format; whichever answers first wins. If both fail, say so instead of showing an empty list.
-      const FI = 'https://opendata.adsb.fi/api/';
-      let down = false;
-      const ask = (path) => { const fi = path.startsWith('point/') ? 'v3/lat/' + path.split('/')[1] + '/lon/' + path.split('/')[2] + '/dist/' + path.split('/')[3] : 'v2/' + path.replace(/^reg\//, 'registration/');
-        return Promise.any([get(AIR + path), get(FI + fi)]).then((d) => d.ac || []).catch(() => { down = true; return []; }); };
+      const fromSky = (v) => ({ hex: v[0], flight: v[1], lat: v[6], lon: v[5], alt_baro: v[8] ? 'ground' : v[7] == null ? null : v[7] / 0.3048, gs: v[9] == null ? null : v[9] / 0.5144, track: v[10], squawk: v[14] });
+      const list = (via) => (d) => { if (!d || !Array.isArray(d.ac)) throw new Error('bad reply'); return { ac: d.ac, via }; };
+      // Signing in runs alongside the other sources, so a slow sign-in never holds up an answer.
+      let tok = null; const tokP = skyAuth(env).catch(() => null).then((t) => (tok = t));
+      const sky = (query) => tokP.then((t) => get(SKY + query, t ? { headers: { authorization: 'Bearer ' + t } } : {})).then((d) => { if (!d || !('states' in d)) throw new Error('bad reply'); return { ac: (d.states || []).map(fromSky), via: 'OpenSky' }; });
+      // Finding one callsign in OpenSky means reading its whole live list. Scan the text for the callsign instead of parsing two megabytes of JSON.
+      const skyFind = (calls) => tokP.then((t) => { if (!t) throw new Error('no OpenSky account'); return fetch(SKY, { headers: { ...H, authorization: 'Bearer ' + t }, cf: { cacheTtl: 30 }, signal: AbortSignal.timeout(8000) }); }).then(async (r) => {
+        if (!r.ok) throw new Error('OpenSky ' + r.status);
+        const text = await r.text(), out = [];
+        for (const c of calls) { const re = new RegExp('\\["[0-9a-f]{6}","' + c + '\\s*",[^\\]]*\\]', 'g'); let m; while ((m = re.exec(text)) && out.length < 20) { try { out.push(fromSky(JSON.parse(m[0]))); } catch (e) {} } }
+        return { ac: out, via: 'OpenSky' };
+      });
+      const first = (tries) => Promise.any(tries).catch(() => null);
+      const reply = (items, via, note) => json({ mode, q, count: items.length, source: via || 'adsb.lol, adsb.fi and OpenSky', opensky: tok ? 'signed in' : env.OPENSKY_CLIENT_ID ? 'account set, not signed in for this search' : 'no account', note: note || '', items: items.slice(0, limit) }, 200, { 'cache-control': 'public, max-age=20' });
+      const DOWN = () => json({ error: 'The live flight sources did not answer in time. Try again in a moment.' }, 503);
       const code = q.toUpperCase().replace(/[\s-]/g, '');
-      if (/^[0-9A-F]{6}$/.test(code) && /\d/.test(code)) { const ac = await ask('hex/' + code.toLowerCase()); if (ac.length) return done(ac.map((x) => shape(x)), 'adsb.lol'); }
+      if (/^[0-9A-F]{6}$/.test(code) && /\d/.test(code)) {
+        const h = code.toLowerCase(), r = await first([get(AIR + 'hex/' + h).then(list('adsb.lol')), get(FI + 'v2/hex/' + h).then(list('adsb.fi')), sky('?icao24=' + h)]);
+        if (r && r.ac.length) return reply(r.ac.map((x) => shape(x)), r.via);
+      }
       if (/\d/.test(code) && /^[A-Z0-9]{3,8}$/.test(code)) {
         // People type UA123; aircraft broadcast UAL123. Try both, and the registration too.
         const IATA = { AA: 'AAL', UA: 'UAL', DL: 'DAL', WN: 'SWA', B6: 'JBU', AS: 'ASA', NK: 'NKS', F9: 'FFT', AC: 'ACA', WS: 'WJA', BA: 'BAW', VS: 'VIR', U2: 'EZY', FR: 'RYR', LH: 'DLH', AF: 'AFR', KL: 'KLM', IB: 'IBE', VY: 'VLG', AZ: 'ITY', LX: 'SWR', OS: 'AUA', SK: 'SAS', AY: 'FIN', TP: 'TAP', TK: 'THY', W6: 'WZZ', EI: 'EIN', EK: 'UAE', QR: 'QTR', EY: 'ETD', SV: 'SVA', AI: 'AIC', '6E': 'IGO', SQ: 'SIA', CX: 'CPA', QF: 'QFA', NZ: 'ANZ', JL: 'JAL', NH: 'ANA', KE: 'KAL', OZ: 'AAR', CA: 'CCA', MU: 'CES', CZ: 'CSN', TG: 'THA', MH: 'MAS', ET: 'ETH', LA: 'LAN', AM: 'AMX', CM: 'CMP', FX: 'FDX', '5X': 'UPS' };
-        const alt = IATA[code.slice(0, 2)] && /^\d/.test(code.slice(2)) ? IATA[code.slice(0, 2)] + code.slice(2) : '';
-        const hits = (await Promise.all([ask('callsign/' + code), alt ? ask('callsign/' + alt) : [], ask('reg/' + encodeURIComponent(q.toUpperCase().trim()))])).flat();
-        const seen = new Set(), items = hits.filter((x) => !seen.has(x.hex) && seen.add(x.hex)).map((x) => shape(x));
-        if (down && !items.length) return json({ error: 'The live flight sources did not answer in time. Try again in a moment.' }, 503);
-        return done(items, 'adsb.lol and adsb.fi', items.length ? '' : 'No aircraft is broadcasting that flight number right now. It may not be in the air yet. You can also search an airport, like JFK.');
+        const alt = IATA[code.slice(0, 2)] && /^\d/.test(code.slice(2)) ? IATA[code.slice(0, 2)] + code.slice(2) : '', calls = alt ? [code, alt] : [code];
+        const open = (base, v, regPath) => Promise.all([...calls.map((c) => get(base + v + 'callsign/' + c)), get(base + v + regPath + encodeURIComponent(q.toUpperCase().trim()))]).then((ds) => { const ac = ds.flatMap((d) => (d && Array.isArray(d.ac) ? d.ac : null)); if (ac.includes(null)) throw new Error('bad reply'); return { ac, via: base === AIR ? 'adsb.lol' : 'adsb.fi' }; });
+        const tries = [open(AIR, '', 'reg/'), open(FI, 'v2/', 'registration/'), skyFind(calls)];
+        // Prefer a source that actually found the flight; fall back to the first that answered at all.
+        const found = await first(tries.map((t) => t.then((r) => { if (!r.ac.length) throw new Error('none'); return r; })));
+        const r = found || await first(tries);
+        if (!r) return DOWN();
+        const seen = new Set(), items = r.ac.filter((x) => !seen.has(x.hex) && seen.add(x.hex)).map((x) => shape(x));
+        return reply(items, r.via, items.length ? '' : 'No aircraft is broadcasting that flight number right now. It may not be in the air yet. You can also search an airport, like JFK.');
       }
-      // Anything else is a place: find the airport, then list what is flying within 150 km of it.
+      // Anything else is a place: find the airport, then list what is flying within 75 km of it.
       let at = [51.47, -0.4543], where = 'London Heathrow';
       if (q) {
         const g = await get('https://photon.komoot.io/api/?limit=1&osm_tag=aeroway:aerodrome&q=' + encodeURIComponent(q)).catch(() => null), f = g && g.features && g.features[0];
-        if (!f) return done([], 'adsb.lol', 'No airport found for that. Try an airport code or city (JFK, Tokyo), or a flight number (UA123).');
+        if (!f) return reply([], '', 'No airport found for that. Try an airport code or city (JFK, Tokyo), or a flight number (UA123).');
         at = [f.geometry.coordinates[1], f.geometry.coordinates[0]]; where = f.properties.name || q;
       }
-      // 40 nautical miles (about 75 km) keeps the reply small. OpenSky joins the race here: it answers area questions quickly.
-      const pt = `${at[0].toFixed(3)}/${at[1].toFixed(3)}/40`, dLat = 0.67, dLon = 0.67 / Math.max(0.2, Math.cos(at[0] * Math.PI / 180));
-      const list = (d) => { if (!d || !Array.isArray(d.ac)) throw new Error('bad reply'); return d.ac; };
-      const sky = get(`https://opensky-network.org/api/states/all?lamin=${(at[0] - dLat).toFixed(3)}&lomin=${(at[1] - dLon).toFixed(3)}&lamax=${(at[0] + dLat).toFixed(3)}&lomax=${(at[1] + dLon).toFixed(3)}`)
-        .then((d) => { if (!d || !('states' in d)) throw new Error('bad reply'); return (d.states || []).map((v) => ({ hex: v[0], flight: v[1], lat: v[6], lon: v[5], alt_baro: v[8] ? 'ground' : v[7] == null ? null : v[7] / 0.3048, gs: v[9] == null ? null : v[9] / 0.5144, track: v[10], squawk: v[14] })); });
-      const ac = await Promise.any([get(AIR + 'point/' + pt).then(list), get(FI + 'v3/lat/' + pt.split('/')[0] + '/lon/' + pt.split('/')[1] + '/dist/40').then(list), sky]).catch(() => { down = true; return []; });
-      if (down) return json({ error: 'The live flight sources did not answer in time. Try again in a moment.' }, 503);
-      const items = ac.filter((x) => x.lat != null).map((x) => shape(x, at)).sort((x, y) => x.dist_km - y.dist_km);
-      return done(items, 'adsb.lol, adsb.fi and OpenSky', (items.length ? 'Aircraft within 75 km of ' : 'Nothing is flying near ') + where + (q ? '.' : '. Search a flight number, registration or airport to look elsewhere.'));
+      const lat = at[0].toFixed(3), lon = at[1].toFixed(3), dLat = 0.67, dLon = 0.67 / Math.max(0.2, Math.cos(at[0] * Math.PI / 180));
+      const r = await first([get(AIR + `point/${lat}/${lon}/40`).then(list('adsb.lol')), get(FI + `v3/lat/${lat}/lon/${lon}/dist/40`).then(list('adsb.fi')),
+        sky(`?lamin=${(at[0] - dLat).toFixed(3)}&lomin=${(at[1] - dLon).toFixed(3)}&lamax=${(at[0] + dLat).toFixed(3)}&lomax=${(at[1] + dLon).toFixed(3)}`)]);
+      if (!r) return DOWN();
+      const items = r.ac.filter((x) => x.lat != null).map((x) => shape(x, at)).sort((x, y) => x.dist_km - y.dist_km);
+      return reply(items, r.via, (items.length ? 'Aircraft within 75 km of ' : 'Nothing is flying near ') + where + (q ? '.' : '. Search a flight number, registration or airport to look elsewhere.'));
     }
     if (mode === 'ships') {
       if (env.AISSTREAM_KEY) {
