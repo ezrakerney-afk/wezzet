@@ -41,7 +41,9 @@
     transfer: "The money moved to another wallet. The watcher now follows that wallet too.",
   };
   const VWORD = { now: "Report now", look: "Worth a look", skip: "No action" };
-  function analyze(x, kind) {
+  // The final verdicts come from triage() below, which looks at everything together.
+  const analyze = (x, kind) => (S.tri && S.tri.get((kind === "alert" ? "a" : "w") + x.id)) || analyze0(x, kind);
+  function analyze0(x, kind) {
     const txt = kind === "alert" ? (x.summary || "") + " " + (x.wsrc || "") : (x.source || "") + " " + (x.label || "");
     const bybit = /Bybit|PSA250226|TraderTraitor/i.test(txt), dprk = bybit || /DPRK|Lazarus|North Korea/i.test(txt);
     const dests = bybit ? ["bounty", "fbi", "rfj"] : dprk ? ["fbi", "rfj"] : ["fbi"];
@@ -52,10 +54,12 @@
       const u = x.usd || 0, sc = x.score || 0;
       let level = "skip", word = "", note = " On its own this isn't worth a report yet; the watcher keeps following it.";
       if (x.reported) { word = "Reported"; note = " You already reported this."; }
-      else if ((x.tag === "exchange" && u >= 250000 && age < 24 * H) || (["bridge", "mixer"].includes(x.tag) && u >= 2e6 && age < 12 * H)) { level = "now"; note = " Fresh and big enough to be worth an investigator's time."; }
+      else if (x.cp_reported) { word = "Reported"; note = " That destination is already in a report you sent."; }
+      else if (x.tag === "mixer") { note = " Money going into a mixer is hard for anyone to act on, so it's only worth reporting as part of a bigger trail."; }
+      else if ((x.tag === "exchange" && u >= 250000 && age < 24 * H) || (x.tag === "bridge" && u >= 2e6 && age < 12 * H)) { level = "now"; note = " Fresh and big enough to be worth an investigator's time."; }
       else if (u >= 100000 && sc >= 55 && age < 72 * H) { level = "look"; note = " Check it on the explorer first; report only if it leads to an exchange or a big freezable balance."; }
       else if (u >= 100000 && sc >= 55) { word = "Expired"; note = " This happened " + ago(x.ts) + ", so the money has most likely moved on. Too old to report on its own."; }
-      return { level, word, dests, title: (x.usd >= 1 ? usd(x.usd) + " " : (x.amount || "") + " " + (x.asset || "") + " ") + (TAGS[x.tag] || "movement").toLowerCase() + " on " + x.chain, why: (WHY[x.tag] || WHY.transfer) + note, ts: x.ts, key: "a" + x.id, ref: { alert_id: x.id } };
+      return { level, word, usd: x.usd || 0, dests, title: (x.usd >= 1 ? usd(x.usd) + " " : (x.amount || "") + " " + (x.asset || "") + " ") + (TAGS[x.tag] || "movement").toLowerCase() + " on " + x.chain, why: (WHY[x.tag] || WHY.transfer) + note, ts: x.ts, key: "a" + x.id, ref: { alert_id: x.id } };
     }
     const f = x.freeze_usd || 0, fresh = age < 12 * H;
     let level = "skip", word = "";
@@ -65,7 +69,7 @@
     else if (f >= 100000) level = "look";
     else if (f >= 1000 || x.bal_usd >= 100000) level = "skip";
     const why = x.reported ? "You already reported this address." : x.frozen === 1 ? "Already frozen by the issuer, so the money can't move. Nothing to report." : f >= 1000 ? usd(f) + " in USDT or USDC is sitting here" + (x.frozen === 0 ? " and is confirmed not frozen" : "") + ". Tether and Circle freeze these when the FBI asks, so a report can lock it in place." + (level === "now" ? "" : f >= 500000 && !fresh ? " The balance was last checked " + ago(x.bal_at) + ", so wait for a fresh check before reporting." : " Under $500k of confirmed unfrozen stablecoins it's usually not worth a report on its own.") : "A large balance is sitting at a named wallet. Coins like BTC, ETH and TRX can't be frozen by an issuer, so it's only worth reporting if it moves to an exchange. The watcher will tell you.";
-    return { level, word, dests, title: usd(x.bal_usd) + " sitting at " + x.chain + " " + short(x.address), why, ts: x.bal_at, key: "w" + x.id, ref: { watch_id: x.id } };
+    return { level, word, usd: x.freeze_usd || x.bal_usd || 0, dests, title: usd(x.bal_usd) + " sitting at " + x.chain + " " + short(x.address), why, ts: x.bal_at, key: "w" + x.id, ref: { watch_id: x.id } };
   }
   const verdict = (v) => el("span", { className: "tr-verdict " + v.level, textContent: v.word || VWORD[v.level] });
   const repBtn = (v, label) => el("button", { type: "button", className: "btn tr-rep" + (v.level === "now" ? "" : " btn-quiet"), textContent: label || "Report", onclick: (e) => { e.preventDefault(); e.stopPropagation(); openReport(v); } });
@@ -90,17 +94,40 @@
     const text = (S.rep.drafts && S.rep.drafts[k]) || S.rep.draft; t.value = text;
     navigator.clipboard.writeText(text).catch(() => { ok = false; t.closest("details").open = true; t.select(); });
     window.open(DEST[k].url, "_blank", "noopener");
-    api("report/sent", { lead_id: S.rep.lead_id, dest: DEST[k].name }).then(() => summary());
+    api("report/sent", { lead_id: S.rep.lead_id, dest: DEST[k].name }).then(() => { summary(); loadBell(); });
     $("#rp-status").textContent = "Copied. The " + DEST[k].name + " form opened in a new tab: paste the report there and send. It's saved under Leads as sent.";
     $("#rp-status").className = "tr-note good";
   }
 
   // ---- notification bell: only things worth acting on ----
   const bellSeen = () => { try { return Number(localStorage.getItem("tr-bell-seen")) || 0; } catch { return 0; } };
+  // Looks at everything together, like an investigator would:
+  // 1) one report per trail: moves that start from the same named wallet go into one report;
+  // 2) nothing already reported, nothing stale (handled per item);
+  // 3) at most 2 "Report now" a day, best first, so the tip line keeps taking you seriously.
+  const DAILY = 2;
+  async function triage() {
+    const [a, h] = await Promise.all([api("alerts?sort=top&limit=200"), api("holdings")]);
+    const alerts = (a.alerts || []).filter((x) => x.status !== "dismissed"), tri = new Map();
+    for (const x of alerts) tri.set("a" + x.id, analyze0(x, "alert"));
+    for (const x of h.holdings || []) tri.set("w" + x.id, analyze0(x, "holding"));
+    const byRoot = new Map();
+    for (const x of alerts) { const v = tri.get("a" + x.id); if (v.level === "skip" || !x.root) continue; if (!byRoot.has(x.root)) byRoot.set(x.root, []); byRoot.get(x.root).push(x); }
+    for (const list of byRoot.values()) {
+      if (list.length < 2) continue;
+      list.sort((p, q) => (tri.get("a" + q.id).level === "now") - (tri.get("a" + p.id).level === "now") || (q.tag === "exchange") - (p.tag === "exchange") || (q.usd || 0) - (p.usd || 0));
+      const lead = list[0], v = tri.get("a" + lead.id), recent = alerts.filter((x) => x.root === lead.root && !x.reported && Date.now() - x.ts < 72 * 3600e3);
+      v.ref = { alert_ids: recent.map((x) => x.id) }; v.title += " (" + recent.length + " moves on one trail)"; v.why += " The report covers every recent move on this trail, so it's one tip, not several.";
+      for (const x of list.slice(1)) tri.set("a" + x.id, { ...tri.get("a" + x.id), level: "skip", word: "Same trail", why: "Part of a bigger trail. It's included in that trail's report." });
+    }
+    const nowList = [...tri.values()].filter((v) => v.level === "now").sort((p, q) => (q.title.includes("exchange") - p.title.includes("exchange")) || (q.usd || 0) - (p.usd || 0));
+    const left = Math.max(0, DAILY - (a.sent24 || 0));
+    nowList.slice(left).forEach((v) => { v.level = "look"; v.word = "Daily limit"; v.why += " You've reached today's limit of " + DAILY + " reports. If it's still fresh tomorrow, it moves up."; });
+    S.tri = tri;
+    return [...tri.values()];
+  }
   async function loadBell() {
-    const [a, h] = await Promise.all([api("alerts?sort=top&limit=60"), api("holdings")]);
-    const items = [...(a.alerts || []).filter((x) => x.status !== "dismissed").map((x) => analyze(x, "alert")), ...(h.holdings || []).map((x) => analyze(x, "holding"))].filter((v) => v.level !== "skip")
-      .sort((x, y) => (x.level === y.level ? (y.ts || 0) - (x.ts || 0) : x.level === "now" ? -1 : 1)).slice(0, 40);
+    const items = (await triage()).filter((v) => v.level !== "skip").sort((x, y) => (x.level === y.level ? (y.ts || 0) - (x.ts || 0) : x.level === "now" ? -1 : 1)).slice(0, 40);
     const seen = bellSeen(), unread = items.filter((v) => (v.ts || 0) > seen).length;
     $("#tr-bell-n").hidden = !unread; $("#tr-bell-n").textContent = unread > 99 ? "99+" : unread;
     $("#tr-bell-empty").hidden = !!items.length;
@@ -119,8 +146,9 @@
     if (r.status === 401) { $("#tr-msg").textContent = "Chain Watch is in private beta. Sign in with an invited Wezzet account to open it."; $("#wz-account").hidden = false; return; }
     if (!r.ok) { $("#tr-msg").textContent = "Chain Watch is in private beta, so it's only open to invited accounts for now. It watches wallets named in FBI and Treasury notices and follows where stolen crypto moves."; $("#wz-account").hidden = true; return; }
     $("#tr-gate").hidden = true; $("#tr-app").hidden = false; $("#tr-run").hidden = false;
+    await loadBell().catch(() => {});
     tab(location.hash.slice(1) || "overview");
-    summary(); loadBell(); setInterval(() => { if (!document.hidden) { summary(); loadBell(); } }, 120000);
+    summary(); setInterval(() => { if (!document.hidden) { summary(); loadBell(); } }, 120000);
   }
   document.addEventListener("wz-account", () => location.reload());
 

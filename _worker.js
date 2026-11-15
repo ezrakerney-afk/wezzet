@@ -3889,6 +3889,12 @@ async function trInit(env) {
   for (const c of ["balance TEXT", "bal_usd REAL", "freeze_usd REAL", "bal_at INTEGER", "frozen INTEGER"]) { try { await env.DB.prepare("ALTER TABLE tr_watch ADD COLUMN " + c).run(); } catch {} }
   try { await env.DB.prepare("ALTER TABLE tr_alerts ADD COLUMN ai TEXT").run(); } catch {}
   for (const c of ["usd REAL", "score INTEGER"]) { try { await env.DB.prepare("ALTER TABLE tr_alerts ADD COLUMN " + c).run(); } catch {} }
+  // root_id = the officially named wallet a trail starts from, so moves on one trail can be grouped into one report.
+  try { await env.DB.prepare("ALTER TABLE tr_watch ADD COLUMN root_id INTEGER").run(); } catch {}
+  try {
+    await env.DB.prepare("UPDATE tr_watch SET root_id = id WHERE root_id IS NULL AND parent_id IS NULL").run();
+    for (let i = 0; i < 6; i++) if (!(await env.DB.prepare("UPDATE tr_watch SET root_id = (SELECT p.root_id FROM tr_watch p WHERE p.id = tr_watch.parent_id) WHERE root_id IS NULL AND parent_id IS NOT NULL AND (SELECT p.root_id FROM tr_watch p WHERE p.id = tr_watch.parent_id) IS NOT NULL").run()).meta?.changes) break;
+  } catch {}
   trReady = true;
 }
 async function trSettings(DB) {
@@ -3928,7 +3934,7 @@ async function trBrowser(request, env, p, d, q, sess) {
 
   // Biggest balances still sitting at watched addresses. Stablecoins (USDT/USDC) can be frozen by their issuer.
   if (p === "/holdings" && !post) {
-    const rows = (await DB.prepare("SELECT id, chain, address, label, source, source_url, hop, balance, bal_usd, freeze_usd, frozen, bal_at, last_activity, (SELECT 1 FROM tr_leads WHERE tr_leads.status = 'submitted' AND instr(tr_leads.notes, tr_watch.address) > 0) AS reported FROM tr_watch WHERE bal_usd >= 100 ORDER BY (CASE WHEN frozen = 1 THEN 0 ELSE freeze_usd END) DESC, bal_usd DESC LIMIT 100").all()).results;
+    const rows = (await DB.prepare("SELECT id, chain, address, label, source, source_url, hop, balance, bal_usd, freeze_usd, frozen, bal_at, last_activity, COALESCE(root_id, id) AS root, (SELECT 1 FROM tr_leads WHERE tr_leads.status = 'submitted' AND instr(tr_leads.notes, tr_watch.address) > 0) AS reported FROM tr_watch WHERE bal_usd >= 100 ORDER BY (CASE WHEN frozen = 1 THEN 0 ELSE freeze_usd END) DESC, bal_usd DESC LIMIT 100").all()).results;
     return trOut({ holdings: rows });
   }
   // Turn a holding into a lead with the facts already filled in.
@@ -3940,7 +3946,14 @@ async function trBrowser(request, env, p, d, q, sess) {
   // One-click report: make (or reuse) the lead, build the full report with the owner's contact details, nothing to fill in.
   if (post && p === "/report") {
     let lead = null;
-    if (d.alert_id) {
+    if (Array.isArray(d.alert_ids) && d.alert_ids.length > 1) {
+      const list = ids(d.alert_ids).slice(0, 50);
+      const a = await DB.prepare("SELECT * FROM tr_alerts WHERE id = ?").bind(list[0]).first();
+      if (!a) return trOut({ error: "Those alerts are gone." }, 404);
+      const r = await DB.prepare("INSERT INTO tr_leads (title, notes, status, alert_ids, created, updated) VALUES (?, '', 'ready', ?, ?, ?)").bind(clean(`Trail from ${a.chain} ${a.address.slice(0, 10)}…: ${list.length} moves`, 120), JSON.stringify(list), now, now).run();
+      await DB.prepare(`UPDATE tr_alerts SET status = 'promoted' WHERE id IN (${inIds(list)})`).bind(...list).run();
+      lead = await DB.prepare("SELECT * FROM tr_leads WHERE id = ?").bind(r.meta.last_row_id).first();
+    } else if (d.alert_id) {
       const aid = Math.round(Number(d.alert_id)) || 0;
       const a = await DB.prepare("SELECT * FROM tr_alerts WHERE id = ?").bind(aid).first();
       if (!a) return trOut({ error: "That alert is gone." }, 404);
@@ -4029,9 +4042,10 @@ async function trBrowser(request, env, p, d, q, sess) {
     if (TR_TAGS.includes(q.get("tag"))) { where.push("tag = ?"); args.push(q.get("tag")); }
     if (TR_ALERT_ST.includes(q.get("status"))) { where.push("status = ?"); args.push(q.get("status")); }
     const before = Number(q.get("before")); if (before > 0) { where.push("id < ?"); args.push(before); }
-    const rows = (await DB.prepare(`SELECT *, (SELECT source || ' ' || COALESCE(label, '') FROM tr_watch WHERE tr_watch.id = tr_alerts.watch_id) AS wsrc, (SELECT 1 FROM tr_leads WHERE tr_leads.status = 'submitted' AND EXISTS (SELECT 1 FROM json_each(tr_leads.alert_ids) WHERE value = tr_alerts.id)) AS reported FROM tr_alerts ${where.length ? "WHERE " + where.join(" AND ") : ""} ORDER BY ${q.get("sort") === "top" ? "COALESCE(score, 0) DESC, " : ""}id DESC LIMIT ${Math.min(200, Math.max(1, Number(q.get("limit")) || 200))}`).bind(...args).all()).results;
+    const rows = (await DB.prepare(`SELECT *, (SELECT source || ' ' || COALESCE(label, '') FROM tr_watch WHERE tr_watch.id = tr_alerts.watch_id) AS wsrc, (SELECT 1 FROM tr_leads WHERE tr_leads.status = 'submitted' AND EXISTS (SELECT 1 FROM json_each(tr_leads.alert_ids) WHERE value = tr_alerts.id)) AS reported, (SELECT COALESCE(root_id, id) FROM tr_watch WHERE tr_watch.id = tr_alerts.watch_id) AS root, (SELECT 1 FROM tr_leads WHERE tr_leads.status = 'submitted' AND tr_alerts.counterparty <> '' AND instr(COALESCE(tr_leads.draft, ''), tr_alerts.counterparty) > 0) AS cp_reported FROM tr_alerts ${where.length ? "WHERE " + where.join(" AND ") : ""} ORDER BY ${q.get("sort") === "top" ? "COALESCE(score, 0) DESC, " : ""}id DESC LIMIT ${Math.min(200, Math.max(1, Number(q.get("limit")) || 200))}`).bind(...args).all()).results;
     const counts = (await DB.prepare("SELECT status, COUNT(*) n FROM tr_alerts GROUP BY status").all()).results;
-    return trOut({ alerts: rows, counts, explorer: TR_EXPLORER });
+    const sent24 = (await DB.prepare("SELECT COUNT(*) n FROM tr_leads WHERE status = 'submitted' AND updated > ?").bind(now - 864e5).first()).n;
+    return trOut({ alerts: rows, counts, explorer: TR_EXPLORER, sent24 });
   }
   if (post && p === "/alerts/explain") {
     const a = await DB.prepare("SELECT * FROM tr_alerts WHERE id = ?").bind(Math.round(Number(d.id)) || 0).first();
@@ -4690,7 +4704,7 @@ async function trTick(env, force) {
             if (m.amount >= floor && (wide || m.amount / (sums[m.asset] || 1) >= pct)) follow(w.chain, m.to, m.amount);
           }
           for (const [chain, address, label] of kids) {
-            const r = await DB.prepare("INSERT OR IGNORE INTO tr_watch (chain, address, label, source, source_url, added, parent_id, hop, paused) VALUES (?, ?, ?, ?, '', ?, ?, ?, 0)").bind(chain, address, label || (w.label ? "from " + w.label.replace(/^from /, "") : ""), w.source || "", now, w.id, w.hop + 1).run();
+            const r = await DB.prepare("INSERT OR IGNORE INTO tr_watch (chain, address, label, source, source_url, added, parent_id, hop, paused, root_id) VALUES (?, ?, ?, ?, '', ?, ?, ?, 0, ?)").bind(chain, address, label || (w.label ? "from " + w.label.replace(/^from /, "") : ""), w.source || "", now, w.id, w.hop + 1, w.root_id || w.id).run();
             total += r.meta?.changes || 0;
           }
           // Alerts are for fresh movement only; older history is followed quietly.
