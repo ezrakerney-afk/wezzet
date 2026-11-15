@@ -3957,9 +3957,10 @@ async function trBrowser(request, env, p, d, q, sess) {
       if (!lead) lead = await DB.prepare("SELECT * FROM tr_leads WHERE id = ?").bind(await trLeadFromWatch(DB, w)).first();
     } else if (d.lead_id) lead = await DB.prepare("SELECT * FROM tr_leads WHERE id = ?").bind(Math.round(Number(d.lead_id)) || 0).first();
     if (!lead) return trOut({ error: "Nothing to report." }, 404);
-    const draft = await trDraft(DB, lead, await trProfile(env, DB), d.dest);
-    await DB.prepare("UPDATE tr_leads SET draft = ?, updated = ? WHERE id = ?").bind(draft, now, lead.id).run();
-    return trOut({ lead_id: lead.id, draft });
+    const prof = await trProfile(env, DB), drafts = {};
+    for (const k of ["fbi", "rfj", "bounty"]) drafts[k] = await trDraft(DB, lead, prof, k);
+    await DB.prepare("UPDATE tr_leads SET draft = ?, updated = ? WHERE id = ?").bind(drafts.fbi, now, lead.id).run();
+    return trOut({ lead_id: lead.id, draft: drafts.fbi, drafts });
   }
   // The owner opened a reporting form with the report copied: record where it went.
   if (post && p === "/report/sent") {
@@ -4097,7 +4098,7 @@ async function trBrowser(request, env, p, d, q, sess) {
             body: JSON.stringify({ model: "claude-haiku-5-5", max_tokens: 500, messages: [{ role: "user", content: "Below is a draft tip about blockchain activity, built from public on-chain data. Write a short, neutral summary paragraph (at most 120 words) a law enforcement reader can scan first. Use only facts in the draft, do not guess identities, and do not add new claims. Reply with the paragraph only.\n\n" + draft }] }) });
           const j = await r.json();
           const text = (j.content || []).map((c) => c.text || "").join("").trim();
-          if (r.ok && text) draft = draft.replace("SUMMARY\n", "SUMMARY\n" + text + "\n\n");
+          if (r.ok && text) draft = draft.replace("Hello,\n\n", "Hello,\n\n" + text + "\n\n");
           else note = "Claude didn't answer (" + (j.error?.message || r.status) + "), so this is the plain draft.";
         } catch { note = "Claude didn't answer in time, so this is the plain draft."; }
       }
@@ -4176,40 +4177,56 @@ async function trProfile(env, DB) {
   try { return v ? JSON.parse(await acUnseal(env, v) || "{}") : {}; } catch { return {}; }
 }
 // Build a one-page plain-text tip from a lead. Draft only: the owner reviews it and submits it by hand.
-async function trDraft(DB, lead, profile = {}, dest = "") {
+const TR_CHAIN_NAME = { eth: "Ethereum", tron: "Tron", btc: "Bitcoin", arb: "Arbitrum", base: "Base", op: "Optimism", polygon: "Polygon", bsc: "BNB Chain", avax: "Avalanche" };
+// A ready-to-send report in plain, first-person English: no placeholders, nothing to fill in.
+// dest: "fbi" (FBI tip line), "rfj" (Rewards for Justice) or "bounty" (Bybit's Lazarus Bounty).
+async function trDraft(DB, lead, profile = {}, dest = "fbi") {
   const aids = JSON.parse(lead.alert_ids || "[]").slice(0, 200);
   const alerts = aids.length ? (await DB.prepare(`SELECT * FROM tr_alerts WHERE id IN (${aids.map(() => "?").join(",")}) ORDER BY ts`).bind(...aids).all()).results : [];
-  const iso = (t) => (t ? new Date(t).toISOString().replace("T", " ").slice(0, 16) + " UTC" : "unknown time");
-  const seeds = [];
-  for (const a of alerts) {
-    let w = await DB.prepare("SELECT * FROM tr_watch WHERE id = ?").bind(a.watch_id).first();
-    for (let i = 0; w && w.parent_id && i < 25; i++) w = await DB.prepare("SELECT * FROM tr_watch WHERE id = ?").bind(w.parent_id).first() || w;
-    if (w && !seeds.some((s) => s.id === w.id)) seeds.push(w);
-  }
+  const when = (t) => { const d = new Date(t); return d.toLocaleDateString("en-US", { timeZone: "UTC", month: "long", day: "numeric", year: "numeric" }) + " at " + d.toISOString().slice(11, 16) + " UTC"; };
+  const money = (n) => "$" + (n >= 1e6 ? (n / 1e6).toFixed(n >= 1e7 ? 0 : 1) + " million" : Math.round(n).toLocaleString("en-US"));
+  const cn = (c) => TR_CHAIN_NAME[c] || c;
+  // The wallet this is about, and the officially named wallet its money came from.
+  let w = alerts.length ? await DB.prepare("SELECT * FROM tr_watch WHERE id = ?").bind(alerts[alerts.length - 1].watch_id).first() : null;
+  if (!w) { const m = (lead.notes || "").match(/Address: (\w+) (\S+)/); if (m) w = await DB.prepare("SELECT * FROM tr_watch WHERE chain = ? AND address = ?").bind(m[1], m[2]).first(); }
+  const path = []; let seed = w;
+  for (let i = 0; seed && seed.parent_id && i < 25; i++) { path.unshift(seed); seed = await DB.prepare("SELECT * FROM tr_watch WHERE id = ?").bind(seed.parent_id).first() || null; }
+  const src = (seed && seed.source) || "", nm = ((seed && seed.label) || "").replace(/^from /, "").replace(/\s*\(.*\)$/, "");
+  const bybit = /PSA250226/.test(src) || /bybit/i.test(nm), dprk = bybit || /DPRK/.test(src);
+  const who = bybit ? "North Korea's TraderTraitor group (also known as Lazarus), which the FBI named as responsible for the February 21, 2025 theft of about $1.5 billion from Bybit"
+    : dprk ? "North Korea" + (nm ? ` (${nm})` : "") : nm ? nm + ", a sanctioned party" : "a sanctioned party";
+  const notice = /PSA250226/.test(src) ? "the FBI's public service announcement PSA250226" : /OFAC/.test(src) ? "the U.S. Treasury's OFAC sanctions list" + (nm ? ` under ${nm}` : "") : "a U.S. government notice";
   const L = [];
-  L.push("REPORT: " + lead.title, "Prepared " + iso(Date.now()) + " from public blockchain data" + (dest ? " for " + dest : "") + ".", "");
-  const lastA = alerts[alerts.length - 1];
-  const auto = lastA ? `On ${iso(lastA.ts)}, funds from an address named in a US government notice moved: ${lastA.summary || (lastA.amount + " " + (lastA.asset || ""))}${lastA.usd >= 1 ? " (about $" + Math.round(lastA.usd).toLocaleString("en-US") + ")" : ""}. The transactions and addresses are listed below so they can be checked and, where possible, frozen.`
-    : `Funds are still sitting at an address named in a US government notice. Details below so they can be checked and, where possible, frozen.`;
-  L.push("SUMMARY", auto, "");
-  if (seeds.length) L.push("SEED ADDRESS(ES) AND WHERE THEY ARE NAMED");
-  for (const s of seeds) L.push(`- ${s.chain} ${s.address}${s.label ? " (" + s.label + ")" : ""}: named in ${s.source || "[which notice?]"}${s.source_url ? " " + s.source_url : ""}`);
-  if (alerts.length) L.push("", "MOVEMENTS (oldest first)");
-  alerts.forEach((a, i) => {
-    L.push(`${i + 1}. ${iso(a.ts)} | ${a.chain} | ${a.amount || "?"} ${a.asset || ""} | ${a.tag || "activity"}`.replace(/\s+\|/g, " |"));
-    L.push(`   from ${a.address}${a.counterparty ? " to " + a.counterparty : ""}`);
-    L.push(`   tx ${a.tx}${TR_EXPLORER[a.chain] ? " " + TR_EXPLORER[a.chain] + a.tx : ""}`);
-  });
-  const last = alerts[alerts.length - 1];
-  if (last) {
-    L.push("", "WHERE THE FUNDS ARE NOW", `- ${last.counterparty || last.address} on ${last.chain}${last.tag === "exchange" ? " (an exchange deposit address: the exchange can freeze the account and identify its owner)" : last.tag === "bridge" ? " (sent through a bridge to another chain)" : ""}`);
-    L.push("", "WHY THIS IS NEW", `- The movement happened ${iso(last.ts)}, after the address was publicly named, and was spotted by an automatic watcher within minutes of being confirmed.`);
+  if (dest === "rfj") L.push("Hello,", "", `I have information about recent movement of cryptocurrency linked to ${who}. I'm sending it in case it helps disrupt the network's finances, and I'd like it considered under the Rewards for Justice offers on North Korea's illicit revenue.`);
+  else if (dest === "bounty") L.push("Hello,", "", `This report concerns funds from the February 21, 2025 Bybit hack. I'm submitting it for the Lazarus Bounty program.`);
+  else L.push("Hello,", "", `I'd like to report recent movement of cryptocurrency linked to ${who}.`);
+  if (seed) L.push("", `The source address, ${seed.address} on ${cn(seed.chain)}, is listed in ${notice}${seed.source_url ? " (" + seed.source_url + ")" : ""}.`);
+  if (path.length) L.push("", `The funds below did not move from that address directly. They reached ${path[path.length - 1].address} through ${path.length === 1 ? "one transfer" : path.length + " transfers"}: ${[seed, ...path].filter(Boolean).map((x) => x.address).join(" -> ")}.`);
+  if (alerts.length) {
+    L.push("", alerts.length === 1 ? "What happened:" : "What happened (oldest first):");
+    for (const a of alerts.slice(0, 12)) {
+      const to = (a.summary || "").match(/ to ([^()]+?) \((?:0x|T|bc1|[13])/), toName = to ? to[1].trim() : "";
+      L.push("", `On ${when(a.ts)}, ${a.address} sent ${a.amount ? a.amount + " " + (a.asset || "") : "funds"}${a.usd >= 1 ? " (about " + money(a.usd) + ")" : ""} to ${a.counterparty || "another address"}${toName ? ", which is labeled as " + toName + " on public block explorers" : ""}.`,
+        `Transaction: ${a.tx}`, TR_EXPLORER[a.chain] ? `Link: ${TR_EXPLORER[a.chain] + a.tx}` : "");
+    }
+    const last = alerts[alerts.length - 1], lto = ((last.summary || "").match(/ to ([^()]+?) \((?:0x|T|bc1|[13])/) || [])[1];
+    const why = {
+      exchange: `The last transfer went to what appears to be a deposit address at ${(lto || "").replace(/[:\s-]*(hot wallet|deposit|wallet|\d+)\b.*$/i, "").trim() || "a centralized exchange"}. If the exchange is contacted soon, it may still be able to freeze the account and identify who controls it.`,
+      bridge: `The funds were moved through ${lto || "a bridge"} to another blockchain, which is often a step toward cashing out. The destination may still be traceable and stoppable.`,
+      mixer: `The funds were sent into ${lto || "a mixing service"}, apparently to hide their trail. The exact transaction may help investigators follow what comes out.`,
+      dormant_wake: "The address had been inactive for a long time before this, so this may be the start of a cash-out.",
+    }[last.tag] || "This activity is recent, so the funds may still be reachable.";
+    L.push("", "Why I'm reporting it now:", why);
+  } else if (w) {
+    const tok = /USDC/.test(w.balance || "") ? "USDC" : "USDT", issuer = tok === "USDC" ? "Circle" : "Tether";
+    L.push("", `As of ${when(w.bal_at || Date.now())}, the address ${w.address} on ${cn(w.chain)} holds ${w.balance || "funds"}${w.bal_usd >= 1 ? " (about " + money(w.bal_usd) + ")" : ""}.`);
+    if (w.freeze_usd >= 1) L.push("", `About ${money(w.freeze_usd)} of that is ${tok}, which ${issuer} can freeze at law enforcement's request.${w.frozen === 0 ? ` When I checked, the address was not on ${issuer}'s freeze list, so the funds can still be moved.` : ""}`);
+    L.push("", `You can see the balance here: ${w.chain === "tron" ? "https://tronscan.org/#/address/" : w.chain === "btc" ? "https://mempool.space/address/" : "https://etherscan.io/address/"}${w.address}`);
   }
-  if (lead.notes) L.push("", "DETAILS", lead.notes);
-  const who = TR_PROFILE.filter((k) => profile[k]).map((k) => `${k[0].toUpperCase() + k.slice(1)}: ${profile[k]}`);
-  L.push("", "CONTACT", ...(who.length ? who : ["(add your contact details in Chain Watch Settings, Reporter profile)"]));
-  L.push("", "This tip is from a private individual using public on-chain data only. No funds were touched and no one was contacted.");
-  return L.join("\n").replace(/\n{3,}/g, "\n\n");
+  L.push("", "I found this using public blockchain data only. I haven't contacted anyone involved and haven't touched any funds. I'm glad to answer questions or help further.");
+  const contact = ["name", "email", "phone", "country"].map((k) => profile[k]).filter(Boolean);
+  L.push("", "Thank you,", ...(contact.length ? contact : []));
+  return L.filter((x, i, a) => !(x === "" && a[i - 1] === "")).join("\n").trim();
 }
 
 // ---- Watcher side: /api/tracker/* with Authorization: Bearer <token> (no cookie) ----

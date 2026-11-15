@@ -23,9 +23,12 @@
 
   // ---- automatic analysis: is it worth reporting, where, and how ----
   const DEST = {
-    bounty: { name: "Lazarus Bounty (Bybit)", url: "https://www.lazarusbounty.com/en/", how: "Pays a share of the funds that get frozen because of your report. Sign in, start a new report, paste, send." },
-    fbi: { name: "FBI tip line", url: "https://tips.fbi.gov/", how: "Gets funds frozen fastest: the FBI can ask the exchange or Tether/Circle to freeze. Paste the report into the description box and send." },
-    rfj: { name: "Rewards for Justice", url: "https://rewardsforjustice.net/", how: "Pays rewards for information that disrupts North Korea's money laundering and named hacker groups. Open the tip form, paste, send." },
+    bounty: { name: "Lazarus Bounty (Bybit)", url: "https://www.lazarusbounty.com/en/", how: "Pays a share of the Bybit funds that get frozen because of your report (they advertise 10%).",
+      steps: ["On lazarusbounty.com, sign in or create a bounty hunter account (top right).", "Find the option to submit a report about a hacker address.", "Paste the report into the description box and add the transaction hashes from it if there are separate fields.", "Submit, then keep the confirmation: payouts are matched to the first verified report."] },
+    fbi: { name: "FBI tip line", url: "https://tips.fbi.gov/", how: "The fastest way to get funds frozen: the FBI can ask the exchange or Tether/Circle to act.",
+      steps: ["The FBI tip form opens on tips.fbi.gov. It's one long page.", "Paste the report into the big box that asks you to describe the tip (the first large text box).", "The sections about yourself and about the subject are optional. Your name and contact are already at the end of the report, so you can skip them or copy them in.", "Pass the check at the bottom and press Submit. Save the confirmation number it shows."] },
+    rfj: { name: "Rewards for Justice", url: "https://rewardsforjustice.net/", how: "The State Department's reward program. Pays for information that disrupts North Korea's money laundering.",
+      steps: ["On rewardsforjustice.net, press Submit a tip at the top of the page.", "Pick a channel from the list it shows: Signal or Telegram are easiest (Tor is the most private).", "Paste the report as your first message and send it.", "Say you'd like it considered for the North Korea reward. Keep the chat: they reply there."] },
   };
   const WHY = {
     exchange: "The money just landed at an exchange. Exchanges can freeze the account and know who owns it, but money there gets cashed out fast, so report today.",
@@ -49,19 +52,19 @@
       const u = x.usd || 0, sc = x.score || 0;
       let level = "skip", word = "", note = " On its own this isn't worth a report yet; the watcher keeps following it.";
       if (x.reported) { word = "Reported"; note = " You already reported this."; }
-      else if ((x.tag === "exchange" && u >= 50000 && age < 48 * H) || (["bridge", "mixer", "dormant_wake"].includes(x.tag) && u >= 1e6 && age < 24 * H)) { level = "now"; note = " Fresh and big enough to be worth an investigator's time."; }
-      else if (u >= 25000 && sc >= 55 && age < 7 * 24 * H) { level = "look"; note = " Check it on the explorer first; report only if it leads to an exchange or a big freezable balance."; }
-      else if (u >= 25000 && sc >= 55) { word = "Expired"; note = " This happened " + ago(x.ts) + ", so the money has most likely moved on. Too old to report on its own."; }
+      else if ((x.tag === "exchange" && u >= 250000 && age < 24 * H) || (["bridge", "mixer"].includes(x.tag) && u >= 2e6 && age < 12 * H)) { level = "now"; note = " Fresh and big enough to be worth an investigator's time."; }
+      else if (u >= 100000 && sc >= 55 && age < 72 * H) { level = "look"; note = " Check it on the explorer first; report only if it leads to an exchange or a big freezable balance."; }
+      else if (u >= 100000 && sc >= 55) { word = "Expired"; note = " This happened " + ago(x.ts) + ", so the money has most likely moved on. Too old to report on its own."; }
       return { level, word, dests, title: (x.usd >= 1 ? usd(x.usd) + " " : (x.amount || "") + " " + (x.asset || "") + " ") + (TAGS[x.tag] || "movement").toLowerCase() + " on " + x.chain, why: (WHY[x.tag] || WHY.transfer) + note, ts: x.ts, key: "a" + x.id, ref: { alert_id: x.id } };
     }
-    const f = x.freeze_usd || 0, fresh = age < 24 * H;
+    const f = x.freeze_usd || 0, fresh = age < 12 * H;
     let level = "skip", word = "";
     if (x.reported) word = "Reported";
     else if (x.frozen === 1) word = "Frozen";
-    else if (f >= 100000 && x.frozen === 0 && fresh) level = "now";
-    else if (f >= 10000) level = "look";
+    else if (f >= 500000 && x.frozen === 0 && fresh) level = "now";
+    else if (f >= 100000) level = "look";
     else if (f >= 1000 || x.bal_usd >= 100000) level = "skip";
-    const why = x.reported ? "You already reported this address." : x.frozen === 1 ? "Already frozen by the issuer, so the money can't move. Nothing to report." : f >= 1000 ? usd(f) + " in USDT or USDC is sitting here" + (x.frozen === 0 ? " and is confirmed not frozen" : "") + ". Tether and Circle freeze these when the FBI asks, so a report can lock it in place." + (level === "now" ? "" : f >= 100000 && !fresh ? " The balance was last checked " + ago(x.bal_at) + ", so wait for a fresh check before reporting." : " Under $100k it's usually not worth a report on its own.") : "A large balance is sitting at a named wallet. Coins like BTC, ETH and TRX can't be frozen by an issuer, so it's only worth reporting if it moves to an exchange. The watcher will tell you.";
+    const why = x.reported ? "You already reported this address." : x.frozen === 1 ? "Already frozen by the issuer, so the money can't move. Nothing to report." : f >= 1000 ? usd(f) + " in USDT or USDC is sitting here" + (x.frozen === 0 ? " and is confirmed not frozen" : "") + ". Tether and Circle freeze these when the FBI asks, so a report can lock it in place." + (level === "now" ? "" : f >= 500000 && !fresh ? " The balance was last checked " + ago(x.bal_at) + ", so wait for a fresh check before reporting." : " Under $500k of confirmed unfrozen stablecoins it's usually not worth a report on its own.") : "A large balance is sitting at a named wallet. Coins like BTC, ETH and TRX can't be frozen by an issuer, so it's only worth reporting if it moves to an exchange. The watcher will tell you.";
     return { level, word, dests, title: usd(x.bal_usd) + " sitting at " + x.chain + " " + short(x.address), why, ts: x.bal_at, key: "w" + x.id, ref: { watch_id: x.id } };
   }
   const verdict = (v) => el("span", { className: "tr-verdict " + v.level, textContent: v.word || VWORD[v.level] });
@@ -72,19 +75,20 @@
     $("#rp-verdict").replaceChildren(verdict(v)); $("#rp-title").textContent = v.title; $("#rp-why").textContent = v.why;
     $("#rp-status").textContent = "Building the report…"; $("#rp-status").className = "tr-note"; $("#rp-text").value = "";
     $("#rp-dests").replaceChildren(...v.dests.map((k, i) => el("li", { className: i ? "" : "first" },
-      el("div", {}, el("b", { textContent: (i ? "" : "Best: ") + DEST[k].name }), el("p", { textContent: DEST[k].how })),
+      el("div", {}, el("b", { textContent: (i ? "" : "Best: ") + DEST[k].name }), el("p", { textContent: DEST[k].how }), el("details", { className: "tr-steps", open: !i }, el("summary", { textContent: "What to do on the site" }), el("ol", {}, ...DEST[k].steps.map((t) => el("li", { textContent: t }))))),
       el("button", { type: "button", className: "btn" + (i ? " btn-quiet" : ""), textContent: "Copy report and open", onclick: () => send(k) }))));
     if (!d.open) d.showModal();
     const r = await api("report", v.ref);
     if (r.error) { $("#rp-status").textContent = r.error; $("#rp-status").className = "tr-note err"; return; }
-    S.rep = r; $("#rp-text").value = r.draft; $("#rp-status").textContent = "";
-    const noProfile = /add your contact details/.test(r.draft);
+    S.rep = r; $("#rp-text").value = (r.drafts && r.drafts[v.dests[0]]) || r.draft; $("#rp-status").textContent = "";
+    const noProfile = !/Thank you,\n\S/.test(r.draft);
     $("#rp-profile").replaceChildren(noProfile ? el("span", {}, "Your contact details aren't in it yet. ", el("button", { type: "button", className: "tr-link", textContent: "Add them once in Settings", onclick: () => { d.close(); tab("settings"); } })) : "Your contact details are included.");
   }
   function send(k) {
     if (!S.rep) return;
     const t = $("#rp-text"); let ok = true;
-    navigator.clipboard.writeText(S.rep.draft).catch(() => { ok = false; t.closest("details").open = true; t.select(); });
+    const text = (S.rep.drafts && S.rep.drafts[k]) || S.rep.draft; t.value = text;
+    navigator.clipboard.writeText(text).catch(() => { ok = false; t.closest("details").open = true; t.select(); });
     window.open(DEST[k].url, "_blank", "noopener");
     api("report/sent", { lead_id: S.rep.lead_id, dest: DEST[k].name }).then(() => summary());
     $("#rp-status").textContent = "Copied. The " + DEST[k].name + " form opened in a new tab: paste the report there and send. It's saved under Leads as sent.";
