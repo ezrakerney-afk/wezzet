@@ -3972,8 +3972,16 @@ async function trBrowser(request, env, p, d, q, sess) {
     if (!lead) return trOut({ error: "Nothing to report." }, 404);
     const prof = await trProfile(env, DB), drafts = {};
     for (const k of ["fbi", "rfj", "bounty"]) drafts[k] = await trDraft(DB, lead, prof, k);
+    // IC3's description box takes 3,500 characters: shorten it there and put the full transaction list in its Other Information box.
+    let extra = "";
+    if (drafts.fbi.length > 3400) {
+      for (const m of [6, 3, 1]) { drafts.fbi = await trDraft(DB, lead, prof, "fbi", m); if (drafts.fbi.length <= 3400) break; }
+      const aids = JSON.parse(lead.alert_ids || "[]").slice(0, 200);
+      const all = aids.length ? (await DB.prepare(`SELECT * FROM tr_alerts WHERE id IN (${aids.map(() => "?").join(",")}) ORDER BY ts`).bind(...aids).all()).results : [];
+      extra = all.map((a) => `${new Date(a.ts).toISOString().slice(0, 16).replace("T", " ")} UTC | ${TR_CHAIN_NAME[a.chain] || a.chain} | ${a.amount} ${a.asset} | from ${a.address} to ${a.counterparty} | tx ${a.tx}`).join("\n").slice(0, 4900);
+    }
     await DB.prepare("UPDATE tr_leads SET draft = ?, updated = ? WHERE id = ?").bind(drafts.fbi, now, lead.id).run();
-    return trOut({ lead_id: lead.id, draft: drafts.fbi, drafts });
+    return trOut({ lead_id: lead.id, draft: drafts.fbi, drafts, extra });
   }
   // The owner opened a reporting form with the report copied: record where it went.
   if (post && p === "/report/sent") {
@@ -4194,7 +4202,7 @@ async function trProfile(env, DB) {
 const TR_CHAIN_NAME = { eth: "Ethereum", tron: "Tron", btc: "Bitcoin", arb: "Arbitrum", base: "Base", op: "Optimism", polygon: "Polygon", bsc: "BNB Chain", avax: "Avalanche" };
 // A ready-to-send report in plain, first-person English: no placeholders, nothing to fill in.
 // dest: "fbi" (FBI tip line), "rfj" (Rewards for Justice) or "bounty" (Bybit's Lazarus Bounty).
-async function trDraft(DB, lead, profile = {}, dest = "fbi") {
+async function trDraft(DB, lead, profile = {}, dest = "fbi", max = 12) {
   const aids = JSON.parse(lead.alert_ids || "[]").slice(0, 200);
   const alerts = aids.length ? (await DB.prepare(`SELECT * FROM tr_alerts WHERE id IN (${aids.map(() => "?").join(",")}) ORDER BY ts`).bind(...aids).all()).results : [];
   const when = (t) => { const d = new Date(t); return d.toLocaleDateString("en-US", { timeZone: "UTC", month: "long", day: "numeric", year: "numeric" }) + " at " + d.toISOString().slice(11, 16) + " UTC"; };
@@ -4212,13 +4220,14 @@ async function trDraft(DB, lead, profile = {}, dest = "fbi") {
   const notice = /PSA250226/.test(src) ? "the FBI's public service announcement PSA250226" : /OFAC/.test(src) ? "the U.S. Treasury's OFAC sanctions list" + (nm ? ` under ${nm}` : "") : "a U.S. government notice";
   const L = [];
   if (dest === "rfj") L.push("Hello,", "", `I have information about recent movement of cryptocurrency linked to ${who}. I'm sending it in case it helps disrupt the network's finances, and I'd like it considered under the Rewards for Justice offers on North Korea's illicit revenue.`);
-  else if (dest === "bounty") L.push("Hello,", "", `This report concerns funds from the February 21, 2025 Bybit hack. I'm submitting it for the Lazarus Bounty program.`);
+  else if (dest === "bounty") L.push("Hello,", "", `This report concerns funds from the ${/bitget/i.test(nm) ? "Bitget" : "Bybit"} hack. I'm submitting it for the bounty program.`);
   else L.push("Hello,", "", `I'd like to report recent movement of cryptocurrency linked to ${who}.`);
   if (seed) L.push("", `The source address, ${seed.address} on ${cn(seed.chain)}, is listed in ${notice}${seed.source_url ? " (" + seed.source_url + ")" : ""}.`);
   if (path.length) L.push("", `The funds below did not move from that address directly. They reached ${path[path.length - 1].address} through ${path.length === 1 ? "one transfer" : path.length + " transfers"}: ${[seed, ...path].filter(Boolean).map((x) => x.address).join(" -> ")}.`);
   if (alerts.length) {
     L.push("", alerts.length === 1 ? "What happened:" : "What happened (oldest first):");
-    for (const a of alerts.slice(0, 12)) {
+    if (alerts.length > max) L.push("", `There are ${alerts.length} transfers in total. The ${max} most recent are below; the full list is under Other Information.`);
+    for (const a of alerts.slice(-max)) {
       const to = (a.summary || "").match(/ to ([^()]+?) \((?:0x|T|bc1|[13])/), toName = to ? to[1].trim() : "";
       L.push("", `On ${when(a.ts)}, ${a.address} sent ${a.amount ? a.amount + " " + (a.asset || "") : "funds"}${a.usd >= 1 ? " (about " + money(a.usd) + ")" : ""} to ${a.counterparty || "another address"}${toName ? ", which is labeled as " + toName + " on public block explorers" : ""}.`,
         `Transaction: ${a.tx}`, TR_EXPLORER[a.chain] ? `Link: ${TR_EXPLORER[a.chain] + a.tx}` : "");

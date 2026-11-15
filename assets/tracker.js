@@ -23,10 +23,10 @@
 
   // ---- automatic analysis: is it worth reporting, where, and how ----
   const DEST = {
-    bounty: { name: "Lazarus Bounty", url: "https://www.lazarusbounty.com/en/", how: "Bounty sites for big exchange hacks. The current program pays 5% of funds frozen because of your report. Only for money from that hack.",
-      steps: ["Check that the bounty at the top of lazarusbounty.com matches this hack (it currently shows the Bitget program).", "Sign in or create a bounty hunter account.", "Open the report option, paste the report into the description, and copy the transaction hashes into their own fields if there are any.", "Submit and keep the confirmation: payouts go to the first verified report."] },
+    bounty: { name: "Lazarus Bounty (Bitget)", url: "https://www.lazarusbounty.com/en/", how: "Bitget's recovery bounty: 5% of funds frozen and 5% of funds recovered because of your report. Only for money from the Bitget hack. They review within 48 hours.",
+      steps: ["On lazarusbounty.com press Submit Report (sign in first if it asks).", "Fund Destination: fill Destination Address, Token Amount Involved, Token Name Involved and Related Tx Hash with the values listed under this box (press each one to copy it).", "Your Alias: any name. Your Contact Info: your email, so they can pay you.", "Description: paste the whole report. You can attach a screenshot of the transaction if you like.", "Submit and keep the confirmation. Payouts go to the first verified report."] },
     fbi: { name: "FBI IC3", url: "https://complaint.ic3.gov/", how: "The FBI's own tip form sends crypto and other cyber crime here. It's how funds get frozen: the FBI can ask the exchange or Tether/Circle to act.",
-      steps: ["Press File a Complaint and accept the terms.", "When it asks, say you're not the victim and are reporting information about a crime (a witness or third party). Skip the money-lost sections.", "If there's a cryptocurrency section, copy the transaction hash and addresses from the report into it.", "Paste the whole report into the description of the incident box near the end.", "Review, submit once, and save the complaint ID it shows. Don't file the same thing twice."] },
+      steps: ["Press File a Complaint and accept the terms.", "Step 1, Who is filing: pick the option for reporting on someone else's behalf (you're not the victim).", "Step 2, Complainant information: name, address, city, zip, phone and email are required. Business questions: No.", "Step 3, Financial transactions: \"Did you send or lose money?\" No. Then fill one transaction with the values listed under this box (press each one to copy it).", "Step 4, Subjects: leave it empty, the people behind the wallet aren't known by name.", "Step 5, Description of incident: paste the report (it's already under their 3,500 character limit).", "Step 6, Other information: if there's a button below for the full transaction list, paste it into the technical details box. \"Is this an update to a previous complaint?\" No.", "Step 7: type your full name as the digital signature and press Submit Complaint once. Save the complaint ID it shows."] },
     rfj: { name: "Rewards for Justice", url: "https://t.me/RFJ_English", how: "The State Department's reward program. Pays for information on North Korea's money networks. Tips go by Telegram, Signal or Tor, and someone replies.",
       steps: ["The button opens their official Telegram channel (RFJ_English). If you'd rather use Signal, message +1 202 702 7843 (both are listed under Submit a tip on rewardsforjustice.net).", "Paste the report as your first message and send it. It already includes your name, country and preferred language, which they ask for.", "Say you'd like it considered for the North Korea reward.", "Be patient: they read every tip and reply in the same chat."] },
   };
@@ -45,8 +45,8 @@
   const analyze = (x, kind) => (S.tri && S.tri.get((kind === "alert" ? "a" : "w") + x.id)) || analyze0(x, kind);
   function analyze0(x, kind) {
     const txt = kind === "alert" ? (x.summary || "") + " " + (x.wsrc || "") : (x.source || "") + " " + (x.label || "");
-    const bybit = /Bybit|PSA250226|TraderTraitor/i.test(txt), dprk = bybit || /DPRK|Lazarus|North Korea/i.test(txt);
-    const dests = bybit ? ["bounty", "fbi", "rfj"] : dprk ? ["fbi", "rfj"] : ["fbi"];
+    const bitget = /Bitget/i.test(txt), dprk = bitget || /Bybit|PSA250226|TraderTraitor|DPRK|Lazarus|North Korea/i.test(txt);
+    const dests = bitget ? ["bounty", "fbi", "rfj"] : dprk ? ["fbi", "rfj"] : ["fbi"];
     // Report now is rare on purpose: a tip line that gets noise starts ignoring the sender. Only fresh, big, actionable moves,
     // and the label expires once acting on it would no longer help.
     const H = 3600e3, age = Date.now() - (kind === "alert" ? x.ts : x.bal_at || 0);
@@ -59,7 +59,7 @@
       else if ((x.tag === "exchange" && u >= 250000 && age < 24 * H) || (x.tag === "bridge" && u >= 2e6 && age < 12 * H)) { level = "now"; note = " Fresh and big enough to be worth an investigator's time."; }
       else if (u >= 100000 && sc >= 55 && age < 72 * H) { level = "look"; note = " Check it on the explorer first; report only if it leads to an exchange or a big freezable balance."; }
       else if (u >= 100000 && sc >= 55) { word = "Expired"; note = " This happened " + ago(x.ts) + ", so the money has most likely moved on. Too old to report on its own."; }
-      return { level, word, usd: x.usd || 0, dests, title: (x.usd >= 1 ? usd(x.usd) + " " : (x.amount || "") + " " + (x.asset || "") + " ") + (TAGS[x.tag] || "movement").toLowerCase() + " on " + x.chain, why: (WHY[x.tag] || WHY.transfer) + note, ts: x.ts, key: "a" + x.id, ref: { alert_id: x.id } };
+      return { level, word, raw: x, usd: x.usd || 0, dests, title: (x.usd >= 1 ? usd(x.usd) + " " : (x.amount || "") + " " + (x.asset || "") + " ") + (TAGS[x.tag] || "movement").toLowerCase() + " on " + x.chain, why: (WHY[x.tag] || WHY.transfer) + note, ts: x.ts, key: "a" + x.id, ref: { alert_id: x.id } };
     }
     const f = x.freeze_usd || 0, fresh = age < 12 * H;
     let level = "skip", word = "";
@@ -74,17 +74,31 @@
   const verdict = (v) => el("span", { className: "tr-verdict " + v.level, textContent: v.word || VWORD[v.level] });
   const repBtn = (v, label) => el("button", { type: "button", className: "btn tr-rep" + (v.level === "now" ? "" : " btn-quiet"), textContent: label || "Report", onclick: (e) => { e.preventDefault(); e.stopPropagation(); openReport(v); } });
 
+  // IC3's step 3 has one box per detail: list them so each is one press to copy.
+  const fieldList = (title, rows) => el("details", { className: "tr-steps tr-fields" }, el("summary", { textContent: title }), el("dl", {}, ...rows.filter((r) => r[1]).flatMap(([kk, val]) => [el("dt", { textContent: kk }), el("dd", {}, el("button", { type: "button", className: "tr-copyval mono", textContent: val, title: "Copy", onclick: () => navigator.clipboard.writeText(val).then(() => { $("#rp-status").textContent = "Copied " + kk + "."; $("#rp-status").className = "tr-note good"; }).catch(() => {}) }))])));
+  function bountyFields(v) {
+    const a = v.raw || {};
+    return fieldList("Values for the Fund Destination boxes (press to copy)", [["Destination Address", a.counterparty || a.address], ["Token Amount Involved", a.amount || ""], ["Token Name Involved", a.asset || ""], ["Related Tx Hash", a.tx || ""]]);
+  }
+  function ic3Fields(v) {
+    const a = v.raw; if (!a || !a.tx) return "";
+    const d = new Date(a.ts), date = String(d.getUTCMonth() + 1).padStart(2, "0") + "/" + String(d.getUTCDate()).padStart(2, "0") + "/" + d.getUTCFullYear();
+    const rows = [["Transaction Type", "Cryptocurrency"], ["Was the money sent or lost?", "No"], ["Transaction Amount", a.usd >= 1 ? String(Math.round(a.usd)) : ""], ["Transaction Date", date], ["Type of Cryptocurrency", a.asset || ""], ["Transaction ID/Hash", a.tx], ["Originating Wallet Address", a.address], ["Recipient Wallet Address", a.counterparty || ""]].filter((r) => r[1]);
+    return fieldList("Values for step 3 (press to copy)", rows);
+  }
   async function openReport(v) {
     const d = $("#tr-report"); S.rep = null; $("#tr-bellpanel").hidden = true;
     $("#rp-verdict").replaceChildren(verdict(v)); $("#rp-title").textContent = v.title; $("#rp-why").textContent = v.why;
     $("#rp-status").textContent = "Building the report…"; $("#rp-status").className = "tr-note"; $("#rp-text").value = "";
     $("#rp-dests").replaceChildren(...v.dests.map((k, i) => el("li", { className: i ? "" : "first" },
-      el("div", {}, el("b", { textContent: (i ? "" : "Best: ") + DEST[k].name }), el("p", { textContent: DEST[k].how }), el("details", { className: "tr-steps", open: !i }, el("summary", { textContent: "What to do on the site" }), el("ol", {}, ...DEST[k].steps.map((t) => el("li", { textContent: t }))))),
+      el("div", {}, el("b", { textContent: (i ? "" : "Best: ") + DEST[k].name }), el("p", { textContent: DEST[k].how }), el("details", { className: "tr-steps", open: !i }, el("summary", { textContent: "What to do on the site" }), el("ol", {}, ...DEST[k].steps.map((t) => el("li", { textContent: t })))), k === "fbi" ? ic3Fields(v) : k === "bounty" ? bountyFields(v) : ""),
       el("button", { type: "button", className: "btn" + (i ? " btn-quiet" : ""), textContent: "Copy report and open", onclick: () => send(k) }))));
     if (!d.open) d.showModal();
     const r = await api("report", v.ref);
     if (r.error) { $("#rp-status").textContent = r.error; $("#rp-status").className = "tr-note err"; return; }
-    S.rep = r; $("#rp-text").value = (r.drafts && r.drafts[v.dests[0]]) || r.draft; $("#rp-status").textContent = "";
+    S.rep = r; $("#rp-text").value = (r.drafts && r.drafts[v.dests[0]]) || r.draft;
+    const ic3 = [...$$("#rp-dests li")].find((li) => li.textContent.includes("FBI IC3"));
+    if (r.extra && ic3) ic3.firstChild.append(el("button", { type: "button", className: "btn btn-quiet tr-rep", textContent: "Copy the full transaction list for step 6", onclick: () => navigator.clipboard.writeText(r.extra).then(() => { $("#rp-status").textContent = "Copied the transaction list. Paste it into Other Information, technical details."; $("#rp-status").className = "tr-note good"; }).catch(() => {}) })); $("#rp-status").textContent = "";
     const noProfile = !/Thank you,\n\S/.test(r.draft);
     $("#rp-profile").replaceChildren(noProfile ? el("span", {}, "Your contact details aren't in it yet. ", el("button", { type: "button", className: "tr-link", textContent: "Add them once in Settings", onclick: () => { d.close(); tab("settings"); } })) : "Your contact details are included.");
   }

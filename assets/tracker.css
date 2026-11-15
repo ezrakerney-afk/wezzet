@@ -190,10 +190,12 @@ body:not(.dashboard) main > .wrap.tr{max-width:1180px}
 body .tr .tr-h3{font-family:inherit!important;font-size:.8rem!important;font-weight:800!important;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft);margin:18px 0 6px!important}
 #rp-why{margin:6px 0 0;font-size:.95rem}
 .tr-dests{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:10px}
-.tr-dests li{display:grid;grid-template-columns:1fr auto;gap:4px 14px;align-items:center;border:1px solid var(--line);border-radius:10px;padding:12px}
-.tr-dests li.first{border-color:var(--line-strong);background:var(--surface,var(--bg))}
+.tr-dests>li{display:grid;grid-template-columns:1fr auto;gap:4px 14px;align-items:start;border:1px solid var(--line);border-radius:10px;padding:12px}
+.tr-dests>li.first{border-color:var(--line-strong);background:var(--surface,var(--bg))}
 .tr-dests p{margin:2px 0 0;font-size:.86rem;color:var(--ink-soft)}
 .tr-rpview{margin-top:12px}.tr-rpview summary{cursor:pointer;font-size:.88rem;font-weight:600}.tr-rpview textarea{margin-top:8px}
 .tr-actrow{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:6px}
-@media (max-width:600px){.tr-dests li{grid-template-columns:1fr}.tr-bellpanel{position:fixed;left:16px;right:16px;top:90px;width:auto}}
+@media (max-width:600px){.tr-dests>li{grid-template-columns:1fr}.tr-bellpanel{position:fixed;left:16px;right:16px;top:90px;width:auto}}
 .tr-steps{margin-top:6px}.tr-steps summary{cursor:pointer;font-size:.84rem;font-weight:600}.tr-steps ol{margin:6px 0 0;padding-left:20px;font-size:.86rem;color:var(--ink-soft)}.tr-steps li{margin:3px 0}
+.tr-fields dl{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;margin:6px 0 0;font-size:.84rem}.tr-fields dt{color:var(--ink-soft)}.tr-fields dd{margin:0;min-width:0}.tr-copyval{border:1px solid var(--line);background:var(--surface,var(--bg));color:var(--ink);border-radius:6px;padding:2px 6px;font:inherit;font-size:.8rem;cursor:pointer;text-align:left;overflow-wrap:anywhere;max-width:100%}
+@media (max-width:600px){.tr-fields dl{grid-template-columns:1fr}}
