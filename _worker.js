@@ -3823,7 +3823,7 @@ async function transport(request, url, env) {
       // Anything else is a place: find the airport, then list what is flying within 75 km of it.
       let at = [51.47, -0.4543], where = 'London Heathrow';
       if (q) {
-        const g = await get('https://photon.komoot.io/api/?limit=1&osm_tag=aeroway:aerodrome&q=' + encodeURIComponent(q)).catch(() => null), f = g && g.features && g.features[0];
+        const g = await get('https://photon.komoot.io/api/?lang=en&limit=1&osm_tag=aeroway:aerodrome&q=' + encodeURIComponent(q)).catch(() => null), f = g && g.features && g.features[0];
         if (!f) return reply([], '', 'No airport found for that. Try an airport code or city (JFK, Tokyo), or a flight number (UA123).');
         at = [f.geometry.coordinates[1], f.geometry.coordinates[0]]; where = f.properties.name || q;
       }
@@ -3878,7 +3878,7 @@ async function transport(request, url, env) {
     if (mode === 'airports' || mode === 'ports' || mode === 'stations') {
       if (q.length < 2) return json({ error: 'Type at least 2 letters.' }, 400);
       const tags = { airports: ['aeroway:aerodrome'], ports: ['landuse:port', 'harbour', 'industrial:port', 'amenity:ferry_terminal'], stations: ['railway:station', 'railway:halt', 'public_transport:station'] }[mode];
-      const d = await get('https://photon.komoot.io/api/?limit=50&q=' + encodeURIComponent(q) + tags.map((t) => '&osm_tag=' + t).join(''));
+      const d = await get('https://photon.komoot.io/api/?lang=en&limit=50&q=' + encodeURIComponent(q) + tags.map((t) => '&osm_tag=' + t).join(''));
       const items = (d.features || []).map((f) => { const p = f.properties; return { name: p.name || '', code: '', operator: '', city: p.city || p.county || p.state || '', country: p.country || '', lat: f.geometry.coordinates[1], lon: f.geometry.coordinates[0], osm: 'https://www.openstreetmap.org/' + ({ N: 'node', W: 'way', R: 'relation' }[p.osm_type] || 'node') + '/' + p.osm_id }; });
       return done(items, 'OpenStreetMap (Photon)');
     }
