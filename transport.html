@@ -41,6 +41,9 @@
 .tt td{padding:9px 12px;border-bottom:1px solid var(--line);white-space:nowrap}
 .tt tr:hover td{background:color-mix(in srgb,var(--accent) 6%,transparent)}
 .tt td a{color:var(--accent)}.tt .empty{padding:40px;text-align:center;color:var(--ink-soft)}
+.tt-quick{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:0 0 8px;font-size:.85rem;color:var(--ink-soft)}
+.tt-quick button{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:5px 12px;font:inherit;font-size:.85rem;cursor:pointer;transition:border-color .15s,color .15s}
+.tt-quick button:hover{border-color:var(--accent);color:var(--accent)}
 .tt-wait{opacity:.45;transition:opacity .15s}.tt-bar button:disabled{opacity:.6;cursor:progress}
 .tt .src{font-size:.8rem;color:var(--ink-soft);margin-top:14px}
 </style>
@@ -56,6 +59,7 @@
   <p class="lede">Flights, trains and ships around the world, plus airports, ports and stations. Data is fetched live when you search; nothing is stored.</p>
   <div class="tt-tabs" role="tablist" id="tabs"></div>
   <form class="tt-bar" id="f"><input id="q" autocomplete="off" aria-label="Search"><select id="lim" aria-label="Results"><option>50</option><option selected>100</option><option>200</option></select><button>Search</button></form>
+  <p class="tt-quick" id="quick"></p>
   <p class="tt-meta" id="meta" aria-live="polite"></p>
   <div class="tt-card"><table><thead id="th"></thead><tbody id="tb"></tbody></table><div class="empty" id="empty">Pick a type and search.</div></div>
   <p class="src">Sources: adsb.lol, adsb.fi and OpenSky (flights), Transitous (trains), aisstream.io (ships worldwide), OpenStreetMap (airports, ports, stations). API: <code>/api/transport?mode=flights&amp;q=UA123</code></p>
@@ -72,7 +76,7 @@
     <div class="wz-foot-base"><span>© 2026 Wezzet</span><span>Press <kbd>Ctrl K</kbd> to search every tool</span></div>
   </div>
 </footer>
-<script src="/assets/transport.js?v=2" defer></script>
+<script src="/assets/transport.js?v=3" defer></script>
 <script src="/assets/ui.js?v=1" defer></script>
 <script src="/assets/theme.js?v=5" defer></script>
 </body>

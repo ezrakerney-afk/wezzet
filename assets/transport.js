@@ -4,12 +4,12 @@
   const t = (ts) => ts ? new Date(typeof ts === "number" && ts < 1e12 ? ts * 1e3 : ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "";
   const map = (r) => r.lat != null ? "https://www.openstreetmap.org/?mlat=" + r.lat + "&mlon=" + r.lon + "#map=9/" + r.lat + "/" + r.lon : "";
   const M = {
-    flights: { label: "Flights", auto: 1, ph: "Flight number (UA123), registration (N12345) or airport (JFK, Tokyo)", cols: [["callsign", "Flight"], ["reg", "Registration"], ["type", "Type"], ["alt_m", "Altitude (m)"], ["speed_kmh", "Speed (km/h)"], ["heading", "Heading"], ["dist_km", "Distance (km)"], ["ground", "On ground"], ["map", "Map"]] },
-    trains: { label: "Trains", ph: "Station or city (Berlin Hbf, Zürich, Paris Gare de Lyon)", need: 1, cols: [["number", "Train"], ["line", "Line"], ["to", "To"], ["departs", "Departs", t], ["scheduled", "Scheduled", t], ["track", "Track"], ["operator", "Operator"], ["kind", "Type"]] },
-    ships: { label: "Ships", auto: 1, ph: "Ship name, 9-digit MMSI, IMO, callsign or destination. Leave empty for a live sample", cols: [["name", "Ship"], ["mmsi", "MMSI"], ["imo", "IMO"], ["destination", "Destination"], ["speed_kn", "Speed (kn)"], ["heading", "Heading"], ["seen", "Seen", t], ["map", "Map"]] },
-    airports: { label: "Airports", ph: "Airport name, code or city (JFK, Heathrow, Narita)", need: 2, cols: [["name", "Airport"], ["city", "City"], ["country", "Country"], ["map", "Map"]] },
-    ports: { label: "Ship ports", ph: "Port name (Rotterdam, Singapore)", need: 2, cols: [["name", "Port"], ["city", "City"], ["country", "Country"], ["map", "Map"]] },
-    stations: { label: "Stations", ph: "Station name", need: 2, cols: [["name", "Station"], ["city", "City"], ["country", "Country"], ["map", "Map"]] },
+    flights: { label: "Flights", quick: ["JFK", "Heathrow", "Dubai", "Tokyo Haneda", "Los Angeles", "Singapore Changi"], ph: "Flight number (UA123), registration (N12345) or airport (JFK, Tokyo)", cols: [["callsign", "Flight"], ["reg", "Registration"], ["type", "Type"], ["alt_m", "Altitude (m)"], ["speed_kmh", "Speed (km/h)"], ["heading", "Heading"], ["dist_km", "Distance (km)"], ["ground", "On ground"], ["map", "Map"]] },
+    trains: { label: "Trains", quick: ["Berlin Hbf", "Paris Gare de Lyon", "Zürich HB", "Amsterdam Centraal"], ph: "Station or city (Berlin Hbf, Zürich, Paris Gare de Lyon)", need: 1, cols: [["number", "Train"], ["line", "Line"], ["to", "To"], ["departs", "Departs", t], ["scheduled", "Scheduled", t], ["track", "Track"], ["operator", "Operator"], ["kind", "Type"]] },
+    ships: { label: "Ships", quick: ["Live sample"], ph: "Ship name, 9-digit MMSI, IMO, callsign or destination. Leave empty for a live sample", cols: [["name", "Ship"], ["mmsi", "MMSI"], ["imo", "IMO"], ["destination", "Destination"], ["speed_kn", "Speed (kn)"], ["heading", "Heading"], ["seen", "Seen", t], ["map", "Map"]] },
+    airports: { label: "Airports", quick: ["Heathrow", "Narita", "O\u2019Hare"], ph: "Airport name, code or city (JFK, Heathrow, Narita)", need: 2, cols: [["name", "Airport"], ["city", "City"], ["country", "Country"], ["map", "Map"]] },
+    ports: { label: "Ship ports", quick: ["Rotterdam", "Singapore", "Los Angeles"], ph: "Port name (Rotterdam, Singapore)", need: 2, cols: [["name", "Port"], ["city", "City"], ["country", "Country"], ["map", "Map"]] },
+    stations: { label: "Stations", quick: ["Tokyo", "Milano Centrale", "Grand Central"], ph: "Station name", need: 2, cols: [["name", "Station"], ["city", "City"], ["country", "Country"], ["map", "Map"]] },
   };
   let mode = "flights", rows = [], sort = null, dir = 1;
   const tabs = $("tabs");
@@ -18,7 +18,8 @@
     mode = k; rows = []; sort = null;
     tabs.querySelectorAll("button").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.k === k)));
     $("q").placeholder = M[k].ph; $("q").value = ""; $("meta").textContent = ""; $("meta").className = "tt-meta"; $("empty").textContent = "Pick a type and search."; draw();
-    if (M[k].auto && typeof search === "function") search();
+    // One-click examples, so the page opens instantly and a first search is one tap.
+    $("quick").replaceChildren("Try: ", ...(M[k].quick || []).map((t) => { const b = document.createElement("button"); b.type = "button"; b.textContent = t; b.onclick = () => { $("q").value = t === "Live sample" ? "" : t; search(); }; return b; }));
     try { history.replaceState(null, "", "#" + k); } catch (e) {}
   }
   function draw() {
@@ -48,7 +49,7 @@
     if (M[mode].need && q.length < M[mode].need) { m.className = "tt-meta"; m.textContent = "Type something to search " + M[mode].label.toLowerCase() + "."; return; }
     if (ctl) ctl.abort();
     const mine = (ctl = new AbortController()), asked = mode, timer = setTimeout(() => mine.abort(), 15000);
-    m.className = "tt-meta"; m.textContent = mode === "ships" ? "Listening for ships… a few seconds" : "Fetching live data…"; btn.disabled = true; $("tb").classList.add("tt-wait");
+    m.className = "tt-meta"; m.textContent = mode === "ships" ? "Listening for ships… about 3 seconds" : mode === "flights" ? "Fetching live flights… this can take a few seconds" : "Fetching live data…"; btn.disabled = true; $("tb").classList.add("tt-wait");
     try {
       const r = await fetch("/api/transport?" + new URLSearchParams({ mode, q, limit: $("lim").value }), { signal: mine.signal });
       const j = await r.json().catch(() => ({ error: "The live source didn't answer. Try again in a minute." }));
