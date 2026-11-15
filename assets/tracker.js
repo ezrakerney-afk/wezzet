@@ -172,7 +172,7 @@
     $("#tr-notify").onchange = async (e) => { S.notify = e.target.value; await api("settings", { notify: S.notify }); const f = $("#s-form"); if (f.elements.notify) f.elements.notify.value = S.notify; loadBell(); };
     await loadBell().catch(() => {});
     tab(location.hash.slice(1) || "overview");
-    summary(); setInterval(() => { if (!document.hidden) { summary(); loadBell(); } }, 120000);
+    summary(); setInterval(() => { if (!document.hidden) { summary(); loadBell(); } }, 600000);
   }
   document.addEventListener("wz-account", () => location.reload());
 

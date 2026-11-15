@@ -11,7 +11,7 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     // Chain Watch: check a few watched addresses in the background, at most once every two minutes.
-    if (env.TRACKER_OWNER && env.DB && Date.now() > trNextTry) { trNextTry = Date.now() + 30e3; ctx.waitUntil(trTick(env).catch((e) => trLogError(env, e))); }
+    if (env.TRACKER_OWNER && env.DB && Date.now() > trNextTry) { trNextTry = Date.now() + TR_GAP; ctx.waitUntil(trTick(env).catch((e) => trLogError(env, e))); }
     // One canonical host: www.wezzet.com permanently redirects to wezzet.com so Google indexes a single copy.
     if (url.hostname.startsWith("www.")) { url.hostname = url.hostname.slice(4); return Response.redirect(url.toString(), 301); }
     // Pages merged into a two-way converter: old addresses go to the new page, pre-set the same way round.
@@ -4153,6 +4153,7 @@ const TR_SCHEMA = [
   "CREATE TABLE IF NOT EXISTS tr_watch (id INTEGER PRIMARY KEY, chain TEXT, address TEXT, label TEXT, source TEXT, source_url TEXT, added INTEGER, parent_id INTEGER, hop INTEGER DEFAULT 0, paused INTEGER DEFAULT 0, last_seen_tx TEXT, last_activity INTEGER, UNIQUE(chain, address))",
   "CREATE TABLE IF NOT EXISTS tr_alerts (id INTEGER PRIMARY KEY, watch_id INTEGER, chain TEXT, address TEXT, tx TEXT, ts INTEGER, tag TEXT, amount TEXT, asset TEXT, counterparty TEXT, summary TEXT, status TEXT DEFAULT 'new', created INTEGER, UNIQUE(chain, tx, address))",
   "CREATE INDEX IF NOT EXISTS tr_alerts_created ON tr_alerts (created)",
+  "CREATE INDEX IF NOT EXISTS tr_alerts_watch ON tr_alerts (watch_id, ts)",
   "CREATE TABLE IF NOT EXISTS tr_leads (id INTEGER PRIMARY KEY, title TEXT, notes TEXT, status TEXT DEFAULT 'investigating', alert_ids TEXT, draft TEXT, created INTEGER, updated INTEGER)",
   "CREATE TABLE IF NOT EXISTS tr_settings (k TEXT PRIMARY KEY, v TEXT)",
   "CREATE TABLE IF NOT EXISTS tr_runs (id INTEGER PRIMARY KEY, started INTEGER, finished INTEGER, checked INTEGER, calls INTEGER, alerts INTEGER, errors TEXT)",
@@ -4174,8 +4175,12 @@ const trTime = (v) => { const n = typeof v === "number" ? v : Date.parse(v); ret
 const trUrl = (u) => { u = clean(u, 500); return /^https:\/\//i.test(u) ? u : ""; };
 function trEq(a, b) { if (a.length !== b.length) return false; let x = 0; for (let i = 0; i < a.length; i++) x |= a.charCodeAt(i) ^ b.charCodeAt(i); return x === 0; }
 
+// D1's free plan allows 5M row reads a day for the whole site, so the watcher must read by index, never scan its tables.
+const TR_MIG = "4";
 async function trInit(env) {
   if (trReady) return;
+  const mig = await env.DB.prepare("SELECT v FROM tr_settings WHERE k = 'mig'").first().catch(() => null);
+  if (mig && mig.v === TR_MIG) { trReady = true; return; }
   await env.DB.batch(TR_SCHEMA.map((s) => env.DB.prepare(s)));
   try { await env.DB.prepare("ALTER TABLE tr_watch ADD COLUMN checked INTEGER").run(); } catch {}
   for (const c of ["balance TEXT", "bal_usd REAL", "freeze_usd REAL", "bal_at INTEGER", "frozen INTEGER"]) { try { await env.DB.prepare("ALTER TABLE tr_watch ADD COLUMN " + c).run(); } catch {} }
@@ -4188,6 +4193,18 @@ async function trInit(env) {
     await env.DB.prepare("UPDATE tr_watch SET root_id = id WHERE root_id IS NULL AND parent_id IS NULL").run();
     for (let i = 0; i < 6; i++) if (!(await env.DB.prepare("UPDATE tr_watch SET root_id = (SELECT p.root_id FROM tr_watch p WHERE p.id = tr_watch.parent_id) WHERE root_id IS NULL AND parent_id IS NOT NULL AND (SELECT p.root_id FROM tr_watch p WHERE p.id = tr_watch.parent_id) IS NOT NULL").run()).meta?.changes) break;
   } catch {}
+  // due = when an address should be looked at next. Indexed, so picking a round reads only the rows it uses.
+  try { await env.DB.prepare("ALTER TABLE tr_watch ADD COLUMN due INTEGER").run(); } catch {}
+  await env.DB.batch([
+    env.DB.prepare("UPDATE tr_watch SET due = COALESCE(checked, 0) WHERE due IS NULL"),
+    env.DB.prepare("CREATE INDEX IF NOT EXISTS tr_watch_due ON tr_watch (paused, chain, due)"),
+    env.DB.prepare("CREATE INDEX IF NOT EXISTS tr_watch_dnull ON tr_watch (due)"),
+    env.DB.prepare("CREATE INDEX IF NOT EXISTS tr_watch_freeze ON tr_watch (freeze_usd)"),
+    env.DB.prepare("CREATE INDEX IF NOT EXISTS tr_watch_bal ON tr_watch (bal_usd)"),
+    env.DB.prepare("CREATE INDEX IF NOT EXISTS tr_watch_laddr ON tr_watch (chain, lower(address))"),
+    env.DB.prepare("CREATE INDEX IF NOT EXISTS tr_alerts_watch ON tr_alerts (watch_id, ts)"),
+    trSet(env.DB, "mig", TR_MIG),
+  ]);
   trReady = true;
 }
 async function trSettings(DB) {
@@ -4647,8 +4664,8 @@ async function tlLimitN(env, who, action, max, win) {
    is checked in the background of ordinary site traffic, at most once every TR_GAP. Read-only public APIs only:
    Etherscan (when a key is saved) or Blockscout for EVM chains, Blockstream / mempool.space for Bitcoin,
    TronGrid for USDT on Tron, THORChain Midgard to find the far side of a cross-chain swap. */
-const TR_GAP = 60e3, TR_BATCH = 6, TR_MAX_WATCH = 3000;
-let trNextTry = 0;
+const TR_GAP = 90e3, TR_BATCH = 6, TR_MAX_WATCH = 3000;
+let trNextTry = 0, trCount = { n: 0, at: 0 };
 const TR_SCOUT = { eth: "eth.blockscout.com", base: "base.blockscout.com", arb: "arbitrum.blockscout.com", op: "optimism.blockscout.com", polygon: "polygon.blockscout.com" };
 const TR_CHAINID = { eth: 1, bsc: 56, arb: 42161, base: 8453, polygon: 137, op: 10, avax: 43114 };
 const TR_NATIVE = { eth: "ETH", bsc: "BNB", arb: "ETH", base: "ETH", polygon: "POL", op: "ETH", avax: "AVAX", btc: "BTC", tron: "TRX" };
@@ -4803,7 +4820,7 @@ async function trVet(DB, w, C) {
   let linked = new Set();
   for (let i = 0; i < senders.length; i += 90) {
     const part = senders.slice(i, i + 90);
-    const rows = (await DB.prepare(`SELECT address FROM tr_watch WHERE chain = ? AND ${w.chain === "tron" ? "address" : "lower(address)"} IN (${part.map(() => "?").join(",")})`).bind(w.chain, ...part).all()).results;
+    const rows = (await DB.prepare(`SELECT address FROM tr_watch ${w.chain === "tron" ? "" : "INDEXED BY tr_watch_laddr "}WHERE chain = ? AND ${w.chain === "tron" ? "address" : "lower(address)"} IN (${part.map(() => "?").join(",")})`).bind(w.chain, ...part).all()).results;
     for (const r of rows) linked.add(w.chain === "tron" ? r.address : r.address.toLowerCase());
   }
   const total = ins.reduce((a, t) => a + t.amount, 0), fromLinked = ins.filter((t) => linked.has(t.from));
@@ -4951,12 +4968,12 @@ async function trTick(env, force) {
   if (!env.DB || !String(env.TRACKER_OWNER || "").trim()) return null;
   await trInit(env);
   const DB = env.DB, now = Date.now();
+  // One round at a time, across all the places this code runs. Taking the lock reads one row, so do it before anything else.
+  let lock = await DB.prepare("UPDATE tr_settings SET v = ? WHERE k = 'tick_at' AND CAST(v AS INTEGER) < ?").bind(String(now), now - (force ? 15e3 : TR_GAP)).run();
+  if (!lock.meta?.changes && !(await DB.prepare("SELECT 1 FROM tr_settings WHERE k = 'tick_at'").first())) lock = await DB.prepare("INSERT OR IGNORE INTO tr_settings (k, v) VALUES ('tick_at', ?)").bind(String(now)).run();
+  if (!lock.meta?.changes) { trNextTry = Math.max(trNextTry, now + TR_GAP / 2); return { skipped: "busy" }; }
   const s = await trSettings(DB);
   if (s.paused === "1" || (s.engine || "wezzet") !== "wezzet") return { skipped: s.paused === "1" ? "paused" : "external" };
-  // One round at a time, across all the places this code runs.
-  await DB.prepare("INSERT OR IGNORE INTO tr_settings (k, v) VALUES ('tick_at', '0')").run();
-  const lock = await DB.prepare("UPDATE tr_settings SET v = ? WHERE k = 'tick_at' AND CAST(v AS INTEGER) < ?").bind(String(now), now - (force ? 15e3 : TR_GAP)).run();
-  if (!lock.meta?.changes) return { skipped: "busy" };
 
   const C = { calls: 0, keys: {} }, errors = [], fresh = [];
   if (s["key:etherscan"]) C.keys.etherscan = await acUnseal(env, s["key:etherscan"]);
@@ -4967,23 +4984,25 @@ async function trTick(env, force) {
 
   const interval = (Number(s.interval) || 30) * 60e3, maxHops = Number(s.max_hops) || 5, pct = (Number(s.child_pct) || 10) / 100;
   const dormant = (Number(s.dormant_days) || 30) * 864e5, lookback = (Number(s.lookback_days) || 90) * 864e5;
-  // Recently active addresses first (every interval), then everything else, oldest check first.
-  const hot = (await DB.prepare("SELECT * FROM tr_watch WHERE paused = 0 AND COALESCE(checked, 0) < ? AND (last_activity > ? OR (parent_id IS NOT NULL AND added > ?) OR bal_usd >= 1000) ORDER BY COALESCE(checked, 0) LIMIT ?").bind(now - interval, now - 14 * 864e5, now - 14 * 864e5, TR_BATCH - 2).all()).results;
+  // Each chain's most overdue addresses, read through the (paused, chain, due) index: a round reads about 50 rows, not the whole table.
   // Tron's free API (TronGrid without a key) answers "too many requests" past about one address per round, so mix chains.
   const tronCap = C.keys.trongrid ? 4 : 1;
-  const skip = hot.length ? "AND id NOT IN (" + hot.map((x) => x.id).join(",") + ")" : "";
-  const due = now - Math.min(interval, 10 * 60e3);
-  // Empty wallets that haven't moved in 90 days only need a look every 6 hours, which leaves more room for the live ones.
-  const slow = `AND (bal_at IS NULL OR COALESCE(bal_usd, 0) >= 100 OR COALESCE(last_activity, 0) > ${now - 90 * 864e5} OR COALESCE(checked, 0) < ${now - 6 * 3600e3})`;
-  const tronLeft = Math.max(0, tronCap - hot.filter((x) => x.chain === "tron").length);
-  const tronRows = tronLeft ? (await DB.prepare(`SELECT * FROM tr_watch WHERE paused = 0 AND chain = 'tron' AND COALESCE(checked, 0) < ? ${skip} ${slow} ORDER BY COALESCE(checked, 0) LIMIT ?`).bind(due, tronLeft).all()).results : [];
-  const otherRows = (await DB.prepare(`SELECT * FROM tr_watch WHERE paused = 0 AND chain <> 'tron' AND COALESCE(checked, 0) < ? ${skip} ${slow} ORDER BY COALESCE(checked, 0) LIMIT ?`).bind(due, TR_BATCH).all()).results;
-  const rest = [...tronRows, ...otherRows].slice(0, Math.max(0, TR_BATCH - hot.length));
-  const batch = [...hot, ...rest];
+  await DB.prepare("UPDATE tr_watch SET due = 0 WHERE due IS NULL").run();
+  const picks = await DB.batch(Object.keys(TR_CHAIN_NAME).map((c) => DB.prepare("SELECT * FROM tr_watch WHERE paused = 0 AND chain = ? AND due < ? ORDER BY due LIMIT ?").bind(c, now, c === "tron" ? tronCap : TR_BATCH)));
+  // Take turns between chains (most overdue chain first), so one explorer isn't asked for six addresses at once.
+  const lists = picks.map((r) => r.results || []).filter((l) => l.length).sort((p, q) => (p[0].due || 0) - (q[0].due || 0)), batch = [];
+  for (let i = 0; batch.length < TR_BATCH && lists.some((l) => l.length > i); i++) for (const l of lists) if (l[i] && batch.length < TR_BATCH) batch.push(l[i]);
   if (!batch.length) return { checked: 0, alerts: 0, seeded };
+  // Next look: live or holding money every interval, empty wallets quiet for 90 days every 12 hours, the rest every 3 hours.
+  const next = (w) => {
+    const hot = w.last_activity > now - 14 * 864e5 || (w.parent_id && w.added > now - 14 * 864e5) || w.bal_usd >= 1000;
+    const dead = w.bal_at && (w.bal_usd || 0) < 100 && (w.last_activity || 0) < now - 90 * 864e5;
+    return now + (hot ? interval : dead ? 12 * 3600e3 : 3 * 3600e3) + Math.floor(Math.random() * 60e3);
+  };
   // Mark them checked first, so one slow or broken address can never block the queue.
-  await DB.prepare(`UPDATE tr_watch SET checked = ? WHERE id IN (${batch.map((x) => x.id).join(",")})`).bind(now).run();
-  let total = (await DB.prepare("SELECT COUNT(*) n FROM tr_watch").first()).n;
+  await DB.prepare(`UPDATE tr_watch SET checked = ?, due = CASE id ${batch.map((x) => `WHEN ${x.id} THEN ${next(x)}`).join(" ")} END WHERE id IN (${batch.map((x) => x.id).join(",")})`).bind(now).run();
+  if (!trCount.n || now - trCount.at > 3600e3) trCount = { n: (await DB.prepare("SELECT COUNT(*) n FROM tr_watch").first()).n, at: now };
+  let total = trCount.n;
 
   // Tron's free API allows only a slow trickle, so those go one after another.
   let tronQueue = Promise.resolve();
@@ -4992,7 +5011,7 @@ async function trTick(env, force) {
   const prices = await trPrices(DB, C);
   for (let i = 0; i < batch.length; i++) {
     const w = batch[i], res = results[i];
-    if (res.status === "rejected" && / 429$/.test(String(res.reason && res.reason.message))) { await DB.prepare("UPDATE tr_watch SET checked = ? WHERE id = ?").bind(now - interval + 5 * 60e3, w.id).run(); }
+    if (res.status === "rejected" && / 429$/.test(String(res.reason && res.reason.message))) { await DB.prepare("UPDATE tr_watch SET due = ? WHERE id = ?").bind(now + 5 * 60e3, w.id).run(); }
     if (res.status === "rejected") { errors.push(`${w.chain} ${trShort(w.address)}: ${String(res.reason && res.reason.message || res.reason).slice(0, 90)}`); continue; }
     const { moves, marker } = res.value;
     try {
@@ -5052,7 +5071,7 @@ async function trTick(env, force) {
           }
           for (const [chain, address, label] of kids) {
             const r = await DB.prepare("INSERT OR IGNORE INTO tr_watch (chain, address, label, source, source_url, added, parent_id, hop, paused, root_id) VALUES (?, ?, ?, ?, '', ?, ?, ?, 0, ?)").bind(chain, address, label || (w.label ? "from " + w.label.replace(/^from /, "") : ""), w.source || "", now, w.id, w.hop + 1, w.root_id || w.id).run();
-            total += r.meta?.changes || 0;
+            total += r.meta?.changes || 0; trCount.n += r.meta?.changes || 0;
           }
           // Alerts are for fresh movement only; older history is followed quietly.
           if ((bi < 3 || lab.kind) && m.ts > Math.max(w.added - 48 * 36e5, now - 14 * 864e5)) {
@@ -5085,7 +5104,12 @@ async function trTick(env, force) {
   // Automatic checks on one candidate per round: found wallets holding or moving $100k+ that weren't checked in 6 hours.
   try {
     if (C.calls < 36) {
-      const v = await DB.prepare("SELECT * FROM tr_watch WHERE hop > 0 AND paused = 0 AND chain IN ('tron', 'eth', 'base', 'arb', 'op', 'polygon') AND COALESCE(vet_at, 0) < ? AND (freeze_usd >= 100000 OR id IN (SELECT watch_id FROM tr_alerts WHERE created > ? AND usd >= 100000)) ORDER BY COALESCE(vet_at, 0), freeze_usd DESC LIMIT 1").bind(now - 6 * 3600e3, now - 3 * 864e5).first();
+      const cut = now - 6 * 3600e3, okc = ["tron", "eth", "base", "arb", "op", "polygon"];
+      const [big, moved] = await DB.batch([
+        DB.prepare("SELECT * FROM tr_watch WHERE freeze_usd >= 100000 AND hop > 0 AND +paused = 0 AND COALESCE(vet_at, 0) < ? ORDER BY COALESCE(vet_at, 0) LIMIT 5").bind(cut),
+        DB.prepare("SELECT w.* FROM tr_alerts a JOIN tr_watch w ON w.id = a.watch_id WHERE a.created > ? AND a.usd >= 100000 AND w.hop > 0 AND w.paused = 0 AND COALESCE(w.vet_at, 0) < ? LIMIT 20").bind(now - 3 * 864e5, cut),
+      ]);
+      const v = [...big.results, ...moved.results].filter((x) => okc.includes(x.chain)).sort((p, q) => (p.vet_at || 0) - (q.vet_at || 0) || (q.freeze_usd || 0) - (p.freeze_usd || 0))[0];
       if (v) { if (v.chain === "tron") await new Promise((r) => setTimeout(r, 1100)); await trVet(DB, v, C); }
     }
   } catch (e) { errors.push("checks: " + String(e.message).slice(0, 80)); }
