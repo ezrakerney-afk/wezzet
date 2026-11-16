@@ -115,7 +115,7 @@
     const files = await Promise.all(picked.map(async (f) => ({ path: f.path, data: b64(await f.file.arrayBuffer()) })));
     const r = await call("upload", { method: "POST", body: JSON.stringify({ name, title: $("title").value, about: $("about").value, listed: $("listed").checked, files }) });
     $("go").disabled = false;
-    if (r.error) { note(msg, r.error, true); return; }
+    if (r.error) { note(msg, r.error + (r.pro ? ' <a href="/pro">Get Pro</a>' : ""), true, !!r.pro); return; }
     note(msg, live(r), false, true); loadExplore(true);
   };
 
@@ -157,7 +157,7 @@
     $("e-go").disabled = true; note(msg, "Publishing...");
     const r = await call("upload", { method: "POST", body: JSON.stringify(data) });
     $("e-go").disabled = false;
-    if (r.error) { note(msg, r.error, true); return; }
+    if (r.error) { note(msg, r.error + (r.pro ? ' <a href="/pro">Get Pro</a>' : ""), true, !!r.pro); return; }
     note(msg, live(r) + (editing ? ". Saved." : ""), false, true);
     if (!editing) { draft.set(""); editing = { name, file: "index.html", title: data.title, about: "", listed: true }; $("e-name").value = name; $("e-name").disabled = true; $("e-what").textContent = "Editing /host/" + name; }
     loadExplore(true);
@@ -177,7 +177,7 @@
     const sites = r.sites || [];
     $("m-guest").hidden = !!sites.length;
     $("m-guest").innerHTML = r.me ? 'You have no pages yet. <a href="#new">Publish your first one</a> or <a href="#editor">write one in the editor</a>.' : '<a href="/signin">Sign in</a> to see your pages, or <a href="#new">publish your first one</a>.';
-    $("m-n").textContent = sites.length ? sites.length + " of 5, " + num(sites.reduce((n, s) => n + s.views, 0)) + " views" : "";
+    $("m-n").textContent = sites.length ? sites.length + (sites.length > 1 ? " pages, " : " page, ") + num(sites.reduce((n, s) => n + s.views, 0)) + " views" : "";
     $("m-list").replaceChildren(...sites.map((s) => {
       const url = "https://wezzet.com/host/" + s.name;
       const info = el("div", { className: "h-info" }, el("a", { href: "/host/" + s.name, target: "_blank", rel: "noopener", textContent: s.title || s.name }),
