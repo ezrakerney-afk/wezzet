@@ -33,6 +33,8 @@ export default {
       const fu = new URL(url); fu.pathname = "/api/forum/" + url.pathname.slice("/api/chat/forum/".length);
       try { return await api(request, env, fu, ctx); } catch (e) { return json({ error: "Something went wrong on our side. Try again in a moment." }, 500); }
     }
+    if (url.pathname.startsWith("/api/chat/host/") && env.DB) { try { return await hostApi(request, env, url, ctx); } catch (e) { return json({ error: "Something went wrong on our side. Try again in a moment." }, 500); } }
+    if (url.pathname.startsWith("/host/") && env.DB) return hostServe(request, env, url, ctx).catch(() => hostGone("Something went wrong. Try again in a moment.", 500));
     if (url.pathname.startsWith("/api/chat/")) return chat(request, env, url, ctx);
     if (url.pathname === "/api/tracker" || url.pathname.startsWith("/api/tracker/")) return trWatcher(request, env, url);
     // Community pages: /forum/<slug> is the same single page as /forum.
@@ -5535,4 +5537,232 @@ async function wzStripeWebhook(request, env) {
     if (uid) await save(uid, o.customer, o.id, ev.type.endsWith("deleted") ? "canceled" : String(o.status || "unknown"), until);
   }
   return json({ received: true });
+}
+
+// ---- Wezzet Host (/host): signed-in users upload an HTML page or a small site and get wezzet.com/host/<name>. ----
+// Safety: user files are only ever served with a CSP sandbox (no allow-same-origin), so they run in an opaque origin.
+// They can't read wezzet.com cookies, storage or API responses, and the site's cookies are SameSite and HttpOnly.
+// The page at /host/<name> is a small Wezzet frame with a report button around a sandboxed iframe of the files.
+const HOST_MAX = 2 * 1048576, HOST_FILES = 200, HOST_SITES = 5, HOST_TOTAL = 200 * 1048576, HOST_HIDE_AT = 3;
+const HOST_LIMITS = { upload: [30, 86400], report: [20, 3600] };
+const HOST_RESERVED = /^(wezzet|admin|administrator|official|mod|mods|moderator|staff|support|help|api|new|edit|upload|login|signin|signup|account|accounts|settings|raw|static|assets|www|mail|host|hosts|about|contact|privacy|terms|security|billing|pro|paypal|stripe|google|apple|microsoft|bank|wallet|verify|password|null|undefined|index)(-|$)/;
+const HOST_BAD = /(fuck|shit|cunt|nigg|fag|porn|sex|nazi|hitler|rape|kill-?you|phish|free-?robux|giftcard|crypto-?giveaway)/;
+const HOST_SANDBOX = "sandbox allow-scripts allow-forms allow-modals allow-popups allow-pointer-lock allow-downloads allow-orientation-lock";
+const HOST_TYPES = {
+  html: "text/html; charset=utf-8", htm: "text/html; charset=utf-8", css: "text/css; charset=utf-8", js: "text/javascript; charset=utf-8", mjs: "text/javascript; charset=utf-8",
+  json: "application/json; charset=utf-8", txt: "text/plain; charset=utf-8", md: "text/plain; charset=utf-8", csv: "text/csv; charset=utf-8", xml: "application/xml; charset=utf-8",
+  svg: "image/svg+xml", png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", gif: "image/gif", webp: "image/webp", avif: "image/avif", ico: "image/x-icon", bmp: "image/bmp",
+  mp3: "audio/mpeg", ogg: "audio/ogg", oga: "audio/ogg", wav: "audio/wav", m4a: "audio/mp4", flac: "audio/flac", mp4: "video/mp4", webm: "video/webm",
+  woff: "font/woff", woff2: "font/woff2", ttf: "font/ttf", otf: "font/otf", wasm: "application/wasm", glb: "model/gltf-binary", gltf: "model/gltf+json",
+  bin: "application/octet-stream", map: "application/json; charset=utf-8", webmanifest: "application/manifest+json",
+};
+let hostReady = false;
+async function hostInit(env) {
+  if (hostReady) return;
+  await env.DB.batch([
+    "CREATE TABLE IF NOT EXISTS host_sites (name TEXT PRIMARY KEY, uid INTEGER NOT NULL, title TEXT, size INTEGER NOT NULL, files INTEGER NOT NULL, reports INTEGER DEFAULT 0, hidden INTEGER DEFAULT 0, created INTEGER, updated INTEGER)",
+    "CREATE INDEX IF NOT EXISTS host_sites_uid ON host_sites (uid)",
+    "CREATE TABLE IF NOT EXISTS host_files (site TEXT, path TEXT, type TEXT, size INTEGER, parts INTEGER, PRIMARY KEY (site, path))",
+    "CREATE TABLE IF NOT EXISTS host_parts (site TEXT, path TEXT, n INTEGER, data TEXT, PRIMARY KEY (site, path, n))",
+    "CREATE TABLE IF NOT EXISTS host_reports (site TEXT, who TEXT, reason TEXT, created INTEGER, PRIMARY KEY (site, who))",
+    "CREATE TABLE IF NOT EXISTS host_stats (k TEXT PRIMARY KEY, v INTEGER)",
+    "CREATE INDEX IF NOT EXISTS actions_who ON actions (who, action, created_at)",
+  ].map((q) => env.DB.prepare(q)));
+  hostReady = true;
+}
+const hostEsc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+const hostVer = (s) => "v" + Number(s.updated || 0).toString(36);
+function hostNameError(name) {
+  if (!/^[a-z0-9](?:[a-z0-9-]{1,30})[a-z0-9]$/.test(name) || name.includes("--")) return "Names are 3 to 32 letters, numbers and single dashes, like my-game.";
+  if (HOST_RESERVED.test(name)) return "That name is reserved. Pick another one.";
+  if (HOST_BAD.test(name)) return "Pick a different name.";
+  return null;
+}
+function hostPath(p) {
+  p = String(p || "").replace(/\\/g, "/").replace(/^\.?\/+/, "").trim();
+  if (!p || p.length > 160 || p.split("/").some((x) => !x || x === "." || x === ".." || x.startsWith(".")) || !/^[A-Za-z0-9._\-/ ()+@]+$/.test(p)) return null;
+  return p;
+}
+async function hostCount(env, who, action) {
+  const [max, sec] = HOST_LIMITS[action];
+  const r = await env.DB.prepare("SELECT COUNT(*) AS n FROM actions WHERE who = ? AND action = ? AND created_at > ?").bind(who, "host-" + action, Date.now() - sec * 1000).first();
+  return (r ? r.n : 0) < max;
+}
+const hostLog = (env, who, action) => env.DB.prepare("INSERT INTO actions (who, action, created_at) VALUES (?, ?, ?)").bind(who, "host-" + action, Date.now());
+
+async function hostDelete(env, name) {
+  const s = await env.DB.prepare("SELECT size FROM host_sites WHERE name = ?").bind(name).first();
+  if (!s) return;
+  await env.DB.batch([
+    env.DB.prepare("DELETE FROM host_parts WHERE site = ?").bind(name), env.DB.prepare("DELETE FROM host_files WHERE site = ?").bind(name),
+    env.DB.prepare("DELETE FROM host_reports WHERE site = ?").bind(name), env.DB.prepare("DELETE FROM host_sites WHERE name = ?").bind(name),
+    env.DB.prepare("UPDATE host_stats SET v = MAX(0, v - ?) WHERE k = 'bytes'").bind(s.size),
+  ]);
+}
+
+// API under /api/chat/host/* so the browser sends the site login cookie (it is scoped to /api/chat).
+async function hostApi(request, env, url, ctx) {
+  await hostInit(env);
+  const path = url.pathname.slice("/api/chat/host/".length), method = request.method;
+  const me = await forumMe(request, env);
+  if (path === "mine" && method === "GET") {
+    if (!me) return json({ me: null, sites: [] });
+    const rows = (await env.DB.prepare("SELECT name, title, size, files, hidden, created, updated FROM host_sites WHERE uid = ? ORDER BY updated DESC LIMIT 50").bind(me.id).all()).results || [];
+    return json({ me: { name: me.name, admin: me.admin }, sites: rows.map((r) => ({ ...r, hidden: !!r.hidden, url: "https://wezzet.com/host/" + r.name })) });
+  }
+  if (path === "check" && method === "GET") {
+    const name = String(url.searchParams.get("name") || "").toLowerCase();
+    const err = hostNameError(name);
+    if (err) return json({ ok: false, error: err });
+    const s = await env.DB.prepare("SELECT uid FROM host_sites WHERE name = ?").bind(name).first();
+    return json({ ok: !s || (me && s.uid === me.id), mine: !!(s && me && s.uid === me.id), error: s && !(me && s.uid === me.id) ? "That name is taken." : null });
+  }
+  if (path === "upload" && method === "POST") {
+    if (!me) return json({ error: "Sign in to host a page." }, 401);
+    if (Number(request.headers.get("content-length") || 0) > HOST_MAX * 1.5 + 200000) return json({ error: "Sites can be up to 2 MB in total." }, 413);
+    const b = await body(request);
+    const name = String(b.name || "").toLowerCase().trim();
+    const nerr = hostNameError(name);
+    if (nerr) return json({ error: nerr }, 400);
+    const title = clean(b.title, 80).replace(/\s+/g, " ") || name;
+    if (HOST_BAD.test(title.toLowerCase())) return json({ error: "Pick a different title." }, 400);
+    if (!Array.isArray(b.files) || !b.files.length) return json({ error: "Add at least one HTML file." }, 400);
+    if (b.files.length > HOST_FILES) return json({ error: "Sites can have up to 200 files." }, 400);
+    const files = [], seen = new Set();
+    let total = 0;
+    for (const f of b.files) {
+      const p = hostPath(f && f.path);
+      if (!p) return json({ error: "A file name isn't allowed: " + String((f && f.path) || "").slice(0, 60) }, 400);
+      const ext = (p.match(/\.([a-z0-9]+)$/i) || [])[1]?.toLowerCase();
+      const type = HOST_TYPES[ext];
+      if (!type) return json({ error: "This file type can't be hosted: " + p }, 400);
+      if (seen.has(p.toLowerCase())) return json({ error: "Two files have the same name: " + p }, 400);
+      seen.add(p.toLowerCase());
+      if (typeof f.data !== "string" || !/^[A-Za-z0-9+/]*={0,2}$/.test(f.data)) return json({ error: "A file couldn't be read: " + p }, 400);
+      const size = Math.floor(f.data.length * 3 / 4) - (f.data.endsWith("==") ? 2 : f.data.endsWith("=") ? 1 : 0);
+      total += size;
+      if (total > HOST_MAX) return json({ error: "Sites can be up to 2 MB in total." }, 413);
+      files.push({ path: p, type, size, data: f.data });
+    }
+    // index.html is the start page. A single HTML file of any name becomes index.html.
+    if (!files.some((f) => f.path === "index.html")) {
+      const html = files.filter((f) => /\.html?$/i.test(f.path));
+      if (html.length === 1 && !html[0].path.includes("/")) html[0].path = "index.html";
+      else return json({ error: html.length ? "Name the start page index.html." : "Add at least one HTML file." }, 400);
+    }
+    // Check the HTML, JS and SVG text: no password fields (to stop fake sign-in pages), no Windows or Linux programs.
+    let scan = "";
+    for (const f of files) {
+      if (!/^(text|application\/(json|xml)|image\/svg)/.test(f.type)) continue;
+      let t; try { t = new TextDecoder().decode(acUnB64(f.data)); } catch { return json({ error: "A file couldn't be read: " + f.path }, 400); }
+      if (/type\s*=\s*["']?password\b|\.type\s*=\s*["']password["']|setAttribute\(\s*["']type["']\s*,\s*["']password/i.test(t)) return json({ error: "Hosted pages can't have password fields: " + f.path + ". This keeps people safe from fake sign-in pages." }, 400);
+      if (/<meta[^>]+http-equiv\s*=\s*["']?refresh[^>]+url\s*=\s*https?:/i.test(t)) return json({ error: "Hosted pages can't redirect to other sites: " + f.path }, 400);
+      if (scan.length < 6000) scan += "\n" + t.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").slice(0, 3000);
+    }
+    const old = await env.DB.prepare("SELECT uid, size, hidden FROM host_sites WHERE name = ?").bind(name).first();
+    if (old && old.uid !== me.id) return json({ error: "That name is taken." }, 409);
+    if (old && old.hidden && !me.admin) return json({ error: "This page was taken down after reports. Contact us if you think that's a mistake." }, 403);
+    if (!old) {
+      const n = await env.DB.prepare("SELECT COUNT(*) AS n FROM host_sites WHERE uid = ?").bind(me.id).first();
+      if (n.n >= HOST_SITES && !me.admin) return json({ error: "You can host up to 5 pages. Delete one to add another." }, 400);
+    }
+    if (!(await hostCount(env, "u" + me.id, "upload"))) return json({ error: "You've uploaded 30 times today. Try again tomorrow." }, 429);
+    const used = await env.DB.prepare("SELECT v FROM host_stats WHERE k = 'bytes'").first();
+    if ((used ? used.v : 0) - (old ? old.size : 0) + total > HOST_TOTAL) return json({ error: "Page storage is full right now. Try again later." }, 507);
+    const now = Date.now(), stmts = [
+      env.DB.prepare("DELETE FROM host_parts WHERE site = ?").bind(name), env.DB.prepare("DELETE FROM host_files WHERE site = ?").bind(name),
+      old ? env.DB.prepare("UPDATE host_sites SET title = ?, size = ?, files = ?, updated = ? WHERE name = ?").bind(title, total, files.length, now, name)
+        : env.DB.prepare("INSERT INTO host_sites (name, uid, title, size, files, created, updated) VALUES (?, ?, ?, ?, ?, ?, ?)").bind(name, me.id, title, total, files.length, now, now),
+      env.DB.prepare("INSERT INTO host_stats (k, v) VALUES ('bytes', ?) ON CONFLICT(k) DO UPDATE SET v = MAX(0, v + ?)").bind(total, total - (old ? old.size : 0)),
+      hostLog(env, "u" + me.id, "upload"),
+    ];
+    for (const f of files) {
+      const parts = [];
+      for (let i = 0; i < f.data.length; i += AC_FILE_PART) parts.push(f.data.slice(i, i + AC_FILE_PART));
+      if (!parts.length) parts.push("");
+      stmts.push(env.DB.prepare("INSERT INTO host_files (site, path, type, size, parts) VALUES (?, ?, ?, ?, ?)").bind(name, f.path, f.type, f.size, parts.length),
+        ...parts.map((x, n) => env.DB.prepare("INSERT INTO host_parts (site, path, n, data) VALUES (?, ?, ?, ?)").bind(name, f.path, n, x)));
+    }
+    await env.DB.batch(stmts);
+    // A model check of the page text: a flag counts as 2 reports, so one more report takes it down.
+    aiModerate(env, ctx, title + "\n" + scan, "UPDATE host_sites SET reports = reports + 2, hidden = CASE WHEN reports + 2 >= " + HOST_HIDE_AT + " THEN 1 ELSE hidden END WHERE name = ?", name);
+    return json({ name, url: "https://wezzet.com/host/" + name, size: total, files: files.length }, old ? 200 : 201);
+  }
+  if (path === "delete" && method === "POST") {
+    if (!me) return json({ error: "Sign in first." }, 401);
+    const name = String((await body(request)).name || "").toLowerCase();
+    const s = await env.DB.prepare("SELECT uid FROM host_sites WHERE name = ?").bind(name).first();
+    if (!s) return json({ error: "That page doesn't exist." }, 404);
+    if (s.uid !== me.id && !me.admin) return json({ error: "Only the owner can delete this page." }, 403);
+    await hostDelete(env, name);
+    return json({ ok: true });
+  }
+  if (path === "report" && method === "POST") {
+    const b = await body(request), name = String(b.name || "").toLowerCase();
+    const id = await identity(request);
+    const s = await env.DB.prepare("SELECT reports, hidden FROM host_sites WHERE name = ?").bind(name).first();
+    if (!s) return json({ error: "That page doesn't exist." }, 404);
+    if (!(await hostCount(env, id.who, "report"))) return json({ error: "You've sent a lot of reports. Try again later." }, 429);
+    const who = me ? "u" + me.id : id.who;
+    const r = await env.DB.prepare("INSERT OR IGNORE INTO host_reports (site, who, reason, created) VALUES (?, ?, ?, ?)").bind(name, who, clean(b.reason, 300), Date.now()).run();
+    const add = r.meta.changes ? (me && me.admin ? HOST_HIDE_AT : 1) : 0;
+    await env.DB.batch([
+      env.DB.prepare("UPDATE host_sites SET reports = reports + ?, hidden = CASE WHEN reports + ? >= ? THEN 1 ELSE hidden END WHERE name = ?").bind(add, add, HOST_HIDE_AT, name),
+      hostLog(env, id.who, "report"),
+    ]);
+    return json({ ok: true }, 200, id.setCookie ? { "set-cookie": id.setCookie } : {});
+  }
+  return json({ error: "Not found." }, 404);
+}
+
+function hostGone(msg, status) {
+  return new Response(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex"><title>Page not found | Wezzet</title><link rel="stylesheet" href="/assets/site.css?v=8"></head><body><main><div class="wrap"><div class="tool-head"><h1>${hostEsc(msg)}</h1></div><p><a class="btn" href="/host">Host your own page</a></p></div></main></body></html>`,
+    { status, headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff", "x-robots-tag": "noindex" } });
+}
+
+// GET /host/<name> (the frame) and /host/<name>/<version>/<file> (the sandboxed files).
+async function hostServe(request, env, url, ctx) {
+  const m = url.pathname.match(/^\/host\/([a-z0-9-]{3,32})(?:\/(v[a-z0-9]+)(\/.*)?)?\/?$/);
+  if (!m) return hostGone("This page doesn't exist.", 404);
+  const name = m[1];
+  if (request.method !== "GET" && request.method !== "HEAD") return new Response("Method not allowed", { status: 405 });
+  await hostInit(env);
+  if (!m[2]) {
+    if (url.pathname.endsWith("/")) return Response.redirect(url.origin + "/host/" + name, 301);
+    const s = await env.DB.prepare("SELECT name, title, hidden, updated FROM host_sites WHERE name = ?").bind(name).first();
+    if (!s) return hostGone("This page doesn't exist yet.", 404);
+    if (s.hidden) return hostGone("This page was taken down.", 410);
+    const t = hostEsc(s.title || name), src = `/host/${name}/${hostVer(s)}/`;
+    const page = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${t} | Wezzet Host</title><meta name="robots" content="noindex"><link rel="icon" href="/favicon.ico" sizes="48x48">
+<style>:root{--bg:#fff;--ink:#111;--soft:#666;--line:#e5e5e5}@media (prefers-color-scheme:dark){:root{--bg:#121212;--ink:#eee;--soft:#999;--line:#2a2a2a}}*{box-sizing:border-box}html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font:14px/1.3 system-ui,sans-serif}body{display:flex;flex-direction:column}
+.bar{display:flex;align-items:center;gap:10px;padding:6px 12px;border-bottom:1px solid var(--line);white-space:nowrap;overflow:hidden}.bar a{color:inherit;text-decoration:none}.bar b{overflow:hidden;text-overflow:ellipsis}.soft{color:var(--soft);overflow:hidden;text-overflow:ellipsis}.sp{flex:1}
+button{font:inherit;color:var(--soft);background:none;border:1px solid var(--line);border-radius:6px;padding:3px 9px;cursor:pointer}button:hover{color:var(--ink)}iframe{flex:1;width:100%;border:0;display:block;background:#fff}</style></head>
+<body><div class="bar"><a href="/host" title="Wezzet Host"><b>wezzet.</b></a><b>${t}</b><span class="soft">User-made page. Never type passwords here.</span><span class="sp"></span><button type="button" id="fs">Full screen</button><button type="button" id="rp">Report</button></div>
+<iframe id="f" src="${src}" title="${t}" sandbox="allow-scripts allow-forms allow-modals allow-popups allow-pointer-lock allow-downloads allow-orientation-lock" allow="fullscreen; autoplay; gamepad; accelerometer; gyroscope" allowfullscreen referrerpolicy="no-referrer"></iframe>
+<script>document.getElementById("fs").onclick=function(){var f=document.getElementById("f");(f.requestFullscreen||f.webkitRequestFullscreen||function(){}).call(f)};
+document.getElementById("rp").onclick=function(){var r=prompt("What's wrong with this page? (scam, malware, hateful, sexual, other)");if(r===null)return;fetch("/api/chat/host/report",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({name:${JSON.stringify(name)},reason:r})}).then(function(x){return x.json()}).then(function(j){alert(j.error||"Thanks. We'll take a look.")}).catch(function(){alert("Couldn't send the report.")})};</script></body></html>`;
+    return new Response(page, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-cache", "x-content-type-options": "nosniff", "x-frame-options": "DENY", "referrer-policy": "strict-origin-when-cross-origin", "x-robots-tag": "noindex",
+      "content-security-policy": "default-src 'self'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; frame-src 'self'; connect-src 'self'; img-src 'self'; frame-ancestors 'none'" } });
+  }
+  // Files: cached at the edge by URL. The version in the path changes on every upload, so old copies are never used.
+  const cache = caches.default, key = new Request(url.origin + url.pathname, { method: "GET" });
+  const hit = await cache.match(key);
+  if (hit) return hit;
+  if (!m[3]) return Response.redirect(`${url.origin}/host/${name}/${m[2]}/`, 301);
+  let rel; try { rel = decodeURIComponent(m[3]).replace(/^\//, ""); } catch { rel = ""; }
+  if (rel === "" || rel.endsWith("/")) rel += "index.html";
+  else if (!/\.[A-Za-z0-9]+$/.test(rel)) rel += "/index.html";
+  const file = hostPath(rel);
+  const s = await env.DB.prepare("SELECT hidden, updated FROM host_sites WHERE name = ?").bind(name).first();
+  if (!s || s.hidden) return new Response("Not found", { status: 404, headers: { "content-security-policy": HOST_SANDBOX, "cache-control": "no-store" } });
+  if (m[2] !== hostVer(s)) return Response.redirect(`${url.origin}/host/${name}/${hostVer(s)}${m[3] || "/"}`, 302);
+  const f = file && await env.DB.prepare("SELECT type, parts FROM host_files WHERE site = ? AND path = ?").bind(name, file).first();
+  if (!f) return new Response("Not found", { status: 404, headers: { "content-type": "text/plain", "content-security-policy": HOST_SANDBOX, "cache-control": "public, max-age=60", "access-control-allow-origin": "*" } });
+  const parts = (await env.DB.prepare("SELECT data FROM host_parts WHERE site = ? AND path = ? ORDER BY n").bind(name, file).all()).results || [];
+  const res = new Response(acUnB64(parts.map((p) => p.data).join("")), { headers: {
+    "content-type": f.type, "content-security-policy": HOST_SANDBOX, "x-content-type-options": "nosniff", "access-control-allow-origin": "*",
+    "cross-origin-resource-policy": "cross-origin", "referrer-policy": "no-referrer", "x-robots-tag": "noindex", "cache-control": "public, max-age=600",
+  } });
+  ctx.waitUntil(cache.put(key, res.clone()).catch(() => {}));
+  return res;
 }
