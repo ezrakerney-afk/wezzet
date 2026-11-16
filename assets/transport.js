@@ -48,10 +48,18 @@
     const q = $("q").value.trim(), m = $("meta"), btn = $("f").querySelector("button");
     if (M[mode].need && q.length < M[mode].need) { m.className = "tt-meta"; m.textContent = "Type something to search " + M[mode].label.toLowerCase() + "."; return; }
     if (ctl) ctl.abort();
-    const mine = (ctl = new AbortController()), asked = mode, timer = setTimeout(() => mine.abort(), 15000);
+    const mine = (ctl = new AbortController()), asked = mode; let timer = setTimeout(() => mine.abort(), 15000);
     m.className = "tt-meta"; m.textContent = mode === "ships" ? "Listening for ships… about 3 seconds" : mode === "flights" ? "Fetching live flights… this can take a few seconds" : "Fetching live data…"; btn.disabled = true; $("tb").classList.add("tt-wait");
     try {
-      const r = await fetch("/api/transport?" + new URLSearchParams({ mode, q, limit: $("lim").value }), { signal: mine.signal });
+      const ask = () => fetch("/api/transport?" + new URLSearchParams({ mode: asked, q, limit: $("lim").value }), { signal: mine.signal });
+      let r = await ask();
+      // The free flight sources often fail for a moment and then answer, so a failed flight search gets one more try.
+      if (r.status === 503 && asked === "flights" && asked === mode) {
+        m.textContent = "The flight sources were slow to answer. Trying once more…";
+        clearTimeout(timer); timer = setTimeout(() => mine.abort(), 15000);
+        await new Promise((ok) => setTimeout(ok, 700));
+        r = await ask();
+      }
       const j = await r.json().catch(() => ({ error: "The live source didn't answer. Try again in a minute." }));
       if (asked !== mode) return;
       if (!r.ok) throw new Error(j.error || "Search failed.");
