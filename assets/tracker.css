@@ -201,11 +201,13 @@ body .tr .tr-h3{font-family:inherit!important;font-size:.8rem!important;font-wei
 @media (max-width:600px){.tr-fields dl{grid-template-columns:1fr}}
 .tr-bellhead select{font-size:.8rem;padding:4px 6px;min-height:0;max-width:60%}
 
-/* Full-width page, side panel tucks away to icons and slides out on hover */
+/* Full-width page; side panel is pinned to the far left of the window, tucks away to icons and slides out on hover */
 body.tr-full main > .wrap.tr,body.tr-full .site-header .wrap,body.tr-full .site-footer .wrap{max-width:none}
 @media (min-width:861px) and (hover:hover){
-  .tr-shell{grid-template-columns:59px minmax(0,1fr);gap:22px}
-  .tr-side{width:59px;max-height:calc(100vh - 32px);overflow:hidden auto;scrollbar-width:none;z-index:20;transition:width .2s ease,box-shadow .2s ease}
+  body.tr-full .site-header{position:sticky;top:0;z-index:30;background:var(--bg)}
+  body.tr-full main > .wrap.tr{padding-left:95px}
+  .tr-shell{display:block}
+  .tr-side{position:fixed;left:12px;top:calc(var(--tr-head,99px) + 12px);width:59px;max-height:calc(100vh - var(--tr-head,99px) - 24px);overflow:hidden auto;scrollbar-width:none;z-index:20;transition:width .2s ease,box-shadow .2s ease}
   .tr-side::-webkit-scrollbar{display:none}
   .tr-side:hover,.tr-side:has(:focus-visible){width:236px;box-shadow:0 8px 28px rgba(0,0,0,.12)}
   .tr-side .tr-tabs button,.tr-navh{white-space:nowrap;overflow:hidden}
