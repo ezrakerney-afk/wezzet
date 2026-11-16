@@ -22,8 +22,8 @@ export default {
     if (/^\/api\/(paste|read|calc|json|csv|hash|base64|uuid|dns|status|headers|cron|regex|diff|count|password|random)(\/|$)/.test(url.pathname) || url.pathname === "/api" || url.pathname === "/api/") return tools(request, env, url);
     if (url.pathname === "/api/transport") return transport(request, url, env);
     if (url.pathname === "/api/search") return wzSearch(request, env, url);
-    if (url.pathname === "/api/ai" || url.pathname.startsWith("/api/ai/")) return wzAI(request, env);
-    if (url.pathname === "/api/vision") return wzVision(request, env);
+    if (url.pathname === "/api/ai" || url.pathname.startsWith("/api/ai/") || url.pathname === "/api/vision") return wzLimitsOn(env) ? wzAiMetered(request, env, url) : url.pathname === "/api/vision" ? wzVision(request, env) : wzAI(request, env);
+    if (url.pathname === "/api/pro/webhook") return wzStripeWebhook(request, env).catch(() => json({ error: "Webhook failed." }, 500));
     if (url.pathname === "/mcp" || url.pathname === "/mcp/") return mcp(request, env, ctx);
     if (url.pathname === "/.well-known/openai-apps-challenge") return new Response("v8vAC3Vl010wGRCljQ8liZm8T5PNNIGD8ORw4yqaz0A", { headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store" } });
     if (url.pathname === "/mcp/app" || url.pathname === "/mcp/app/") return mcpApp(request, env, ctx);
@@ -635,6 +635,7 @@ async function acRoute(request, env, url, ctx, viaAgent) {
       d.as = a.name; // a token always acts as its own agent
     }
   }
+  if (me && me.agent && wzLimitsOn(env)) { const g = await wzAgentGate(env, me.agent); if (g) return acOut(text ? 'error: ' + g : { error: g, limit: true }, 429); }
   if (p === '/api/aicomms/me') return me ? acOut(text ? 'you are ' + (me.agent || me.name) : { name: me.agent || me.name, agent: !!me.agent }) : acOut(text ? 'not signed in' : { error: 'no key' }, 401);
   const ag = await acAgentRoute(request, env, me, p, arg, text, ctx);
   if (ag) return ag;
@@ -3311,10 +3312,34 @@ async function chRoute(request, env, url, ctx) {
     return chOut({ me: { id: user.id, name: user.name } }, 200, { "set-cookie": chCookie(token, 2592000) });
   }
 
+  // Forgot password: login name + recovery code sets a new password, signs out everywhere, and gives a fresh code.
+  if (post && p === "/recover") {
+    const name = clean(d.name, 24), code = wzCodeNorm(d.code), pw = String(d.password || "");
+    if (pw.length < 8 || pw.length > 200) return chOut({ error: "Passwords need at least 8 characters." }, 400);
+    const fails = (await DB.prepare("SELECT COUNT(*) n FROM actions WHERE who = ? AND action = 'chat-recover' AND created_at > ?").bind(ip, now - 3600e3).first()).n;
+    if (fails >= 5) return chOut({ error: "Too many tries. Wait an hour." }, 429);
+    await wzProInit(DB);
+    const u = await DB.prepare("SELECT u.id, COALESCE(u.display, u.name) AS name, u.banned, r.hash FROM ch_users u JOIN wz_recovery r ON r.uid = u.id WHERE u.name = ?").bind(name).first();
+    if (!u || !code || (await acHash("wz-recovery|" + code)) !== u.hash) {
+      await DB.prepare("INSERT INTO actions (who, action, created_at) VALUES (?, 'chat-recover', ?)").bind(ip, now).run();
+      return chOut({ error: "That login name and recovery code don't match." }, 401);
+    }
+    if (u.banned) return chOut({ error: "This account is suspended." }, 403);
+    const salt = crypto.randomUUID(), fresh = wzNewCode(), token = crypto.randomUUID() + crypto.randomUUID();
+    await DB.batch([
+      DB.prepare("UPDATE ch_users SET pass = ?, salt = ? WHERE id = ?").bind(await chPass(pw, salt), salt, u.id),
+      DB.prepare("DELETE FROM ch_sessions WHERE uid = ?").bind(u.id),
+      DB.prepare("UPDATE wz_recovery SET hash = ?, created = ? WHERE uid = ?").bind(await acHash("wz-recovery|" + wzCodeNorm(fresh)), now, u.id),
+      DB.prepare("INSERT INTO ch_sessions (token, uid, created) VALUES (?, ?, ?)").bind(await acHash(token), u.id, now),
+    ]);
+    return chOut({ me: { id: u.id, name: u.name }, recovery: fresh }, 200, { "set-cookie": chCookie(token, 2592000) });
+  }
+
   const raw = (request.headers.get("cookie") || "").match(/(?:^|;\s*)wzc=([a-f0-9-]{64,80})/);
   const sess = raw && await DB.prepare(`SELECT u.id, ${CH_NAME} AS name, u.role, u.banned, s.token FROM ch_sessions s JOIN ch_users u ON u.id = s.uid WHERE s.token = ? AND s.created > ?`)
     .bind(await acHash(raw[1]), now - 30 * 86400e3).first();
   if (p === "/google/start" || p === "/google") return googleLogin(request, env, p, d, sess, ip);
+  if (p === "/use" || p.startsWith("/pro/") || p === "/ai" || p.startsWith("/ai/") || p === "/vision") return wzProRoute(request, env, url, p, d, sess, ip);
   if (!sess || sess.banned) return chOut({ me: null, error: sess ? "This account is suspended." : "Sign in to chat." }, p === "/me" ? 200 : 401);
   const me = sess.id;
   if (p === "/tracker" || p.startsWith("/tracker/")) return trBrowser(request, env, p, d, q, sess);
@@ -3340,7 +3365,45 @@ async function chRoute(request, env, url, ctx) {
     const u = await DB.prepare("SELECT name, created, (SELECT 1 FROM ch_google g WHERE g.uid = ch_users.id) AS google FROM ch_users WHERE id = ?").bind(me).first();
     const ownerId = await trOwnerId(env);
     // login = the private sign-in name, shown only to its own account. Google-only accounts have none.
-    return chOut({ me: { id: me, name: sess.name }, agents, login: u.name.startsWith("google:") ? "" : u.name, created: u.created, google: !!u.google, tracker: ownerId === me });
+    await wzProInit(DB);
+    const extra = await DB.batch([
+      DB.prepare("SELECT pass IS NOT NULL AS has FROM ch_users WHERE id = ?").bind(me),
+      DB.prepare("SELECT created FROM wz_recovery WHERE uid = ?").bind(me),
+      DB.prepare("SELECT COUNT(*) n FROM ch_sessions WHERE uid = ? AND created > ?").bind(me, now - 30 * 86400e3),
+    ]).then((rs) => rs.map((r) => (r.results || [])[0] || null)).catch(() => [null, null, null]);
+    return chOut({ me: { id: me, name: sess.name }, agents, login: u.name.startsWith("google:") ? "" : u.name, created: u.created, google: !!u.google, tracker: ownerId === me,
+      password: !!extra[0]?.has, recovery: extra[1]?.created || null, sessions: extra[2]?.n || 1, plan: await wzPlan(env, me) });
+  }
+  // Change (or, for Google-only accounts, set) the password. Signs out every other device.
+  if (post && p === "/account/password") {
+    const pw = String(d.password || ""), old = String(d.old || "");
+    if (pw.length < 8 || pw.length > 200) return chOut({ error: "Passwords need at least 8 characters." }, 400);
+    const u = await DB.prepare("SELECT name, pass, salt FROM ch_users WHERE id = ?").bind(me).first();
+    if (u.pass) {
+      const fails = (await DB.prepare("SELECT COUNT(*) n FROM actions WHERE who = ? AND action = 'chat-login' AND created_at > ?").bind(ip, now - 900e3).first()).n;
+      if (fails >= 10) return chOut({ error: "Too many tries. Wait 15 minutes." }, 429);
+      if ((await chPass(old, u.salt)) !== u.pass) {
+        await DB.prepare("INSERT INTO actions (who, action, created_at) VALUES (?, 'chat-login', ?)").bind(ip, now).run();
+        return chOut({ error: "Your current password is wrong." }, 401);
+      }
+    } else if (u.name.startsWith("google:")) return chOut({ error: "This account signs in with Google only." }, 400);
+    const salt = crypto.randomUUID();
+    await DB.batch([
+      DB.prepare("UPDATE ch_users SET pass = ?, salt = ? WHERE id = ?").bind(await chPass(pw, salt), salt, me),
+      DB.prepare("DELETE FROM ch_sessions WHERE uid = ? AND token <> ?").bind(me, sess.token),
+    ]);
+    return chOut({ ok: true });
+  }
+  if (post && p === "/account/signout-others") {
+    await DB.prepare("DELETE FROM ch_sessions WHERE uid = ? AND token <> ?").bind(me, sess.token).run();
+    return chOut({ ok: true });
+  }
+  // New recovery code (shown once; only its hash is kept). Replaces any older code.
+  if (post && p === "/account/recovery") {
+    await wzProInit(DB);
+    const code = wzNewCode();
+    await DB.prepare("INSERT INTO wz_recovery (uid, hash, created) VALUES (?, ?, ?) ON CONFLICT (uid) DO UPDATE SET hash = excluded.hash, created = excluded.created").bind(me, await acHash("wz-recovery|" + wzCodeNorm(code)), now).run();
+    return chOut({ code });
   }
   // Link an AI Comms agent by proving its token once. The token itself is never stored (only its hash, as before).
   if (post && p === "/account/link") {
@@ -5188,3 +5251,196 @@ async function trNotify(env, s, fresh) {
 }
 
 const WZ_MERGED = {"/decimal-to-binary": "/binary-to-decimal#from=10&to=2", "/hex-to-binary": "/binary-to-hex#from=16&to=2", "/octal-to-binary": "/binary-to-octal#from=8&to=2", "/decimal-to-hex": "/hex-to-decimal#from=10&to=16", "/decimal-to-octal": "/octal-to-decimal#from=10&to=8", "/octal-to-hex": "/hex-to-octal#from=8&to=16", "/binary-to-text": "/ascii-to-binary#reverse=1", "/binary": "/ascii-to-binary", "/hex-to-text": "/ascii-to-hex#reverse=1", "/fraction-to-decimal": "/decimal-to-fraction#from=frac", "/percent-to-decimal": "/decimal-to-percent#from=pct", "/percent-to-fraction": "/fraction-to-percent#from=pct", "/ppm-to-percent": "/ppm-converter#from=ppm", "/percent-to-ppm": "/ppm-converter#from=pct", "/ppm-to-ppb": "/ppm-converter#from=ppm", "/ppb-to-ppm": "/ppm-converter#from=ppb", "/dms-to-degrees": "/degrees-to-dms#from=dms"};
+
+// Recovery codes: 20 letters/digits (100 bits), shown as XXXXX-XXXXX-XXXXX-XXXXX. No 0/O/1/I to avoid misreading.
+const WZ_CODE_ABC = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+function wzNewCode() {
+  const b = crypto.getRandomValues(new Uint8Array(20));
+  const c = [...b].map((x) => WZ_CODE_ABC[x & 31]).join("");
+  return c.match(/.{5}/g).join("-");
+}
+const wzCodeNorm = (s) => { const c = String(s || "").toUpperCase().replace(/[^A-Z0-9]/g, ""); return c.length === 20 ? c : ""; };
+
+// ---- Wezzet Pro: plan limits, daily usage, Stripe subscriptions ----
+// Everything here is OFF until the Pages variable PRO_LIMITS is "on". With it off nothing is counted or blocked.
+// Stripe stays off until STRIPE_SECRET_KEY, STRIPE_PRICE_ID and STRIPE_WEBHOOK_SECRET are set (see docs/pro-setup.md).
+// Free daily caps per tool (per account when signed in, else per IP). Pro accounts have no caps. Small converters are never metered.
+const WZ_FREE = {
+  transcribe: { n: 15, label: "Transcriptions" },
+  "remove-bg": { n: 20, label: "Background removals" },
+  noise: { n: 20, label: "Noise removals" },
+  clip: { n: 30, label: "Video clips" },
+  ai: { n: 60, label: "AI chat messages" },
+  vision: { n: 20, label: "AI image questions" },
+};
+const WZ_FREE_AGENTS = 7; // AI Comms agents linked to one free account that can be online at once
+const WZ_PRO_OK = ["active", "trialing", "past_due"]; // past_due = Stripe is still retrying the card
+const wzLimitsOn = (env) => /^(on|1|true)$/i.test(String(env.PRO_LIMITS || ""));
+const wzStripeOn = (env) => !!(env.STRIPE_SECRET_KEY && env.STRIPE_PRICE_ID && env.STRIPE_WEBHOOK_SECRET);
+const wzDay = (t = Date.now()) => Math.floor(t / 86400e3); // UTC day number
+let wzProReady = false;
+async function wzProInit(DB) {
+  if (wzProReady) return;
+  for (const s of [
+    "CREATE TABLE IF NOT EXISTS wz_usage (who TEXT NOT NULL, day INTEGER NOT NULL, tool TEXT NOT NULL, n INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (who, day, tool))",
+    "CREATE TABLE IF NOT EXISTS wz_pro (uid INTEGER PRIMARY KEY, customer TEXT, sub TEXT, status TEXT, until INTEGER, updated INTEGER)",
+    "CREATE INDEX IF NOT EXISTS wz_pro_customer ON wz_pro (customer)",
+    "CREATE TABLE IF NOT EXISTS wz_recovery (uid INTEGER PRIMARY KEY, hash TEXT NOT NULL, created INTEGER)",
+    "CREATE INDEX IF NOT EXISTS ch_sessions_uid ON ch_sessions (uid)",
+    "CREATE INDEX IF NOT EXISTS wz_links_uid ON wz_links (uid)",
+  ]) { try { await DB.prepare(s).run(); } catch {} }
+  wzProReady = true;
+}
+async function wzIsPro(DB, uid) {
+  if (!uid) return false;
+  const r = await DB.prepare("SELECT status FROM wz_pro WHERE uid = ?").bind(uid).first();
+  return !!r && WZ_PRO_OK.includes(r.status);
+}
+// Session from the wzc cookie (only sent to /api/chat/*), or null.
+async function wzSession(request, DB) {
+  const raw = (request.headers.get("cookie") || "").match(/(?:^|;\s*)wzc=([a-f0-9-]{64,80})/);
+  if (!raw) return null;
+  return DB.prepare("SELECT u.id, u.banned FROM ch_sessions s JOIN ch_users u ON u.id = s.uid WHERE s.token = ? AND s.created > ?").bind(await acHash(raw[1]), Date.now() - 30 * 86400e3).first();
+}
+// Count one use of a metered tool. Returns null when allowed, or an error message. One D1 write per use, none when limits are off.
+async function wzUse(env, tool, uid, ipHash) {
+  const lim = WZ_FREE[tool];
+  if (!lim || !wzLimitsOn(env) || !env.DB) return null;
+  await wzProInit(env.DB);
+  if (uid && await wzIsPro(env.DB, uid)) return null;
+  const who = uid ? "u" + uid : "i" + ipHash, day = wzDay();
+  const r = await env.DB.prepare("INSERT INTO wz_usage (who, day, tool, n) VALUES (?, ?, ?, 1) ON CONFLICT (who, day, tool) DO UPDATE SET n = n + 1 WHERE n < ? RETURNING n").bind(who, day, tool, lim.n).first();
+  if (Math.random() < 0.01) await env.DB.prepare("DELETE FROM wz_usage WHERE day < ?").bind(day - 2).run().catch(() => {});
+  if (r) return null;
+  return `You've used today's ${lim.n} free ${lim.label.toLowerCase()}. Get Wezzet Pro for unlimited use at wezzet.com/pro, or come back tomorrow.`;
+}
+// AI Comms: a free account can have WZ_FREE_AGENTS linked agents online at once. The longest-linked online agents keep working;
+// newer ones wait until one goes quiet (AC_LIVE). Agents not linked to an account aren't capped.
+const wzAgentOk = new Map();
+async function wzAgentGate(env, agent) {
+  if (!wzLimitsOn(env) || !agent) return null;
+  const now = Date.now(), hit = wzAgentOk.get(agent);
+  if (hit && hit > now) return null;
+  await wzProInit(env.DB);
+  const link = await env.DB.prepare("SELECT uid, ts FROM wz_links WHERE agent = ?").bind(agent).first();
+  if (link && !(await wzIsPro(env.DB, link.uid))) {
+    const n = (await env.DB.prepare("SELECT COUNT(*) n FROM wz_links l JOIN ac_agents a ON a.name = l.agent WHERE l.uid = ? AND a.seen > ? AND l.agent <> ? AND (l.ts < ? OR (l.ts = ? AND l.agent < ?))")
+      .bind(link.uid, now - AC_LIVE, agent, link.ts, link.ts, agent).first()).n;
+    if (n >= WZ_FREE_AGENTS) return `Free accounts can have ${WZ_FREE_AGENTS} agents online at once. Let one go quiet for 15 minutes, or get Wezzet Pro at wezzet.com/pro.`;
+  }
+  if (wzAgentOk.size > 5000) wzAgentOk.clear();
+  wzAgentOk.set(agent, now + 60e3);
+  return null;
+}
+// Which /api/ai requests count as one AI message (not the routine's triage/support helpers or the help text).
+const wzAiTool = (url, method) => /^\/api\/(chat\/)?vision\/?$/.test(url.pathname) ? "vision"
+  : /^\/api\/(chat\/)?ai\/?$/.test(url.pathname) && (method === "POST" || url.searchParams.has("q") || url.searchParams.has("text")) ? "ai" : null;
+// /api/ai and /api/vision, called directly (no cookie: metered per IP) or as /api/chat/ai, /api/chat/vision (signed-in account).
+async function wzAiMetered(request, env, url, sess, ipHash) {
+  const tool = wzAiTool(url, request.method);
+  if (tool && wzLimitsOn(env)) {
+    if (!ipHash) ipHash = await sha(SALT + "|ip|" + (request.headers.get("cf-connecting-ip") || "local"));
+    if (sess === undefined && env.DB) sess = await wzSession(request, env.DB).catch(() => null);
+    const err = await wzUse(env, tool, sess && !sess.banned ? sess.id : null, ipHash);
+    if (err) return json({ error: err, limit: true }, 429);
+  }
+  return tool === "vision" ? wzVision(request, env) : wzAI(request, env);
+}
+async function wzPlan(env, uid) {
+  await wzProInit(env.DB);
+  const pro = await env.DB.prepare("SELECT status, until FROM wz_pro WHERE uid = ?").bind(uid).first();
+  const isPro = !!pro && WZ_PRO_OK.includes(pro.status);
+  const used = Object.fromEntries((await env.DB.prepare("SELECT tool, n FROM wz_usage WHERE who = ? AND day = ?").bind("u" + uid, wzDay()).all()).results.map((r) => [r.tool, r.n]));
+  return {
+    plan: isPro ? "pro" : "free", status: pro?.status || null, until: pro?.until ? pro.until * 1000 : null,
+    limits: wzLimitsOn(env), stripe: wzStripeOn(env), canManage: !!pro,
+    usage: Object.entries(WZ_FREE).map(([tool, l]) => ({ tool, label: l.label, used: used[tool] || 0, limit: isPro ? null : l.n })),
+    agents: { limit: isPro ? null : WZ_FREE_AGENTS },
+  };
+}
+async function wzStripe(env, path, form) {
+  const r = await fetch("https://api.stripe.com/v1/" + path, {
+    method: "POST",
+    headers: { authorization: "Bearer " + env.STRIPE_SECRET_KEY, "content-type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams(form).toString(),
+  });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(d.error?.message || "Stripe error " + r.status);
+  return d;
+}
+// /api/chat/use, /api/chat/pro/*, /api/chat/ai, /api/chat/vision. sess may be null (signed out).
+async function wzProRoute(request, env, url, p, d, sess, ip) {
+  const DB = env.DB, post = request.method === "POST";
+  const uid = sess && !sess.banned ? sess.id : null;
+  if (p === "/ai" || p.startsWith("/ai/") || p === "/vision") {
+    const u2 = new URL(url); u2.pathname = url.pathname.replace("/api/chat/", "/api/");
+    const r2 = new Request(u2, { method: request.method, headers: request.headers, body: post ? JSON.stringify(d) : undefined });
+    return wzAiMetered(r2, env, u2, sess, ip);
+  }
+  // Browser-only tools ask before each run. Soft limit: it only works because the page asks.
+  if (post && p === "/use") {
+    const err = await wzUse(env, String(d.tool || ""), uid, ip);
+    return chOut(err ? { ok: false, error: err } : { ok: true }, err ? 429 : 200);
+  }
+  if (p === "/pro/status") return chOut({ limits: wzLimitsOn(env), stripe: wzStripeOn(env), price: "$5/month", free: WZ_FREE, freeAgents: WZ_FREE_AGENTS, ...(uid ? { me: await wzPlan(env, uid) } : {}) });
+  if (!uid) return chOut({ error: "Sign in first." }, 401);
+  if (post && (p === "/pro/checkout" || p === "/pro/portal")) {
+    if (!wzStripeOn(env)) return chOut({ error: "Wezzet Pro isn't open yet." }, 503);
+    await wzProInit(DB);
+    const row = await DB.prepare("SELECT customer, status FROM wz_pro WHERE uid = ?").bind(uid).first();
+    try {
+      if (p === "/pro/portal") {
+        if (!row?.customer) return chOut({ error: "You don't have a subscription yet." }, 400);
+        const s = await wzStripe(env, "billing_portal/sessions", { customer: row.customer, return_url: url.origin + "/signin" });
+        return chOut({ url: s.url });
+      }
+      if (row && WZ_PRO_OK.includes(row.status)) return chOut({ error: "You already have Wezzet Pro." }, 400);
+      const form = {
+        mode: "subscription", "line_items[0][price]": env.STRIPE_PRICE_ID, "line_items[0][quantity]": "1",
+        success_url: url.origin + "/signin?pro=thanks", cancel_url: url.origin + "/pro",
+        client_reference_id: String(uid), "subscription_data[metadata][uid]": String(uid), "metadata[uid]": String(uid), allow_promotion_codes: "true",
+      };
+      if (row?.customer) form.customer = row.customer;
+      if (/^(on|1|true)$/i.test(String(env.STRIPE_AUTOMATIC_TAX || ""))) form["automatic_tax[enabled]"] = "true";
+      const s = await wzStripe(env, "checkout/sessions", form);
+      return chOut({ url: s.url });
+    } catch (e) { return chOut({ error: "Payment page didn't open: " + e.message }, 502); }
+  }
+  return chOut({ error: "Not found." }, 404);
+}
+// Stripe-Signature: t=TIMESTAMP,v1=HEX[,v1=HEX]. HMAC-SHA256 of "t.body" with the webhook secret, within 5 minutes.
+async function wzStripeVerify(raw, header, secret, now = Date.now()) {
+  let t = 0; const sigs = [];
+  for (const kv of String(header || "").split(",")) { const [k, v] = kv.split("="); if (k === "t") t = +v; else if (k === "v1" && v) sigs.push(v); }
+  if (!t || !sigs.length || Math.abs(now / 1000 - t) > 300) return false;
+  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const mac = [...new Uint8Array(await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(t + "." + raw)))].map((b) => b.toString(16).padStart(2, "0")).join("");
+  return sigs.some((s) => s.length === mac.length && [...s].reduce((x, c, i) => x | (c.charCodeAt(0) ^ mac.charCodeAt(i)), 0) === 0);
+}
+// POST /api/pro/webhook (Stripe). Flips wz_pro.status. Older events never overwrite newer ones.
+async function wzStripeWebhook(request, env) {
+  if (request.method !== "POST") return json({ error: "POST only" }, 405);
+  if (!wzStripeOn(env) || !env.DB) return json({ error: "Stripe is not set up." }, 503);
+  const raw = await request.text();
+  if (!(await wzStripeVerify(raw, request.headers.get("stripe-signature"), env.STRIPE_WEBHOOK_SECRET))) return json({ error: "Bad signature." }, 400);
+  let ev; try { ev = JSON.parse(raw); } catch { return json({ error: "Bad JSON." }, 400); }
+  const DB = env.DB, o = ev.data?.object || {}, at = Number(ev.created) || Math.floor(Date.now() / 1000);
+  await wzProInit(DB);
+  const save = (uid, customer, sub, status, until) => DB.prepare(`INSERT INTO wz_pro (uid, customer, sub, status, until, updated) VALUES (?, ?, ?, ?, ?, ?)
+    ON CONFLICT (uid) DO UPDATE SET customer = COALESCE(excluded.customer, customer), sub = COALESCE(excluded.sub, sub), status = excluded.status, until = COALESCE(excluded.until, until), updated = excluded.updated
+    WHERE excluded.updated >= COALESCE(wz_pro.updated, 0)`).bind(uid, customer || null, sub || null, status, until || null, at).run();
+  const uidOf = async (meta, customer) => {
+    const n = parseInt(meta?.uid, 10);
+    if (n > 0) return n;
+    return customer ? (await DB.prepare("SELECT uid FROM wz_pro WHERE customer = ?").bind(customer).first())?.uid || null : null;
+  };
+  if (ev.type === "checkout.session.completed" && o.mode === "subscription") {
+    const uid = parseInt(o.client_reference_id, 10) || await uidOf(o.metadata, o.customer);
+    if (uid) await save(uid, o.customer, o.subscription, "active", null);
+  } else if (/^customer\.subscription\.(created|updated|deleted)$/.test(ev.type)) {
+    const uid = await uidOf(o.metadata, o.customer);
+    const until = o.current_period_end || o.items?.data?.[0]?.current_period_end || null;
+    if (uid) await save(uid, o.customer, o.id, ev.type.endsWith("deleted") ? "canceled" : String(o.status || "unknown"), until);
+  }
+  return json({ received: true });
+}
