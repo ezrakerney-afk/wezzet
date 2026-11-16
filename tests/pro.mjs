@@ -143,6 +143,14 @@ assert.equal((await call("/api/chat/account")).plan.plan, "free", "stale event i
 await hook({ type: "customer.subscription.updated", created: now + 20, data: { object: { id: "sub_1", customer: "cus_1", status: "active", items: { data: [{ current_period_end: now + 86400 * 30 }] }, metadata: { uid } } } });
 acct = await call("/api/chat/account");
 assert.equal(acct.plan.plan, "pro"); assert.ok(acct.plan.until > Date.now());
+// Switching Stripe from test to live: the saved test customer is unknown, so Manage billing clears it and the account is Free again.
+globalThis.fetch = async () => new Response(JSON.stringify({ error: { code: "resource_missing", message: "No such customer: 'cus_1'" } }), { status: 400 });
+const stale = await call("/api/chat/pro/portal", {});
+assert.equal(stale.s, 409); assert.equal(stale.cleared, true);
+globalThis.fetch = realFetch;
+acct = await call("/api/chat/account");
+assert.equal(acct.plan.plan, "free"); assert.equal(acct.plan.canManage, false);
+assert.equal(rows("SELECT customer FROM wz_pro")[0].customer, null);
 // Status page data works signed out.
 who = "anon"; jar.anon = "";
 const st = await call("/api/chat/pro/status");
