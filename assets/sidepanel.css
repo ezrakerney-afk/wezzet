@@ -8,11 +8,19 @@
 .dashboard .sidebar nav a:hover{background:color-mix(in srgb,var(--ink) 6%,transparent);color:var(--ink)}
 .dashboard .sidebar nav a[aria-current="page"],.dashboard .sidebar nav a[aria-current="page"]:hover{background:var(--ink)!important;color:var(--bg)!important}
 .dashboard .sidebar .sidebar-bottom{padding:14px 10px 0;white-space:nowrap;overflow:hidden}
+@media (min-width:761px){
+  .dashboard .sidebar,.home-page .home-sidebar{left:12px;top:92px;bottom:auto;max-height:calc(100vh - 104px);padding:10px;border:1px solid var(--line);border-radius:12px;background:var(--bg);z-index:19}
+  .home-page .home-sidebar{top:85px;max-height:calc(100vh - 97px);border-color:var(--line)}
+  .dashboard .sidebar .sidebar-bottom{margin-top:8px}
+  .dashboard .dash-main,.comms-page .comms-footer{margin-left:270px}
+  .home-content{margin-left:234px}
+}
 @media (min-width:761px) and (hover:hover){
-  .dashboard .sidebar,.home-page .home-sidebar{width:58px}
-  .dashboard .sidebar:hover,.dashboard .sidebar:focus-within,.home-page .home-sidebar:hover,.home-page .home-sidebar:focus-within{width:232px;box-shadow:0 8px 28px rgba(0,0,0,.12)}
+  .dashboard .sidebar,.home-page .home-sidebar{width:59px}
+  .dashboard .sidebar:hover,.dashboard .sidebar:focus-within,.home-page .home-sidebar:hover,.home-page .home-sidebar:focus-within{width:236px;box-shadow:0 8px 28px rgba(0,0,0,.12)}
   .dashboard .sidebar:not(:hover):not(:focus-within) nav a{padding:8px 10px}
-  .dashboard .dash-main,.home-content,.comms-page .comms-footer{margin-left:58px}
+  .dashboard .sidebar:not(:hover):not(:focus-within) .sidebar-bottom{display:none}
+  .dashboard .dash-main,.home-content,.comms-page .comms-footer{margin-left:83px}
 }
 @media (max-width:760px){
   .dashboard .sidebar{padding:8px 12px;overflow-x:auto}
