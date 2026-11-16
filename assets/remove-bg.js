@@ -1,4 +1,4 @@
-import { wzUse } from "./limits.js?v=1";
+import { wzUse } from "./limits.js?v=2";
 /* Wezzet background remover. Runs an open-source cutout model in the browser
    with Transformers.js; the model downloads once, photos never leave the device.
    Runs on the CPU (wasm); full-resolution images can require substantial device memory. */

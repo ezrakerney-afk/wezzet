@@ -31,6 +31,7 @@
     return out.join("");
   }
 
+  const proPopup = (text) => import("/assets/limits.js?v=2").then((m) => m.wzProPopup({ text })).catch(() => {});
   function say(who, text, links = [], sources = []) {
     const d = document.createElement("div"); d.className = "ai-msg ai-" + who;
     const body = document.createElement("div"); body.className = "ai-body";
@@ -130,7 +131,7 @@ Answer: I am not sure. The results give the opening time but not the cost.`;
       const r = await fetch("/api/chat/vision", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ question: text, image }) });
       const j = await r.json(); b.remove();
       if (r.ok && j.reply) { history.push({ role: "assistant", content: j.reply }); return say("bot", j.reply); }
-      if (r.status === 429 && j.limit) return say("bot", j.error, [["Get Wezzet Pro", "/pro"]]);
+      if (r.status === 429 && j.limit) { proPopup(j.error); return say("bot", j.error, [["Get Wezzet Pro", "/pro"]]); }
     } catch (e) { b.remove(); }
     say("bot", "I couldn't read the image right now. Try again in a minute, or ask without the image.", [["Remove image", null, () => { image = null; say("bot", "Image removed."); }]]);
   }
@@ -178,7 +179,7 @@ Answer: I am not sure. The results give the opening time but not the cost.`;
         catch (e) { if (!reply.trim()) throw e; }
         reply = reply.trim();
       } else if (r.ok) { const j = await r.json(); reply = j.reply || ""; }
-      else if (r.status === 429) { const j = await r.json().catch(() => ({})); if (j.limit) { bubble.remove(); return say("bot", j.error, [["Get Wezzet Pro", "/pro"]]); } }
+      else if (r.status === 429) { const j = await r.json().catch(() => ({})); if (j.limit) { bubble.remove(); proPopup(j.error); return say("bot", j.error, [["Get Wezzet Pro", "/pro"]]); } }
       if (reply) { history.push({ role: "assistant", content: reply }); bubble.remove(); return say("bot", reply, [], links); }
     } catch (e) { if (ctl && ctl.signal.aborted && ctl.signal.reason !== "slow") { bubble.remove(); return; } }
     const eng = await getEngine(status);
