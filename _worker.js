@@ -5543,7 +5543,7 @@ async function wzStripeWebhook(request, env) {
 // Safety: user files are only ever served with a CSP sandbox (no allow-same-origin), so they run in an opaque origin.
 // They can't read wezzet.com cookies, storage or API responses, and the site's cookies are SameSite and HttpOnly.
 // The page at /host/<name> is a small Wezzet frame with a report button around a sandboxed iframe of the files.
-const HOST_MAX = 2 * 1048576, HOST_FILES = 200, HOST_SITES = 5, HOST_TOTAL = 200 * 1048576, HOST_HIDE_AT = 3;
+const HOST_MAX = 2 * 1048576, HOST_FILES = 200, HOST_SITES = 1, HOST_SITES_PRO = 5, HOST_TOTAL = 200 * 1048576, HOST_HIDE_AT = 3;
 const HOST_LIMITS = { upload: [30, 86400], report: [20, 3600] };
 const HOST_RESERVED = /^(wezzet|admin|administrator|official|mod|mods|moderator|staff|support|help|api|new|edit|upload|login|signin|signup|account|accounts|settings|raw|static|assets|www|mail|host|hosts|about|contact|privacy|terms|security|billing|pro|paypal|stripe|google|apple|microsoft|bank|wallet|verify|password|null|undefined|index)(-|$)/;
 const HOST_BAD = /(fuck|shit|cunt|nigg|fag|porn|sex|nazi|hitler|rape|kill-?you|phish|free-?robux|giftcard|crypto-?giveaway)/;
@@ -5716,7 +5716,11 @@ async function hostApi(request, env, url, ctx) {
     if (old && old.hidden && !me.admin) return json({ error: "This page was taken down after reports. Contact us if you think that's a mistake." }, 403);
     if (!old) {
       const n = await env.DB.prepare("SELECT COUNT(*) AS n FROM host_sites WHERE uid = ?").bind(me.id).first();
-      if (n.n >= HOST_SITES && !me.admin) return json({ error: "You can host up to 5 pages. Delete one to add another." }, 400);
+      // Free accounts get 1 page, Pro gets 5. The Pro lookup only runs when a free account is already at its limit.
+      if (n.n >= HOST_SITES && !me.admin) {
+        const pro = n.n < HOST_SITES_PRO && await wzIsPro(env.DB, me.id).catch(() => false);
+        if (!pro) return json({ error: n.n >= HOST_SITES_PRO ? "You can host up to 5 pages. Delete one to add another." : "Free accounts can host 1 page. Get Wezzet Pro for up to 5, or delete your page to make a new one.", pro: n.n < HOST_SITES_PRO }, 403);
+      }
     }
     if (!(await hostCount(env, "u" + me.id, "upload"))) return json({ error: "You've uploaded 30 times today. Try again tomorrow." }, 429);
     // Merge (the editor saving one file of a bigger site): keep the other files, replace only the ones sent.

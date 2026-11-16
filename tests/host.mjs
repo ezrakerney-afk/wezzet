@@ -42,6 +42,8 @@ const raw = async (who, path) => worker.fetch(new Request("https://wezzet.com" +
 const b64 = (t) => Buffer.from(t).toString("base64");
 assert.ok((await call("a", "/api/chat/signup", { name: "alice1", username: "alice", password: "password123", age13: 1 })).me);
 assert.ok((await call("b", "/api/chat/signup", { name: "bobby1", username: "bobby", password: "password123", age13: 1 })).me);
+// Alice has Pro (5 pages), Bob is free (1 page).
+sql.exec("CREATE TABLE IF NOT EXISTS wz_pro (uid INTEGER PRIMARY KEY, customer TEXT, sub TEXT, status TEXT, until INTEGER, updated INTEGER); INSERT INTO wz_pro (uid, status) VALUES (1, 'active')");
 // Needs sign-in; name rules.
 assert.equal((await call("anon", "/api/chat/host/upload", { name: "my-game", files: [{ path: "a.html", data: b64("<p>hi") }] })).s, 401);
 assert.equal((await call("a", "/api/chat/host/upload", { name: "admin", files: [{ path: "a.html", data: b64("<p>hi") }] })).s, 400);
@@ -81,8 +83,11 @@ assert.equal((await raw("anon", v2.slice(0, -1))).status, 301);
 assert.equal((await raw("anon", "/host/nothing-here")).status, 404);
 // Mine, limits.
 assert.equal((await call("a", "/api/chat/host/mine")).sites.length, 2);
-for (const n of ["p-three", "p-four", "p-five"]) assert.equal((await call("a", "/api/chat/host/upload", { name: n, files: [{ path: "i.html", data: b64("x") }] })).s, 201);
-assert.equal((await call("a", "/api/chat/host/upload", { name: "p-six", files: [{ path: "i.html", data: b64("x") }] })).s, 400);
+assert.equal((await call("b", "/api/chat/host/upload", { name: "bob-one", files: [{ path: "i.html", data: b64("x") }] })).s, 201);
+assert.equal((await call("b", "/api/chat/host/upload", { name: "bob-two", files: [{ path: "i.html", data: b64("x") }] })).pro, true);
+await call("b", "/api/chat/host/delete", { name: "bob-one" });
+ for (const n of ["p-three", "p-four", "p-five"]) assert.equal((await call("a", "/api/chat/host/upload", { name: n, files: [{ path: "i.html", data: b64("x") }] })).s, 201);
+assert.equal((await call("a", "/api/chat/host/upload", { name: "p-six", files: [{ path: "i.html", data: b64("x") }] })).pro, false);
 // Replace keeps the name and bumps version.
 await new Promise((ok) => setTimeout(ok, 5));
 assert.equal((await call("a", "/api/chat/host/upload", { name: "my-game", files: [{ path: "index.html", data: b64("v2 game") }] })).s, 200);
