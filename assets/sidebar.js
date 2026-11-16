@@ -2,7 +2,7 @@
 document.querySelectorAll('.sidebar nav a').forEach(link => {
   const label = link.textContent.trim().replace(/^[^A-Za-z]+/, '').trim();
   link.setAttribute('aria-label', label);
-  link.title = label;
+  link.removeAttribute('title');
 });
 /* After a mouse click, drop focus so the panel tucks away again once the pointer leaves. */
 document.querySelectorAll('.sidebar').forEach(side => {
