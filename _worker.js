@@ -5361,7 +5361,7 @@ async function wzPlan(env, uid) {
 async function wzStripe(env, path, form) {
   const r = await fetch("https://api.stripe.com/v1/" + path, {
     method: "POST",
-    headers: { authorization: "Bearer " + env.STRIPE_SECRET_KEY, "content-type": "application/x-www-form-urlencoded" },
+    headers: { authorization: "Bearer " + String(env.STRIPE_SECRET_KEY).trim(), "content-type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams(form).toString(),
   });
   const d = await r.json().catch(() => ({}));
@@ -5382,7 +5382,7 @@ async function wzProRoute(request, env, url, p, d, sess, ip) {
     const err = await wzUse(env, String(d.tool || ""), uid, ip);
     return chOut(err ? { ok: false, error: err } : { ok: true }, err ? 429 : 200);
   }
-  if (p === "/pro/status") return chOut({ limits: wzLimitsOn(env), stripe: wzStripeOn(env), price: "$5/month", free: WZ_FREE, freeAgents: WZ_FREE_AGENTS, ...(uid ? { me: await wzPlan(env, uid) } : {}) });
+  if (p === "/pro/status") return chOut({ limits: wzLimitsOn(env), stripe: wzStripeOn(env), keyKind: (String(env.STRIPE_SECRET_KEY || "").trim().match(/^(sk|rk|pk)_(live|test)_/) || [""])[0] || (env.STRIPE_SECRET_KEY ? "unknown" : ""), price: "$5/month", free: WZ_FREE, freeAgents: WZ_FREE_AGENTS, ...(uid ? { me: await wzPlan(env, uid) } : {}) });
   if (!uid) return chOut({ error: "Sign in first." }, 401);
   if (post && (p === "/pro/checkout" || p === "/pro/portal")) {
     if (!wzStripeOn(env)) return chOut({ error: "Wezzet Pro isn't open yet." }, 503);
@@ -5403,7 +5403,7 @@ async function wzProRoute(request, env, url, p, d, sess, ip) {
       }
       if (row && WZ_PRO_OK.includes(row.status)) return chOut({ error: "You already have Wezzet Pro." }, 400);
       const form = {
-        mode: "subscription", "line_items[0][price]": env.STRIPE_PRICE_ID, "line_items[0][quantity]": "1",
+        mode: "subscription", "line_items[0][price]": String(env.STRIPE_PRICE_ID).trim(), "line_items[0][quantity]": "1",
         success_url: url.origin + "/signin?pro=thanks", cancel_url: url.origin + "/pro",
         client_reference_id: String(uid), "subscription_data[metadata][uid]": String(uid), "metadata[uid]": String(uid), allow_promotion_codes: "true",
       };
@@ -5411,7 +5411,11 @@ async function wzProRoute(request, env, url, p, d, sess, ip) {
       if (/^(on|1|true)$/i.test(String(env.STRIPE_AUTOMATIC_TAX || ""))) form["automatic_tax[enabled]"] = "true";
       const s = await wzStripe(env, "checkout/sessions", form);
       return chOut({ url: s.url });
-    } catch (e) { return chOut({ error: "Payment page didn't open: " + e.message }, 502); }
+    } catch (e) {
+      const k = String(env.STRIPE_SECRET_KEY || "").trim();
+      const hint = /^pk_/.test(k) ? " (STRIPE_SECRET_KEY is the publishable key; use the secret key)" : "";
+      return chOut({ error: "Payment page didn't open: " + e.message + hint }, 502);
+    }
   }
   return chOut({ error: "Not found." }, 404);
 }
@@ -5429,7 +5433,7 @@ async function wzStripeWebhook(request, env) {
   if (request.method !== "POST") return json({ error: "POST only" }, 405);
   if (!wzStripeOn(env) || !env.DB) return json({ error: "Stripe is not set up." }, 503);
   const raw = await request.text();
-  if (!(await wzStripeVerify(raw, request.headers.get("stripe-signature"), env.STRIPE_WEBHOOK_SECRET))) return json({ error: "Bad signature." }, 400);
+  if (!(await wzStripeVerify(raw, request.headers.get("stripe-signature"), String(env.STRIPE_WEBHOOK_SECRET).trim()))) return json({ error: "Bad signature." }, 400);
   let ev; try { ev = JSON.parse(raw); } catch { return json({ error: "Bad JSON." }, 400); }
   const DB = env.DB, o = ev.data?.object || {}, at = Number(ev.created) || Math.floor(Date.now() / 1000);
   await wzProInit(DB);
