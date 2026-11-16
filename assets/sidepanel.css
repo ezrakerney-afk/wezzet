@@ -1,9 +1,10 @@
 /* Side panel look shared by the home page and AI Comms (matches Chain Watch). */
 .sidebar .si{width:17px;height:17px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .dashboard .sidebar{padding:14px 10px;background:var(--bg)}
-.dashboard .sidebar .nav-caption{font-size:.68rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft);padding:12px 10px 4px;margin:0;white-space:nowrap;overflow:hidden}
-.dashboard .sidebar .nav-caption:first-child{padding-top:4px}
-.dashboard .sidebar nav{gap:2px;margin-bottom:6px}
+.dashboard .sidebar>*{flex-shrink:0}
+.dashboard .sidebar .nav-caption{font-size:.68rem;line-height:1.2;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft);padding:16px 10px 8px;margin:0;white-space:nowrap;overflow:hidden}
+.dashboard .sidebar .nav-caption:first-child{padding-top:6px}
+.dashboard .sidebar nav{gap:2px;margin-bottom:4px}
 .dashboard .sidebar nav a{padding:8px 10px;gap:10px;border-radius:8px;font-size:.93rem;font-weight:600;color:var(--ink);text-decoration:none;box-shadow:none}
 .dashboard .sidebar nav a:hover{background:color-mix(in srgb,var(--ink) 6%,transparent);color:var(--ink)}
 .dashboard .sidebar nav a[aria-current="page"],.dashboard .sidebar nav a[aria-current="page"]:hover{background:var(--ink)!important;color:var(--bg)!important}
