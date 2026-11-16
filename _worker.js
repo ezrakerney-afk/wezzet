@@ -5414,7 +5414,9 @@ async function wzProRoute(request, env, url, p, d, sess, ip) {
     } catch (e) {
       const k = String(env.STRIPE_SECRET_KEY || "").trim();
       const hint = /^pk_/.test(k) ? " (STRIPE_SECRET_KEY is the publishable key; use the secret key)" : "";
-      return chOut({ error: "Payment page didn't open: " + e.message + hint }, 502);
+      await DB.prepare("INSERT INTO actions (who, action, created_at) VALUES ('stripe-error', ?, ?)").bind(String(e.message).slice(0, 300), Date.now()).run().catch(() => {});
+      // Not 502: Cloudflare can replace 5xx bodies with its own page, which hid this message.
+      return chOut({ error: "Payment page didn't open: " + e.message + hint }, 400);
     }
   }
   return chOut({ error: "Not found." }, 404);
