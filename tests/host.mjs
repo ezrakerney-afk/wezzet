@@ -37,7 +37,7 @@ const call = async (who, path, body) => {
 
 
 const cache = new Map();
-globalThis.caches = { default: { match: async (k) => cache.get(k.url)?.clone(), put: async (k, r) => { cache.set(k.url, r); } } };
+globalThis.caches = { default: { match: async (k) => cache.get(k.url)?.clone(), put: async (k, r) => { cache.set(k.url, r); }, delete: async (k) => cache.delete(k.url) } };
 const raw = async (who, path) => worker.fetch(new Request("https://wezzet.com" + path, { headers: { cookie: jars[who], "cf-connecting-ip": "10.0.0.9" }, redirect: "manual" }), env, ctx);
 const b64 = (t) => Buffer.from(t).toString("base64");
 assert.ok((await call("a", "/api/chat/signup", { name: "alice1", username: "alice", password: "password123", age13: 1 })).me);
@@ -90,6 +90,24 @@ html = await (await raw("anon", "/host/my-game")).text();
 const src2 = html.match(/src="(\/host\/my-game\/v[a-z0-9]+\/)"/)[1];
 assert.notEqual(src, src2);
 assert.equal(await (await raw("anon", src2)).text(), "v2 game");
+// Explore list, sorting, views, settings, editor merge.
+const view = (n) => worker.fetch(new Request("https://wezzet.com/host/" + n, { headers: { "sec-fetch-dest": "document", "user-agent": "Mozilla/5.0" } }), env, ctx);
+await view("site-two"); await view("site-two"); await view("p-four");
+let ex = await call("anon", "/api/chat/host/explore?sort=top");
+assert.deepEqual(ex.sites.slice(0, 2).map((x) => [x.name, x.views]), [["site-two", 2], ["p-four", 1]]);
+assert.equal(ex.sites[0].by, "alice"); assert.equal(ex.stats.pages, 5); assert.equal(ex.stats.views, 3);
+assert.equal((await call("anon", "/api/chat/host/explore?sort=az")).sites[0].name, "my-game");
+assert.equal((await call("anon", "/api/chat/host/explore?sort=updated")).sites[0].name, "my-game");
+assert.equal((await call("b", "/api/chat/host/settings", { name: "p-five", listed: false })).s, 403);
+assert.equal((await call("a", "/api/chat/host/settings", { name: "p-five", listed: false, about: "hidden one" })).s, 200);
+assert.ok(!(await call("anon", "/api/chat/host/explore?sort=new")).sites.some((x) => x.name === "p-five"));
+assert.equal((await call("b", "/api/chat/host/source?name=site-two")).s, 404);
+let so = await call("a", "/api/chat/host/source?name=site-two");
+assert.equal(so.files.length, 3); assert.match(so.text, /two/);
+assert.equal((await call("a", "/api/chat/host/upload", { name: "site-two", merge: true, title: "Two", files: [{ path: "index.html", data: b64("edited two") }] })).files, 3);
+const v3 = (await (await raw("anon", "/host/site-two")).text()).match(/src="(\/host\/site-two\/v[a-z0-9]+\/)"/)[1];
+assert.equal(await (await raw("anon", v3)).text(), "edited two");
+assert.equal(await (await raw("anon", v3 + "css/a.css")).text(), "p{color:red}");
 // Reports: three people take it down.
 for (let i = 0; i < 3; i++) { ipN = 50 + i; jars.anon = ""; assert.equal((await call("anon", "/api/chat/host/report", { name: "p-three", reason: "spam" })).s, 200); }
 assert.equal((await raw("anon", "/host/p-three")).status, 410);
