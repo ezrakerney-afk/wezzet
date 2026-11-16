@@ -75,14 +75,18 @@
       return { level, word, raw: x, usd: x.usd || 0, dests, title: (x.usd >= 1 ? usd(x.usd) + " " : (x.amount || "") + " " + (x.asset || "") + " ") + (TAGS[x.tag] || "movement").toLowerCase() + " on " + x.chain, why: (WHY[x.tag] || WHY.transfer) + note, ts: x.ts, key: "a" + x.id, ref: { alert_id: x.id } };
     }
     const f = x.freeze_usd || 0, fresh = age < 12 * H;
-    let level = "skip", word = "";
+    let vd = x.vet; if (typeof vd === "string") { try { vd = JSON.parse(vd); } catch { vd = null; } }
+    let level = "skip", word = "", extra = "";
     if (x.reported) word = "Reported";
     else if (x.frozen === 1) word = "Frozen";
     else if (f >= 500000 && x.frozen === 0 && fresh) level = "now";
+    // Backtest of 2,190 Tether freezes: two thirds of the big ones were "parking" wallets with 5 or fewer senders, and money
+    // that left a just-frozen wallet is part of an open case. Both qualify at smaller sizes, still only after the checks pass.
+    else if (x.hop > 0 && x.frozen === 0 && fresh && ((f >= 250000 && vd && vd.peers > 0 && vd.peers <= 5) || (f >= 50000 && /Tether freeze/.test(x.source || "")))) { level = "now"; extra = /Tether freeze/.test(x.source || "") ? " This money left a wallet Tether froze, so it belongs to an open case and wasn't frozen with it." : " Only " + vd.peers + " wallet" + (vd.peers === 1 ? "" : "s") + " ever paid it: a parking wallet, the most common kind Tether freezes."; }
     else if (f >= 100000) level = "look";
     else if (f >= 1000 || x.bal_usd >= 100000) level = "skip";
     const why = x.reported ? "You already reported this address." : x.frozen === 1 ? "Already frozen by the issuer, so the money can't move. Nothing to report." : f >= 1000 ? usd(f) + " in USDT or USDC is sitting here" + (x.frozen === 0 ? " and is confirmed not frozen" : "") + ". Tether and Circle freeze these when the FBI asks, so a report can lock it in place." + (level === "now" ? "" : f >= 500000 && !fresh ? " The balance was last checked " + ago(x.bal_at) + ", so wait for a fresh check before reporting." : " Under $500k of confirmed unfrozen stablecoins it's usually not worth a report on its own.") : "A large balance is sitting at a named wallet. Coins like BTC, ETH and TRX can't be frozen by an issuer, so it's only worth reporting if it moves to an exchange. The watcher will tell you.";
-    return { level, word, usd: x.freeze_usd || x.bal_usd || 0, dests, title: usd(x.bal_usd) + " sitting at " + x.chain + " " + short(x.address), why, ts: x.bal_at, key: "w" + x.id, ref: { watch_id: x.id } };
+    return { level, word, usd: x.freeze_usd || x.bal_usd || 0, dests, title: usd(x.bal_usd) + " sitting at " + x.chain + " " + short(x.address), why: why + extra, ts: x.bal_at, key: "w" + x.id, ref: { watch_id: x.id } };
   }
   const verdict = (v) => el("span", { className: "tr-verdict " + v.level, textContent: v.word || VWORD[v.level] });
   const repBtn = (v, label) => el("button", { type: "button", className: "btn tr-rep" + (v.level === "now" ? "" : " btn-quiet"), textContent: label || "Report", onclick: (e) => { e.preventDefault(); e.stopPropagation(); openReport(v); } });
@@ -194,7 +198,7 @@
     const r = await api("summary"); if (r.error) return;
     const w = r.watch, a = r.alerts, l = r.leads, last = r.last;
     const set = (id, v, s, cls) => { $("#st-" + id).textContent = v; $("#st-" + id + "-s").textContent = s; $("#st-" + id).parentElement.className = "tr-stat" + (cls ? " " + cls : ""); };
-    set("watch", w.total || 0, (w.seeds || 0) + " seeds, " + ((w.total || 0) - (w.seeds || 0)) + " children" + (w.paused ? ", " + w.paused + " paused" : ""));
+    set("watch", w.total || 0, (w.seeds || 0) + " seeds, " + ((w.total || 0) - (w.seeds || 0)) + " children" + (w.paused ? ", " + w.paused + " paused" : "") + (w.frz_seeds ? ", " + w.frz_seeds + " Tether freezes" : "") + (w.caught ? ". Tether later froze " + w.caught + " wallet" + (w.caught === 1 ? "" : "s") + " the watcher had found" : ""));
     const pct = w.total ? Math.round((100 * (w.checked || 0)) / w.total) : 0;
     $("#st-sweep").style.width = pct + "%"; $("#st-sweep").parentElement.title = pct < 100 ? "First full check: " + pct + "% done" : "Every address checked";
     if (pct < 100 && w.total) $("#st-watch-s").textContent = "First check " + pct + "% done (" + (w.checked || 0) + " of " + w.total + ")";
@@ -228,8 +232,8 @@
 
   const usd = (n) => "$" + (n >= 1e6 ? (n / 1e6).toFixed(n >= 1e7 ? 0 : 1) + "M" : n >= 1e4 ? Math.round(n / 1e3) + "k" : Math.round(n || 0).toLocaleString("en-US"));
   // Which list an address came from, in plain words.
-  const GROUPS = ["North Korea", "Iran", "Russia", "Terror financing", "Drugs and crime groups", "Ransomware and cyber", "Weapons", "Other sanctioned", "Other"];
-  const groupOf = (src) => { const s = src || ""; return /DPRK|FBI PSA/.test(s) ? GROUPS[0] : /IRAN|IRGC|IFSR|HRIT/.test(s) ? GROUPS[1] : /RUSSIA|CAATSA|UKRAINE/.test(s) ? GROUPS[2] : /SDGT|FTO/.test(s) ? GROUPS[3] : /DRUGS|SDNTK|TCO/.test(s) ? GROUPS[4] : /CYBER/.test(s) ? GROUPS[5] : /NPWMD/.test(s) ? GROUPS[6] : /OFAC/.test(s) ? GROUPS[7] : GROUPS[8]; };
+  const GROUPS = ["North Korea", "Iran", "Russia", "Terror financing", "Drugs and crime groups", "Ransomware and cyber", "Weapons", "Other sanctioned", "Other", "Frozen by Tether"];
+  const groupOf = (src) => { const s = src || ""; return /Tether freeze/.test(s) ? GROUPS[9] : /DPRK|FBI PSA/.test(s) ? GROUPS[0] : /IRAN|IRGC|IFSR|HRIT/.test(s) ? GROUPS[1] : /RUSSIA|CAATSA|UKRAINE/.test(s) ? GROUPS[2] : /SDGT|FTO/.test(s) ? GROUPS[3] : /DRUGS|SDNTK|TCO/.test(s) ? GROUPS[4] : /CYBER/.test(s) ? GROUPS[5] : /NPWMD/.test(s) ? GROUPS[6] : /OFAC/.test(s) ? GROUPS[7] : GROUPS[8]; };
   const fillGroups = (sel) => { const s = $(sel); if (s.options.length < 2) s.append(...GROUPS.map((g) => el("option", { value: g, textContent: g }))); };
   const oppRow = (h) => el("li", {},
       el("div", { className: "amt" }, el("b", { textContent: usd(h.bal_usd) }), h.freeze_usd >= 1000 ? el("span", { className: "tr-chip t-exchange", textContent: usd(h.freeze_usd) + " freezable" + (h.frozen === 0 ? ", not frozen yet" : "") }) : h.frozen === 1 ? el("span", { className: "tr-chip", textContent: "Already frozen" }) : ""),
