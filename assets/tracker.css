@@ -144,7 +144,7 @@ body .tr .tr-lead h3{font-family:inherit!important;font-size:.72rem!important;fo
 .tr-shell{display:grid;grid-template-columns:216px minmax(0,1fr);gap:28px;align-items:start}.tr-shell[hidden]{display:none}
 .tr-side{position:sticky;top:16px;border:1px solid var(--line);border-radius:var(--tr-r);padding:10px;background:var(--surface,var(--bg))}
 .tr-side .tr-tabs{flex-direction:column;gap:2px;border:0;margin:0;overflow:visible}
-.tr-navh{font-size:.68rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft);padding:12px 10px 4px}.tr-navh:first-child{padding-top:4px}
+.tr-navh{font-size:.68rem;line-height:1.2;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft);padding:16px 10px 8px}.tr-navh:first-child{padding-top:6px}
 .tr-side .tr-tabs button{display:flex;align-items:center;gap:10px;width:100%;margin:0;padding:8px 10px;border:0;border-radius:8px;text-align:left;font-size:.93rem}
 .tr-side .tr-tabs button span:first-of-type{flex:1;min-width:0}
 .tr-side .tr-tabs button:hover{background:color-mix(in srgb,var(--ink) 6%,transparent)}
