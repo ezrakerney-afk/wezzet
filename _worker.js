@@ -4246,11 +4246,12 @@ const trUrl = (u) => { u = clean(u, 500); return /^https:\/\//i.test(u) ? u : ""
 function trEq(a, b) { if (a.length !== b.length) return false; let x = 0; for (let i = 0; i < a.length; i++) x |= a.charCodeAt(i) ^ b.charCodeAt(i); return x === 0; }
 
 // D1's free plan allows 5M row reads a day for the whole site, so the watcher must read by index, never scan its tables.
-const TR_MIG = "5";
+const TR_MIG = "6";
 async function trInit(env) {
   if (trReady) return;
   const mig = await env.DB.prepare("SELECT v FROM tr_settings WHERE k = 'mig'").first().catch(() => null);
   if (mig && mig.v === TR_MIG) { trReady = true; return; }
+  const prev = Number(mig && mig.v) || 0;
   await env.DB.batch(TR_SCHEMA.map((s) => env.DB.prepare(s)));
   try { await env.DB.prepare("ALTER TABLE tr_watch ADD COLUMN checked INTEGER").run(); } catch {}
   for (const c of ["balance TEXT", "bal_usd REAL", "freeze_usd REAL", "bal_at INTEGER", "frozen INTEGER"]) { try { await env.DB.prepare("ALTER TABLE tr_watch ADD COLUMN " + c).run(); } catch {} }
@@ -4267,6 +4268,8 @@ async function trInit(env) {
   try { await env.DB.prepare("ALTER TABLE tr_watch ADD COLUMN due INTEGER").run(); } catch {}
   // cut = 1: switched off automatically because the money reached it through an exchange or payment service.
   try { await env.DB.prepare("ALTER TABLE tr_watch ADD COLUMN cut INTEGER").run(); } catch {}
+  // frz_at = when Tether froze this address (from Tether's own freeze events).
+  try { await env.DB.prepare("ALTER TABLE tr_watch ADD COLUMN frz_at INTEGER").run(); } catch {}
   await env.DB.batch([
     env.DB.prepare("UPDATE tr_watch SET due = COALESCE(checked, 0) WHERE due IS NULL"),
     env.DB.prepare("CREATE INDEX IF NOT EXISTS tr_watch_due ON tr_watch (paused, chain, due)"),
@@ -4277,8 +4280,8 @@ async function trInit(env) {
     env.DB.prepare("CREATE INDEX IF NOT EXISTS tr_alerts_watch ON tr_alerts (watch_id, ts)"),
     env.DB.prepare("CREATE INDEX IF NOT EXISTS tr_watch_parent ON tr_watch (parent_id)"),
     // The checks changed (2026-11-16): redo them, parents first. 1 keeps the old result showing until then.
-    env.DB.prepare("UPDATE tr_watch SET vet_at = 1 WHERE vet_at > 1"),
-    env.DB.prepare(`WITH RECURSIVE d(id) AS (SELECT id FROM tr_watch WHERE parent_id IN (SELECT id FROM tr_watch WHERE hop > 0 AND vet_service = 1 AND vet_peers >= ${TR_SVC_PEERS}) UNION SELECT w.id FROM tr_watch w JOIN d ON w.parent_id = d.id) UPDATE tr_watch SET paused = 1, cut = 1 WHERE paused = 0 AND id IN (SELECT id FROM d)`),
+    ...(prev >= 5 ? [] : [env.DB.prepare("UPDATE tr_watch SET vet_at = 1 WHERE vet_at > 1"),
+    env.DB.prepare(`WITH RECURSIVE d(id) AS (SELECT id FROM tr_watch WHERE parent_id IN (SELECT id FROM tr_watch WHERE hop > 0 AND vet_service = 1 AND vet_peers >= ${TR_SVC_PEERS}) UNION SELECT w.id FROM tr_watch w JOIN d ON w.parent_id = d.id) UPDATE tr_watch SET paused = 1, cut = 1 WHERE paused = 0 AND id IN (SELECT id FROM d)`)]),
     trSet(env.DB, "mig", TR_MIG),
   ]);
   trReady = true;
@@ -4314,7 +4317,7 @@ async function trBrowser(request, env, p, d, q, sess) {
   // Overview numbers for the cards at the top of the page.
   if (p === "/summary") {
     const [w, a, l, r, st] = await DB.batch([
-      DB.prepare("SELECT COUNT(*) total, SUM(parent_id IS NULL) seeds, SUM(paused > 0) paused, SUM(checked IS NOT NULL) checked, SUM(bal_usd) usd, SUM(freeze_usd) freeze, SUM(freeze_usd >= 1000) freeze_n, SUM(bal_usd >= 1000) holding_n FROM tr_watch"),
+      DB.prepare("SELECT COUNT(*) total, SUM(parent_id IS NULL) seeds, SUM(frz_at IS NOT NULL AND hop > 0) caught, SUM(source = 'Tether freeze' AND hop = 0) frz_seeds, SUM(paused > 0) paused, SUM(checked IS NOT NULL) checked, SUM(bal_usd) usd, SUM(freeze_usd) freeze, SUM(freeze_usd >= 1000) freeze_n, SUM(bal_usd >= 1000) holding_n FROM tr_watch"),
       DB.prepare("SELECT SUM(status = 'new') new, COUNT(*) total, SUM(created > ?) day, SUM(CASE WHEN status = 'new' THEN usd END) new_usd, MAX(CASE WHEN status = 'new' THEN score END) top FROM tr_alerts").bind(now - 86400e3),
       DB.prepare("SELECT SUM(status IN ('investigating', 'ready')) open, SUM(status = 'ready') ready, SUM(status = 'submitted') submitted FROM tr_leads"),
       DB.prepare("SELECT started, finished, errors FROM tr_runs ORDER BY id DESC LIMIT 1"),
@@ -4611,13 +4614,15 @@ async function trDraft(DB, lead, profile = {}, dest = "fbi", max = 12) {
   const src = (seed && seed.source) || "", nm = ((seed && seed.label) || "").replace(/^from /, "").replace(/\s*\(.*\)$/, "");
   const bybit = /PSA250226/.test(src) || /bybit/i.test(nm), dprk = bybit || /DPRK/.test(src);
   const who = bybit ? "North Korea's TraderTraitor group (also known as Lazarus), which the FBI named as responsible for the February 21, 2025 theft of about $1.5 billion from Bybit"
-    : dprk ? "North Korea" + (nm ? ` (${nm})` : "") : nm ? nm + ", a sanctioned party" : "a sanctioned party";
+    : dprk ? "North Korea" + (nm ? ` (${nm})` : "") : /Tether freeze/.test(src) ? "a wallet Tether froze" : nm ? nm + ", a sanctioned party" : "a sanctioned party";
   const notice = /PSA250226/.test(src) ? "the FBI's public service announcement PSA250226" : /OFAC/.test(src) ? "the U.S. Treasury's OFAC sanctions list" + (nm ? ` under ${nm}` : "") : "a U.S. government notice";
   const L = [];
   if (dest === "rfj") L.push("Hello,", "", `I have information about recent movement of cryptocurrency linked to ${who}. I'm sending it in case it helps disrupt the network's finances, and I'd like it considered under the Rewards for Justice offers on North Korea's illicit revenue.`);
   else if (dest === "bounty") L.push("Hello,", "", `This report concerns funds from the ${/bitget/i.test(nm) ? "Bitget" : "Bybit"} hack. I'm submitting it for the bounty program.`);
   else L.push("Hello,", "", `I'd like to report recent movement of cryptocurrency linked to ${who}.`);
-  if (seed) L.push("", `The source address, ${seed.address} on ${cn(seed.chain)}, is listed in ${notice}${seed.source_url ? " (" + seed.source_url + ")" : ""}.`);
+  const tf = /Tether freeze/.test(src), fday = seed && seed.frz_at ? when(seed.frz_at) : "";
+  if (seed && tf) L.push("", `The source address, ${seed.address} on ${cn(seed.chain)}, was frozen by Tether${fday ? " on " + fday : ""} (${seed.source_url || "https://tronscan.org/#/address/" + seed.address}). Tether normally freezes a wallet at law enforcement's request, so there is likely an open case this belongs to. The money below left that wallet shortly before the freeze and was not frozen with it.`);
+  else if (seed) L.push("", `The source address, ${seed.address} on ${cn(seed.chain)}, is listed in ${notice}${seed.source_url ? " (" + seed.source_url + ")" : ""}.`);
   if (path.length) L.push("", `The funds below did not move from that address directly. They reached ${path[path.length - 1].address} through ${path.length === 1 ? "one transfer" : path.length + " transfers"}: ${[seed, ...path].filter(Boolean).map((x) => x.address).join(" -> ")}.`);
   if (path.length && w && w.vet_at) {
     const pct = Math.round((w.vet_share || 0) * 100);
@@ -4740,7 +4745,7 @@ async function tlLimitN(env, who, action, max, win) {
    is checked in the background of ordinary site traffic, at most once every TR_GAP. Read-only public APIs only:
    Etherscan (when a key is saved) or Blockscout for EVM chains, Blockstream / mempool.space for Bitcoin,
    TronGrid for USDT on Tron, THORChain Midgard to find the far side of a cross-chain swap. */
-const TR_GAP = 90e3, TR_BATCH = 6, TR_MAX_WATCH = 3000;
+const TR_GAP = 90e3, TR_BATCH = 6, TR_MAX_WATCH = 6000;
 let trNextTry = 0, trCount = { n: 0, at: 0 };
 const TR_SCOUT = { eth: "eth.blockscout.com", base: "base.blockscout.com", arb: "arbitrum.blockscout.com", op: "optimism.blockscout.com", polygon: "polygon.blockscout.com" };
 const TR_CHAINID = { eth: 1, bsc: 56, arb: 42161, base: 8453, polygon: 137, op: 10, avax: 43114 };
@@ -4920,6 +4925,38 @@ const TR_SVC_PEERS = 30;
 const trIsService = (r) => (r.vet_service === 1 && (r.vet_peers || 0) >= TR_SVC_PEERS) || (r.bal_usd || 0) >= 20e6 || (r.vet_in || 0) >= 1e9;
 // A found wallet may be reported as the bad actor only once its checks pass.
 const trVetOk = (w, now = Date.now()) => w.hop === 0 || (w.vet_at > 1 && !trIsService(w) && !w.cut && (w.vet_share || 0) >= 0.5 && w.vet_link_ts && now - w.vet_link_ts < 60 * 864e5);
+// Tether's own freeze events on Tron. Backtest (2026-11-16, 2,190 freezes since May): only about 1 in 10 freezes is a
+// sanctions listing; the rest are law enforcement cases (scams, hacks) with no link to any public list. Freezes come in
+// clusters (Tether froze 116 of 2,614 recipients on the same day as the wallet that paid them) and 16% of frozen wallets
+// had been paid by an earlier-frozen one. So every new freeze becomes a seed: where its money went just before the freeze,
+// and is still sitting unfrozen, is what an open case most needs to hear about. It also marks our own finds Tether froze.
+async function trB58(hex) {
+  const b = new Uint8Array(hex.match(/../g).map((x) => parseInt(x, 16)));
+  const h = new Uint8Array(await crypto.subtle.digest("SHA-256", new Uint8Array(await crypto.subtle.digest("SHA-256", b))));
+  const all = [...b, ...h.slice(0, 4)];
+  let n = 0n; for (const x of all) n = n * 256n + BigInt(x);
+  const A = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"; let out = "";
+  while (n > 0n) { out = A[Number(n % 58n)] + out; n /= 58n; }
+  for (const x of all) { if (x) break; out = "1" + out; }
+  return out;
+}
+async function trFreezeFeed(DB, s, C, now) {
+  const since = Number(s.frz_ts || 0) || now - 3 * 864e5;
+  const d = await trGet(`https://api.trongrid.io/v1/contracts/${TR_TRON_USDT}/events?event_name=AddedBlackList&min_block_timestamp=${since + 1}&order_by=block_timestamp,asc&limit=50`, C, C.keys.trongrid ? { "TRON-PRO-API-KEY": C.keys.trongrid } : undefined);
+  const stmts = []; let top = since, n = 0;
+  for (const e of d.data || []) {
+    const r = e.result || {}, u = String(r._user || r[0] || "").replace(/^0x/, "41").toLowerCase();
+    top = Math.max(top, e.block_timestamp || 0);
+    if (!/^41[0-9a-f]{40}$/.test(u)) continue;
+    const a = await trB58(u), ts = e.block_timestamp || now;
+    stmts.push(DB.prepare("INSERT OR IGNORE INTO tr_watch (chain, address, label, source, source_url, added, hop, paused, frozen, due, frz_at) VALUES ('tron', ?, ?, 'Tether freeze', ?, ?, 0, 0, 1, 0, ?)").bind(a, "Frozen by Tether " + new Date(ts).toISOString().slice(0, 10), "https://tronscan.org/#/address/" + a, now, ts));
+    stmts.push(DB.prepare("UPDATE tr_watch SET frozen = 1, frz_at = COALESCE(frz_at, ?), root_id = COALESCE(root_id, id) WHERE chain = 'tron' AND address = ?").bind(ts, a));
+    n++;
+  }
+  stmts.push(trSet(DB, "frz_ts", top), trSet(DB, "frz_check", now));
+  await DB.batch(stmts);
+  return n;
+}
 async function trTron(w, C) {
   const since = Number(String(w.last_seen_tx || "").replace(/^t:/, "")) || 0;
   const d = await trGet(`https://api.trongrid.io/v1/accounts/${w.address}/transactions/trc20?limit=25&only_from=true&contract_address=${TR_TRON_USDT}&min_timestamp=${since + 1}`, C, C.keys.trongrid ? { "TRON-PRO-API-KEY": C.keys.trongrid } : undefined);
@@ -5070,6 +5107,7 @@ async function trTick(env, force) {
   if (s["key:trongrid"]) C.keys.trongrid = await acUnseal(env, s["key:trongrid"]);
   let seeded = 0;
   if (s.auto_seed !== "0" && (now - Number(s.seeds_at || 0) > 7 * 864e5 || s.seeds_v !== TR_SEEDS_V)) { try { seeded = (await trSeedImport(env)).added; } catch (e) { errors.push("seeds: " + e.message); } }
+  if (s.auto_seed !== "0" && now - Number(s.frz_check || 0) > 20 * 60e3) { try { seeded += await trFreezeFeed(DB, s, C, now); } catch (e) { errors.push("freezes: " + String(e.message).slice(0, 60)); } }
 
   const interval = (Number(s.interval) || 30) * 60e3, maxHops = Number(s.max_hops) || 5, pct = (Number(s.child_pct) || 10) / 100;
   const dormant = (Number(s.dormant_days) || 30) * 864e5, lookback = (Number(s.lookback_days) || 90) * 864e5;
@@ -5148,7 +5186,7 @@ async function trTick(env, force) {
           if (m.call && !lab.kind) continue; // a contract call we can't name: not worth an alert
           let tag = lab.kind || (first && woke ? "dormant_wake" : first && wide ? "dispersal" : "transfer");
           const kids = [];
-          const follow = (chain, address, amount, label) => { if (w.hop + 1 <= maxHops && !(w.hop > 0 && trIsService(w)) && total < TR_MAX_WATCH && now - m.ts < lookback) kids.push([chain, address, label || ""]); };
+          const follow = (chain, address, amount, label) => { if (w.hop + 1 <= maxHops && !(w.hop > 0 && trIsService(w)) && !(w.source === "Tether freeze" && w.frz_at && w.frz_at - m.ts > 14 * 864e5) && total < TR_MAX_WATCH && now - m.ts < lookback) kids.push([chain, address, label || ""]); };
           let extra = "";
           const floor = (wide ? 3 : 10) * (TR_MIN[m.asset] || 0);
           if (lab.kind === "bridge" && /thorchain/i.test(lab.name)) {
@@ -5195,7 +5233,7 @@ async function trTick(env, force) {
     if (C.calls < 36) {
       const cut = now - 6 * 3600e3, okc = ["tron", "eth", "base", "arb", "op", "polygon"];
       const [big, moved] = await DB.batch([
-        DB.prepare("SELECT * FROM tr_watch WHERE freeze_usd >= 100000 AND hop > 0 AND +paused = 0 AND COALESCE(vet_at, 0) < ? ORDER BY COALESCE(vet_at, 0) LIMIT 5").bind(cut),
+        DB.prepare("SELECT * FROM tr_watch WHERE freeze_usd >= 50000 AND hop > 0 AND +paused = 0 AND COALESCE(vet_at, 0) < ? ORDER BY COALESCE(vet_at, 0) LIMIT 5").bind(cut),
         DB.prepare("SELECT w.* FROM tr_alerts a JOIN tr_watch w ON w.id = a.watch_id WHERE a.created > ? AND a.usd >= 100000 AND w.hop > 0 AND w.paused = 0 AND COALESCE(w.vet_at, 0) < ? LIMIT 20").bind(now - 3 * 864e5, cut),
       ]);
       const urgent = fresh.find((f) => f.usd >= 100000 && f.w.hop > 0 && okc.includes(f.w.chain) && (f.w.vet_at || 0) < cut);
