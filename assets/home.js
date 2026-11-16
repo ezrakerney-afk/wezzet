@@ -543,6 +543,7 @@
     ["ounces to grams", "/ounces-to-grams", "ounces grams ounces grams weight convert convert converter units"],
     ["ounces to pounds", "/ounces-to-pounds", "ounces pounds ounces pounds weight convert convert converter units"],
     ["password generator", "/password", "password random secure strong generate"],
+    ["host html", "/host", "host html page website game upload free web hosting publish site share html static site"],
     ["paste bin", "/paste", "paste bin pastebin share text notes link save text clipboard online notepad memory"],
     ["pc to coulombs", "/pc-to-coulombs", "pc coulombs picocoulombs coulombs electric charge convert convert converter units"],
     ["pdf to jpg", "/pdf-to-jpg", "pdf to jpg png image picture convert pages export"],
