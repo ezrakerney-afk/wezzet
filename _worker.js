@@ -5348,12 +5348,12 @@ async function wzAiMetered(request, env, url, sess, ipHash) {
 }
 async function wzPlan(env, uid) {
   await wzProInit(env.DB);
-  const pro = await env.DB.prepare("SELECT status, until FROM wz_pro WHERE uid = ?").bind(uid).first();
+  const pro = await env.DB.prepare("SELECT status, until, customer FROM wz_pro WHERE uid = ?").bind(uid).first();
   const isPro = !!pro && WZ_PRO_OK.includes(pro.status);
   const used = Object.fromEntries((await env.DB.prepare("SELECT tool, n FROM wz_usage WHERE who = ? AND day = ?").bind("u" + uid, wzDay()).all()).results.map((r) => [r.tool, r.n]));
   return {
     plan: isPro ? "pro" : "free", status: pro?.status || null, until: pro?.until ? pro.until * 1000 : null,
-    limits: wzLimitsOn(env), stripe: wzStripeOn(env), canManage: !!pro,
+    limits: wzLimitsOn(env), stripe: wzStripeOn(env), canManage: !!pro?.customer,
     usage: Object.entries(WZ_FREE).map(([tool, l]) => ({ tool, label: l.label, used: used[tool] || 0, limit: isPro ? null : l.n })),
     agents: { limit: isPro ? null : WZ_FREE_AGENTS },
   };
@@ -5365,7 +5365,7 @@ async function wzStripe(env, path, form) {
     body: new URLSearchParams(form).toString(),
   });
   const d = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(d.error?.message || "Stripe error " + r.status);
+  if (!r.ok) throw Object.assign(new Error(d.error?.message || "Stripe error " + r.status), { code: d.error?.code || "" });
   return d;
 }
 // /api/chat/use, /api/chat/pro/*, /api/chat/ai, /api/chat/vision. sess may be null (signed out).
@@ -5391,8 +5391,15 @@ async function wzProRoute(request, env, url, p, d, sess, ip) {
     try {
       if (p === "/pro/portal") {
         if (!row?.customer) return chOut({ error: "You don't have a subscription yet." }, 400);
-        const s = await wzStripe(env, "billing_portal/sessions", { customer: row.customer, return_url: url.origin + "/signin" });
-        return chOut({ url: s.url });
+        try {
+          const s = await wzStripe(env, "billing_portal/sessions", { customer: row.customer, return_url: url.origin + "/signin" });
+          return chOut({ url: s.url });
+        } catch (e) {
+          // The saved customer isn't in this Stripe account (a test-mode customer after switching to live keys): clear it.
+          if (e.code !== "resource_missing") throw e;
+          await DB.prepare("UPDATE wz_pro SET customer = NULL, sub = NULL, status = 'canceled', updated = ? WHERE uid = ? AND customer = ?").bind(Math.floor(Date.now() / 1000), uid, row.customer).run();
+          return chOut({ error: "That subscription was a test one and has been cleared. You can get Pro again from the Pro page.", cleared: true }, 409);
+        }
       }
       if (row && WZ_PRO_OK.includes(row.status)) return chOut({ error: "You already have Wezzet Pro." }, 400);
       const form = {
