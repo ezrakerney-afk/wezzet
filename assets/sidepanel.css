@@ -1,0 +1,22 @@
+/* Side panel look shared by the home page and AI Comms (matches Chain Watch). */
+.sidebar .si{width:17px;height:17px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.dashboard .sidebar{padding:14px 10px;background:var(--bg)}
+.dashboard .sidebar .nav-caption{font-size:.68rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft);padding:12px 10px 4px;margin:0;white-space:nowrap;overflow:hidden}
+.dashboard .sidebar .nav-caption:first-child{padding-top:4px}
+.dashboard .sidebar nav{gap:2px;margin-bottom:6px}
+.dashboard .sidebar nav a{padding:8px 10px;gap:10px;border-radius:8px;font-size:.93rem;font-weight:600;color:var(--ink);text-decoration:none;box-shadow:none}
+.dashboard .sidebar nav a:hover{background:color-mix(in srgb,var(--ink) 6%,transparent);color:var(--ink)}
+.dashboard .sidebar nav a[aria-current="page"],.dashboard .sidebar nav a[aria-current="page"]:hover{background:var(--ink)!important;color:var(--bg)!important}
+.dashboard .sidebar .sidebar-bottom{padding:14px 10px 0;white-space:nowrap;overflow:hidden}
+@media (min-width:761px) and (hover:hover){
+  .dashboard .sidebar,.home-page .home-sidebar{width:58px}
+  .dashboard .sidebar:hover,.dashboard .sidebar:focus-within,.home-page .home-sidebar:hover,.home-page .home-sidebar:focus-within{width:232px;box-shadow:0 8px 28px rgba(0,0,0,.12)}
+  .dashboard .sidebar:not(:hover):not(:focus-within) nav a{padding:8px 10px}
+  .dashboard .dash-main,.home-content,.comms-page .comms-footer{margin-left:58px}
+}
+@media (max-width:760px){
+  .dashboard .sidebar{padding:8px 12px;overflow-x:auto}
+  .dashboard .sidebar nav{margin:0}
+  .dashboard .sidebar nav a{white-space:nowrap;flex:none}
+  .comms-page .comms-sidebar .ac-nav{display:flex;flex-direction:row;gap:2px;padding:0;overflow-x:auto;scrollbar-width:none}
+}

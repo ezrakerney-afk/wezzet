@@ -200,3 +200,16 @@ body .tr .tr-h3{font-family:inherit!important;font-size:.8rem!important;font-wei
 .tr-fields dl{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;margin:6px 0 0;font-size:.84rem}.tr-fields dt{color:var(--ink-soft)}.tr-fields dd{margin:0;min-width:0}.tr-copyval{border:1px solid var(--line);background:var(--surface,var(--bg));color:var(--ink);border-radius:6px;padding:2px 6px;font:inherit;font-size:.8rem;cursor:pointer;text-align:left;overflow-wrap:anywhere;max-width:100%}
 @media (max-width:600px){.tr-fields dl{grid-template-columns:1fr}}
 .tr-bellhead select{font-size:.8rem;padding:4px 6px;min-height:0;max-width:60%}
+
+/* Full-width page, side panel tucks away to icons and slides out on hover */
+body.tr-full main > .wrap.tr,body.tr-full .site-header .wrap,body.tr-full .site-footer .wrap{max-width:none}
+@media (min-width:861px) and (hover:hover){
+  .tr-shell{grid-template-columns:59px minmax(0,1fr);gap:22px}
+  .tr-side{width:59px;max-height:calc(100vh - 32px);overflow:hidden auto;scrollbar-width:none;z-index:20;transition:width .2s ease,box-shadow .2s ease}
+  .tr-side::-webkit-scrollbar{display:none}
+  .tr-side:hover,.tr-side:has(:focus-visible){width:236px;box-shadow:0 8px 28px rgba(0,0,0,.12)}
+  .tr-side .tr-tabs button,.tr-navh{white-space:nowrap;overflow:hidden}
+  .tr-side:not(:hover):not(:has(:focus-visible)) .tr-navh{visibility:hidden}
+  .tr-side:not(:hover):not(:has(:focus-visible)) .tr-tabs .n{display:none}
+}
+@media (prefers-reduced-motion:reduce){.tr-side{transition:none}}
