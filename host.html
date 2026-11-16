@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Host HTML: Free Page and Game Hosting | Wezzet</title>
+<title>Wezzet Host: Free HTML Page and Game Hosting</title>
 <meta name="description" content="Upload an HTML page, game or small website and get your own link at wezzet.com/host/your-name. Free, with a Wezzet account.">
 <link rel="canonical" href="https://wezzet.com/host">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Wezzet">
-<meta property="og:title" content="Host HTML: Free Page and Game Hosting | Wezzet">
+<meta property="og:title" content="Wezzet Host: Free HTML Page and Game Hosting">
 <meta property="og:url" content="https://wezzet.com/host">
 <meta property="og:image" content="https://wezzet.com/assets/og/index.png">
 <meta property="og:image:width" content="1200">
@@ -26,69 +26,118 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400..700&display=swap">
 <link rel="stylesheet" href="/assets/site.css?v=8">
-<link rel="stylesheet" href="/assets/skin.css?v=4">
-<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"SoftwareApplication","name":"Wezzet Host","url":"https://wezzet.com/host","applicationCategory":"DeveloperApplication","operatingSystem":"Any (web browser)","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"description":"Upload an HTML page, game or small website and get your own link at wezzet.com/host/your-name. Free, with a Wezzet account."},{"@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Who can see my page?","acceptedAnswer":{"@type":"Answer","text":"Anyone with the link. Pages aren't listed anywhere unless you share them."}},{"@type":"Question","name":"What can I upload?","acceptedAnswer":{"@type":"Answer","text":"HTML, CSS, JavaScript, images, sounds, fonts, JSON and WebAssembly, up to 2 MB per page and 5 pages per account. Name the start page index.html, or upload a single HTML file."}},{"@type":"Question","name":"Why can't my page save data?","acceptedAnswer":{"@type":"Answer","text":"Hosted pages run in a sandbox, cut off from the rest of Wezzet, so your visitors' accounts stay safe. That also blocks cookies and localStorage. Password fields aren't allowed either."}},{"@type":"Question","name":"How do I update or delete it?","acceptedAnswer":{"@type":"Answer","text":"Upload again with the same name to replace it. Your pages are listed below, with a delete button."}}]}]}</script>
+<link rel="stylesheet" href="/assets/workspace-motion.css?v=1">
+<link rel="stylesheet" href="/assets/dashboard.css?v=8">
+<link rel="stylesheet" href="/assets/aicomms-layout.css?v=3">
+<link rel="stylesheet" href="/assets/workspace.css?v=1">
+<link rel="stylesheet" href="/assets/sidepanel.css?v=2">
+<link rel="stylesheet" href="/assets/host.css?v=1">
+<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"SoftwareApplication","name":"Wezzet Host","url":"https://wezzet.com/host","applicationCategory":"DeveloperApplication","operatingSystem":"Any (web browser)","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"description":"Upload an HTML page, game or small website and get your own link at wezzet.com/host/your-name. Free, with a Wezzet account."},{"@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Who can see my page?","acceptedAnswer":{"@type":"Answer","text":"Anyone with the link. Pages also show in the Explore list unless you turn that off when you publish or in My pages."}},{"@type":"Question","name":"What can I upload?","acceptedAnswer":{"@type":"Answer","text":"HTML, CSS, JavaScript, images, sounds, fonts, JSON and WebAssembly, up to 2 MB per page and 5 pages per account. Name the start page index.html, or upload a single HTML file."}},{"@type":"Question","name":"Can I make a page without any files?","acceptedAnswer":{"@type":"Answer","text":"Yes. Open the Editor, pick a template or write your own HTML, watch the live preview, then publish."}},{"@type":"Question","name":"Why can't my page save data?","acceptedAnswer":{"@type":"Answer","text":"Hosted pages run in a sandbox, cut off from the rest of Wezzet, so your visitors' accounts stay safe. That also blocks cookies and localStorage. Password fields aren't allowed either."}},{"@type":"Question","name":"How do I update or delete it?","acceptedAnswer":{"@type":"Answer","text":"Go to My pages. Edit opens the page in the editor, Replace uploads new files under the same name, and Delete removes it."}},{"@type":"Question","name":"How are views counted?","acceptedAnswer":{"@type":"Answer","text":"Each time someone opens your page link, it counts one view. Bots and previews are skipped."}}]}]}</script>
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1814434432126124" crossorigin="anonymous"></script>
-<style>.host-drop{border:2px dashed var(--line-strong);border-radius:12px;padding:24px;text-align:center;margin:12px 0}.host-drop.on{border-color:var(--ink)}.host-drop p{margin:6px 0}.host-list{list-style:none;padding:0;margin:8px 0}.host-list li{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--line)}.host-list li a{font-weight:600}.host-list .soft{flex:1;min-width:120px}.host-row{display:flex;flex-wrap:wrap;gap:8px}.host-row input{flex:1 1 200px}#htmltext{min-height:160px}</style>
 </head>
-<body>
-<header class="site-header">
-  <div class="wrap">
-    <a class="brand" href="/" aria-label="Wezzet home"><img src="/assets/icon-48.png" width="28" height="28" alt="">wezzet<span class="brand-dot">.</span></a>
-    <nav class="site-nav" aria-label="Main"><button class="wz-search-btn" type="button" data-wz-search aria-label="Search tools" aria-keyshortcuts="Control+K"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M10 2a8 8 0 0 1 6.32 12.9l5.39 5.4-1.41 1.4-5.4-5.39A8 8 0 1 1 10 2Zm0 2a6 6 0 1 0 0 12 6 6 0 0 0 0-12Z"/></svg><span>Search tools</span><kbd>Ctrl K</kbd></button><a href="/">All tools</a><button class="theme-toggle" type="button" aria-label="Switch between light and dark mode"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm0 2v16a8 8 0 0 1 0-16Z"/></svg></button></nav>
-  </div>
+<body class="dashboard comms-page host-page">
+<a class="skip-link" href="#main">Skip to Wezzet Host</a>
+<header class="dash-header">
+  <a class="brand" href="/" aria-label="Wezzet home"><img src="/assets/icon-48.png" width="32" height="32" alt="">wezzet<span class="brand-dot">.</span></a>
+  <span class="comms-header-label">Your pages</span>
+  <nav aria-label="Top navigation"><a href="/">All tools</a><button class="theme-toggle" type="button" aria-label="Switch theme">◐</button><a class="account-link" id="host-account" href="/signin">Sign in →</a></nav>
 </header>
+<aside class="sidebar comms-sidebar">
+  <p class="nav-caption">WORKSPACE</p>
+  <nav aria-label="Workspace"><a href="/"><svg class="si" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 13h6V4H4v9Zm0 7h6v-5H4v5Zm10 0h6v-9h-6v9Zm0-16v5h6V4h-6Z"/></svg>Overview</a><a href="/ai"><svg class="si" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3ZM19 16v4M17 18h4"/></svg>WezzetAI</a><a href="/chat"><svg class="si" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H9l-5 4V5Z"/></svg>Messages</a></nav>
+  <p class="nav-caption">HOST</p>
+  <nav class="ac-nav" aria-label="Wezzet Host sections">
+    <a href="#explore"><svg class="si" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18ZM15.5 8.5l-2 5-5 2 2-5 5-2Z"/></svg>Explore</a>
+    <a href="#new"><svg class="si" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V5M7 10l5-5 5 5M5 19h14"/></svg>Publish</a>
+    <a href="#editor"><svg class="si" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 8l-4 4 4 4M16 8l4 4-4 4M13.5 5l-3 14"/></svg>Editor</a>
+    <a href="#mine"><svg class="si" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg>My pages</a>
+    <a href="#help"><svg class="si" viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.7.4-1 1-1 1.7M12 17h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>Help</a>
+  </nav>
+  <div class="sidebar-bottom"><a href="/forum/tools">Feedback ↗</a><p><a href="/contact">Contact support</a></p></div>
+</aside>
+<main id="main" class="dash-main">
+  <div class="comms-content">
+    <div class="breadcrumb"><a href="/">Workspace</a><span>/</span><span>Host</span></div>
+    <div class="page-heading">
+      <div><p class="eyebrow">YOUR OWN LINK</p><h1>Wezzet Host</h1><p>Put a page, game or small site online at wezzet.com/host/your-name. <a href="/forum/tools">Community</a></p></div>
+      <a class="primary-link" href="#new">Publish a page <span aria-hidden="true">＋</span></a>
+    </div>
+    <div class="comms-activity"><span class="ac-kicker"><span class="ac-dot live" aria-hidden="true"></span><span>Host activity</span></span><div class="ac-tiles" id="h-stats" aria-label="Host activity"></div></div>
+    <div class="ac-layout"><div class="ac-pane-m">
 
-<main>
-  <div class="wrap">
-    <div class="tool-head">
-      <h1>Host HTML</h1>
-      <p class="lede">Put a page, game or small site online at <b>wezzet.com/host/<span id="pv">your-name</span></b>.</p>
-    </div>
-    <div data-wz-account data-why="Sign in to host pages."></div>
-    <div class="host-row">
-      <input type="text" id="name" placeholder="Page name, like my-game" aria-label="Page name" maxlength="32" autocomplete="off" spellcheck="false">
-      <input type="text" id="title" placeholder="Title (optional)" aria-label="Title" maxlength="80">
-    </div>
-    <p class="hint" id="namehint"></p>
-    <div class="host-drop" id="drop">
-      <p><b>Drop files or a folder here</b></p>
-      <p class="hint">index.html is the start page. Up to 2 MB.</p>
-      <div class="btn-row" style="justify-content:center">
-        <label class="btn btn-quiet">Choose files<input type="file" id="files" multiple hidden></label>
-        <label class="btn btn-quiet">Choose folder<input type="file" id="folder" webkitdirectory multiple hidden></label>
-      </div>
-      <p class="hint" id="picked"></p>
-    </div>
-    <details><summary>Or paste HTML</summary><textarea id="htmltext" class="big mono" spellcheck="false" placeholder="&lt;!doctype html&gt;..." aria-label="HTML"></textarea></details>
-    <div class="btn-row"><button class="btn" type="button" id="go">Publish</button></div>
-    <p class="note" id="msg" role="status" hidden></p>
-    <section class="section" id="minebox" hidden aria-labelledby="mineh"><h2 id="mineh">Your pages</h2><ul class="host-list" id="mine"></ul></section>
-    <section class="section faq" aria-labelledby="faq">
-      <h2 id="faq">Questions</h2>
-      <details><summary>Who can see my page?</summary><p>Anyone with the link. Pages aren't listed anywhere unless you share them.</p></details><details><summary>What can I upload?</summary><p>HTML, CSS, JavaScript, images, sounds, fonts, JSON and WebAssembly, up to 2 MB per page and 5 pages per account. Name the start page index.html, or upload a single HTML file.</p></details><details><summary>Why can't my page save data?</summary><p>Hosted pages run in a sandbox, cut off from the rest of Wezzet, so your visitors' accounts stay safe. That also blocks cookies and localStorage. Password fields aren't allowed either.</p></details><details><summary>How do I update or delete it?</summary><p>Upload again with the same name to replace it. Your pages are listed below, with a delete button.</p></details>
-    </section>
-    <section class="section related" aria-labelledby="related">
-      <h2 id="related">Related tools</h2>
-      <ul><li><a href="/notepad">Notepad</a></li><li><a href="/paste">Paste bin</a></li><li><a href="/json">JSON formatter</a></li><li><a href="/diff">Diff checker</a></li><li><a href="/forum">Communities</a></li></ul>
-    </section>
+      <section class="ac-card ac-tab" id="explore" aria-labelledby="explore-h">
+        <div class="ac-card-h"><h2 id="explore-h">Explore</h2><span class="h-soft" id="x-n"></span></div>
+        <div class="ac-tools">
+          <select id="x-sort" aria-label="Sort"><option value="top">Most viewed</option><option value="new">Newest</option><option value="updated">Recently updated</option><option value="az">A to Z</option></select>
+          <input type="text" id="x-q" placeholder="Filter by name or title" aria-label="Filter pages">
+        </div>
+        <ul class="h-grid" id="x-list" aria-live="polite"></ul>
+        <div class="h-more"><button class="btn btn-quiet" type="button" id="x-prev" hidden>← Previous</button><button class="btn btn-quiet" type="button" id="x-next" hidden>Next →</button></div>
+      </section>
+
+      <section class="ac-card ac-tab" id="new" aria-labelledby="new-h" hidden>
+        <div class="ac-card-h"><h2 id="new-h">Publish</h2><span class="h-soft">wezzet.com/host/<b id="pv">your-name</b></span></div>
+        <div class="ac-card-b">
+          <div data-wz-account data-why="Sign in to host pages."></div>
+          <div class="h-row">
+            <label>Page name<input type="text" id="name" placeholder="my-game" maxlength="32" autocomplete="off" spellcheck="false"></label>
+            <label>Title<input type="text" id="title" placeholder="Optional" maxlength="80"></label>
+          </div>
+          <p class="h-hint" id="namehint"></p>
+          <label class="h-full">Short description<input type="text" id="about" placeholder="Optional. Shown in Explore." maxlength="160"></label>
+          <div class="h-drop" id="drop">
+            <p><b>Drop files or a folder here</b></p>
+            <p class="h-hint">index.html is the start page. Up to 2 MB and 200 files.</p>
+            <div class="btn-row" style="justify-content:center">
+              <label class="btn btn-quiet">Choose files<input type="file" id="files" multiple hidden></label>
+              <label class="btn btn-quiet">Choose folder<input type="file" id="folder" webkitdirectory multiple hidden></label>
+              <a class="btn btn-quiet" href="#editor">Write it in the editor</a>
+            </div>
+            <div class="h-meter" hidden id="meter"><span id="meterbar"></span></div>
+            <p class="h-hint" id="picked"></p>
+            <ul class="h-files" id="filelist"></ul>
+          </div>
+          <label class="check"><input type="checkbox" id="listed" checked> Show in Explore</label>
+          <div class="btn-row"><button class="btn" type="button" id="go">Publish</button></div>
+          <p class="note" id="msg" role="status" hidden></p>
+        </div>
+      </section>
+
+      <section class="ac-card ac-tab" id="editor" aria-labelledby="editor-h" hidden>
+        <div class="ac-card-h"><h2 id="editor-h">Editor</h2><span class="h-soft" id="e-what">New page</span></div>
+        <div class="ac-tools">
+          <select id="e-tpl" aria-label="Template"><option value="">Start from a template</option></select>
+          <input type="text" id="e-name" placeholder="Page name, like my-game" aria-label="Page name" maxlength="32" autocomplete="off" spellcheck="false">
+          <button class="btn" type="button" id="e-go">Publish</button>
+          <button class="btn btn-quiet" type="button" id="e-dl">Download</button>
+          <button class="btn btn-quiet" type="button" id="e-new">New</button>
+        </div>
+        <div class="h-edit">
+          <textarea id="e-code" class="mono" spellcheck="false" aria-label="HTML code" wrap="off"></textarea>
+          <iframe id="e-view" title="Preview" sandbox="allow-scripts allow-forms allow-modals allow-pointer-lock"></iframe>
+        </div>
+        <p class="note" id="e-msg" role="status" hidden style="margin:0;border-radius:0;max-width:none"></p>
+      </section>
+
+      <section class="ac-card ac-tab" id="mine" aria-labelledby="mine-h" hidden>
+        <div class="ac-card-h"><h2 id="mine-h">My pages</h2><span class="h-soft" id="m-n"></span></div>
+        <ul class="ac-list" id="m-list"></ul>
+        <div class="ac-guest" id="m-guest"><a href="/signin">Sign in</a> to see your pages, or <a href="#new">publish your first one</a>.</div>
+      </section>
+
+      <section class="ac-tab section faq" id="help" aria-labelledby="help-h" hidden>
+        <h2 id="help-h">Help</h2>
+        <ul class="ac-feats"><li><b>Upload or write</b>Drop in a folder, or build a page in the editor with live preview.</li><li><b>Your own link</b>Pick a name and share wezzet.com/host/your-name.</li><li><b>Safe by design</b>Every page runs in a sandbox with a Report button.</li></ul>
+        <details><summary>Who can see my page?</summary><p>Anyone with the link. Pages also show in the Explore list unless you turn that off when you publish or in My pages.</p></details><details><summary>What can I upload?</summary><p>HTML, CSS, JavaScript, images, sounds, fonts, JSON and WebAssembly, up to 2 MB per page and 5 pages per account. Name the start page index.html, or upload a single HTML file.</p></details><details><summary>Can I make a page without any files?</summary><p>Yes. Open the Editor, pick a template or write your own HTML, watch the live preview, then publish.</p></details><details><summary>Why can't my page save data?</summary><p>Hosted pages run in a sandbox, cut off from the rest of Wezzet, so your visitors' accounts stay safe. That also blocks cookies and localStorage. Password fields aren't allowed either.</p></details><details><summary>How do I update or delete it?</summary><p>Go to My pages. Edit opens the page in the editor, Replace uploads new files under the same name, and Delete removes it.</p></details><details><summary>How are views counted?</summary><p>Each time someone opens your page link, it counts one view. Bots and previews are skipped.</p></details>
+      </section>
+    </div></div>
   </div>
 </main>
 
-<footer class="site-footer">
-  <div class="wrap">
-    <div class="wz-foot">
-      <div><a class="brand" href="/"><img src="/assets/icon-48.png" width="26" height="26" alt="">wezzet<span class="brand-dot">.</span></a><p>Free tools for the work in front of you. Built by Ezra Kerney and Noah Puckett.</p></div>
-      <div><strong class="wz-foot-h">Popular</strong><ul><li><a href="/heic-to-jpg">HEIC to JPG</a></li><li><a href="/compress-pdf">Compress PDF</a></li><li><a href="/mp4-to-mp3">MP4 to MP3</a></li><li><a href="/units">Unit converter</a></li><li><a href="/qr">QR code generator</a></li></ul></div>
-      <div><strong class="wz-foot-h">Explore</strong><ul><li><a href="/#tools">All tools</a></li><li><a href="/converters">Converters by topic</a></li><li><a href="/transport">Live transport tracker</a></li><li><a href="/ai">WezzetAI</a></li><li><a href="/forum">Communities</a></li><li><a href="/forum/tools">Suggest a tool</a></li></ul></div>
-      <div><strong class="wz-foot-h">Wezzet</strong><ul><li><a href="/about">About</a></li><li><a href="/contact">Contact</a></li><li><a href="/privacy">Privacy</a></li><li><a href="https://x.com/WezzetX" rel="noopener">@WezzetX on X</a></li><li><a href="https://www.instagram.com/wezzetig/" rel="noopener">@wezzetig on Instagram</a></li><li><a href="https://www.tiktok.com/@wezzet_tt" rel="noopener">@wezzet_tt on TikTok</a></li></ul></div>
-    </div>
-    <div class="wz-foot-base"><span>© 2026 Wezzet</span><span>Press <kbd>Ctrl K</kbd> to search every tool</span></div>
-  </div>
-</footer>
+<footer class="comms-footer"><a href="/privacy">Privacy</a><a href="mailto:wezzet.com@gmail.com">Support</a><a href="https://x.com/WezzetX" rel="noopener">@WezzetX</a></footer>
 <script src="/assets/account.js?v=3" defer></script>
-<script src="/assets/host.js?v=1" defer></script>
-<script src="/assets/ui.js?v=1" defer></script>
+<script src="/assets/host.js?v=2" defer></script>
+<script src="/assets/sidebar.js?v=2" defer></script>
 <script src="/assets/theme.js?v=5" defer></script>
 </body>
 </html>

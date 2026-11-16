@@ -1,5 +1,5 @@
 {
-  "count": 753,
+  "count": 755,
   "pages": [
     {
       "url": "/art-studio",
@@ -2162,6 +2162,10 @@
       "name": "password generator"
     },
     {
+      "url": "/host",
+      "name": "host html pages"
+    },
+    {
       "url": "/paste",
       "name": "paste bin"
     },
@@ -2968,6 +2972,10 @@
     {
       "url": "/extension",
       "name": "Wezzet Extension: Help and Support"
+    },
+    {
+      "url": "/pro",
+      "name": "Wezzet Pro"
     }
   ],
   "calculatorFeatures": [

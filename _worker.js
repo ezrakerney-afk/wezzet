@@ -5568,6 +5568,11 @@ async function hostInit(env) {
     "CREATE TABLE IF NOT EXISTS host_stats (k TEXT PRIMARY KEY, v INTEGER)",
     "CREATE INDEX IF NOT EXISTS actions_who ON actions (who, action, created_at)",
   ].map((q) => env.DB.prepare(q)));
+  if (!(await env.DB.prepare("SELECT 1 FROM pragma_table_info('host_sites') WHERE name = 'listed'").first())) {
+    for (const q of ["ALTER TABLE host_sites ADD COLUMN views INTEGER DEFAULT 0", "ALTER TABLE host_sites ADD COLUMN listed INTEGER DEFAULT 1", "ALTER TABLE host_sites ADD COLUMN about TEXT"]) { try { await env.DB.prepare(q).run(); } catch {} }
+  }
+  // The Explore list reads through these, so each sort only touches the rows it shows.
+  await env.DB.batch(["views", "created", "updated", "name"].map((c) => env.DB.prepare(`CREATE INDEX IF NOT EXISTS host_sites_x${c} ON host_sites (listed, hidden, ${c})`)));
   hostReady = true;
 }
 const hostEsc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
@@ -5597,7 +5602,13 @@ async function hostDelete(env, name) {
     env.DB.prepare("DELETE FROM host_parts WHERE site = ?").bind(name), env.DB.prepare("DELETE FROM host_files WHERE site = ?").bind(name),
     env.DB.prepare("DELETE FROM host_reports WHERE site = ?").bind(name), env.DB.prepare("DELETE FROM host_sites WHERE name = ?").bind(name),
     env.DB.prepare("UPDATE host_stats SET v = MAX(0, v - ?) WHERE k = 'bytes'").bind(s.size),
+    env.DB.prepare("UPDATE host_stats SET v = MAX(0, v - 1) WHERE k = 'sites'"),
   ]);
+}
+
+// Drop the cached first page of each Explore sort (in this data center), so a change shows up right away.
+function hostBust(url, ctx) {
+  try { ctx.waitUntil(Promise.all(["views DESC", "created DESC", "updated DESC", "name ASC"].map((s) => caches.default.delete(new Request(`${url.origin}/api/chat/host/explore?s=${encodeURIComponent(s)}&p=0`)))).catch(() => {})); } catch {}
 }
 
 // API under /api/chat/host/* so the browser sends the site login cookie (it is scoped to /api/chat).
@@ -5607,8 +5618,8 @@ async function hostApi(request, env, url, ctx) {
   const me = await forumMe(request, env);
   if (path === "mine" && method === "GET") {
     if (!me) return json({ me: null, sites: [] });
-    const rows = (await env.DB.prepare("SELECT name, title, size, files, hidden, created, updated FROM host_sites WHERE uid = ? ORDER BY updated DESC LIMIT 50").bind(me.id).all()).results || [];
-    return json({ me: { name: me.name, admin: me.admin }, sites: rows.map((r) => ({ ...r, hidden: !!r.hidden, url: "https://wezzet.com/host/" + r.name })) });
+    const rows = (await env.DB.prepare("SELECT name, title, about, size, files, hidden, listed, views, created, updated FROM host_sites WHERE uid = ? ORDER BY updated DESC LIMIT 50").bind(me.id).all()).results || [];
+    return json({ me: { name: me.name, admin: me.admin }, sites: rows.map((r) => ({ ...r, hidden: !!r.hidden, listed: !!r.listed, views: r.views || 0, url: "https://wezzet.com/host/" + r.name })) });
   }
   if (path === "check" && method === "GET") {
     const name = String(url.searchParams.get("name") || "").toLowerCase();
@@ -5616,6 +5627,44 @@ async function hostApi(request, env, url, ctx) {
     if (err) return json({ ok: false, error: err });
     const s = await env.DB.prepare("SELECT uid FROM host_sites WHERE name = ?").bind(name).first();
     return json({ ok: !s || (me && s.uid === me.id), mine: !!(s && me && s.uid === me.id), error: s && !(me && s.uid === me.id) ? "That name is taken." : null });
+  }
+  if (path === "explore" && method === "GET") {
+    const sort = { top: "views DESC", new: "created DESC", updated: "updated DESC", az: "name ASC" }[url.searchParams.get("sort")] || "views DESC";
+    const page = Math.min(50, Math.max(0, parseInt(url.searchParams.get("page") || "0", 10) || 0));
+    const key = new Request(`${url.origin}/api/chat/host/explore?s=${encodeURIComponent(sort)}&p=${page}`);
+    const hit = await caches.default.match(key);
+    if (hit) return hit;
+    const rows = (await env.DB.prepare(`SELECT s.name, s.title, s.about, s.views, s.created, s.updated, ${CH_NAME} AS by FROM host_sites s LEFT JOIN ch_users u ON u.id = s.uid WHERE s.listed = 1 AND s.hidden = 0 ORDER BY s.${sort} LIMIT 31 OFFSET ?`).bind(page * 30).all()).results || [];
+    const st = (await env.DB.prepare("SELECT k, v FROM host_stats").all()).results || [];
+    const stats = Object.fromEntries(st.map((r) => [r.k, r.v]));
+    const res = json({ sites: rows.slice(0, 30).map((r) => ({ ...r, views: r.views || 0 })), more: rows.length > 30, page, stats: { pages: stats.sites || 0, views: stats.views || 0 } }, 200, { "cache-control": "public, max-age=0, s-maxage=60" });
+    ctx.waitUntil(caches.default.put(key, res.clone()).catch(() => {}));
+    return res;
+  }
+  if (path === "source" && method === "GET") {
+    if (!me) return json({ error: "Sign in first." }, 401);
+    const name = String(url.searchParams.get("name") || "").toLowerCase();
+    const s = await env.DB.prepare("SELECT uid, title, about, listed FROM host_sites WHERE name = ?").bind(name).first();
+    if (!s || (s.uid !== me.id && !me.admin)) return json({ error: "That isn't one of your pages." }, 404);
+    const files = (await env.DB.prepare("SELECT path, size FROM host_files WHERE site = ? ORDER BY path").bind(name).all()).results || [];
+    const file = hostPath(url.searchParams.get("file") || "index.html");
+    const parts = file ? (await env.DB.prepare("SELECT data FROM host_parts WHERE site = ? AND path = ? ORDER BY n").bind(name, file).all()).results || [] : [];
+    let text = "";
+    try { text = new TextDecoder().decode(acUnB64(parts.map((x) => x.data).join(""))); } catch {}
+    return json({ name, title: s.title, about: s.about || "", listed: !!s.listed, files, file, text });
+  }
+  if (path === "settings" && method === "POST") {
+    if (!me) return json({ error: "Sign in first." }, 401);
+    const b = await body(request), name = String(b.name || "").toLowerCase();
+    const s = await env.DB.prepare("SELECT uid, title, about, listed FROM host_sites WHERE name = ?").bind(name).first();
+    if (!s) return json({ error: "That page doesn't exist." }, 404);
+    if (s.uid !== me.id && !me.admin) return json({ error: "Only the owner can change this page." }, 403);
+    const title = b.title == null ? s.title : clean(b.title, 80).replace(/\s+/g, " ") || name;
+    const about = b.about == null ? s.about : clean(b.about, 160).replace(/\s+/g, " ");
+    if (HOST_BAD.test((title + " " + (about || "")).toLowerCase())) return json({ error: "Pick different words." }, 400);
+    await env.DB.prepare("UPDATE host_sites SET title = ?, about = ?, listed = ? WHERE name = ?").bind(title, about, b.listed == null ? s.listed : b.listed ? 1 : 0, name).run();
+    hostBust(url, ctx);
+    return json({ ok: true });
   }
   if (path === "upload" && method === "POST") {
     if (!me) return json({ error: "Sign in to host a page." }, 401);
@@ -5625,7 +5674,9 @@ async function hostApi(request, env, url, ctx) {
     const nerr = hostNameError(name);
     if (nerr) return json({ error: nerr }, 400);
     const title = clean(b.title, 80).replace(/\s+/g, " ") || name;
-    if (HOST_BAD.test(title.toLowerCase())) return json({ error: "Pick a different title." }, 400);
+    const about = clean(b.about, 160).replace(/\s+/g, " ");
+    const listed = b.listed === false || b.listed === 0 ? 0 : 1, merge = !!b.merge;
+    if (HOST_BAD.test((title + " " + about).toLowerCase())) return json({ error: "Pick a different title or description." }, 400);
     if (!Array.isArray(b.files) || !b.files.length) return json({ error: "Add at least one HTML file." }, 400);
     if (b.files.length > HOST_FILES) return json({ error: "Sites can have up to 200 files." }, 400);
     const files = [], seen = new Set();
@@ -5645,7 +5696,7 @@ async function hostApi(request, env, url, ctx) {
       files.push({ path: p, type, size, data: f.data });
     }
     // index.html is the start page. A single HTML file of any name becomes index.html.
-    if (!files.some((f) => f.path === "index.html")) {
+    if (!merge && !files.some((f) => f.path === "index.html")) {
       const html = files.filter((f) => /\.html?$/i.test(f.path));
       if (html.length === 1 && !html[0].path.includes("/")) html[0].path = "index.html";
       else return json({ error: html.length ? "Name the start page index.html." : "Add at least one HTML file." }, 400);
@@ -5659,7 +5710,8 @@ async function hostApi(request, env, url, ctx) {
       if (/<meta[^>]+http-equiv\s*=\s*["']?refresh[^>]+url\s*=\s*https?:/i.test(t)) return json({ error: "Hosted pages can't redirect to other sites: " + f.path }, 400);
       if (scan.length < 6000) scan += "\n" + t.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").slice(0, 3000);
     }
-    const old = await env.DB.prepare("SELECT uid, size, hidden FROM host_sites WHERE name = ?").bind(name).first();
+    const old = await env.DB.prepare("SELECT uid, size, files, hidden FROM host_sites WHERE name = ?").bind(name).first();
+    if (merge && !old) return json({ error: "That page doesn't exist yet." }, 404);
     if (old && old.uid !== me.id) return json({ error: "That name is taken." }, 409);
     if (old && old.hidden && !me.admin) return json({ error: "This page was taken down after reports. Contact us if you think that's a mistake." }, 403);
     if (!old) {
@@ -5667,13 +5719,25 @@ async function hostApi(request, env, url, ctx) {
       if (n.n >= HOST_SITES && !me.admin) return json({ error: "You can host up to 5 pages. Delete one to add another." }, 400);
     }
     if (!(await hostCount(env, "u" + me.id, "upload"))) return json({ error: "You've uploaded 30 times today. Try again tomorrow." }, 429);
+    // Merge (the editor saving one file of a bigger site): keep the other files, replace only the ones sent.
+    let count = files.length;
+    if (merge) {
+      const have = (await env.DB.prepare("SELECT path, size FROM host_files WHERE site = ?").bind(name).all()).results || [];
+      const sent = new Set(files.map((f) => f.path));
+      const kept = have.filter((f) => !sent.has(f.path));
+      total += kept.reduce((n, f) => n + f.size, 0); count += kept.length;
+      if (total > HOST_MAX) return json({ error: "Sites can be up to 2 MB in total." }, 413);
+      if (count > HOST_FILES) return json({ error: "Sites can have up to 200 files." }, 400);
+    }
     const used = await env.DB.prepare("SELECT v FROM host_stats WHERE k = 'bytes'").first();
     if ((used ? used.v : 0) - (old ? old.size : 0) + total > HOST_TOTAL) return json({ error: "Page storage is full right now. Try again later." }, 507);
     const now = Date.now(), stmts = [
-      env.DB.prepare("DELETE FROM host_parts WHERE site = ?").bind(name), env.DB.prepare("DELETE FROM host_files WHERE site = ?").bind(name),
-      old ? env.DB.prepare("UPDATE host_sites SET title = ?, size = ?, files = ?, updated = ? WHERE name = ?").bind(title, total, files.length, now, name)
-        : env.DB.prepare("INSERT INTO host_sites (name, uid, title, size, files, created, updated) VALUES (?, ?, ?, ?, ?, ?, ?)").bind(name, me.id, title, total, files.length, now, now),
+      ...(merge ? files.flatMap((f) => [env.DB.prepare("DELETE FROM host_parts WHERE site = ? AND path = ?").bind(name, f.path), env.DB.prepare("DELETE FROM host_files WHERE site = ? AND path = ?").bind(name, f.path)])
+        : [env.DB.prepare("DELETE FROM host_parts WHERE site = ?").bind(name), env.DB.prepare("DELETE FROM host_files WHERE site = ?").bind(name)]),
+      old ? env.DB.prepare("UPDATE host_sites SET title = ?, about = ?, listed = ?, size = ?, files = ?, updated = ? WHERE name = ?").bind(title, about, listed, total, count, now, name)
+        : env.DB.prepare("INSERT INTO host_sites (name, uid, title, about, listed, views, size, files, created, updated) VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?, ?)").bind(name, me.id, title, about, listed, total, count, now, now),
       env.DB.prepare("INSERT INTO host_stats (k, v) VALUES ('bytes', ?) ON CONFLICT(k) DO UPDATE SET v = MAX(0, v + ?)").bind(total, total - (old ? old.size : 0)),
+      ...(old ? [] : [env.DB.prepare("INSERT INTO host_stats (k, v) VALUES ('sites', 1) ON CONFLICT(k) DO UPDATE SET v = v + 1")]),
       hostLog(env, "u" + me.id, "upload"),
     ];
     for (const f of files) {
@@ -5686,7 +5750,8 @@ async function hostApi(request, env, url, ctx) {
     await env.DB.batch(stmts);
     // A model check of the page text: a flag counts as 2 reports, so one more report takes it down.
     aiModerate(env, ctx, title + "\n" + scan, "UPDATE host_sites SET reports = reports + 2, hidden = CASE WHEN reports + 2 >= " + HOST_HIDE_AT + " THEN 1 ELSE hidden END WHERE name = ?", name);
-    return json({ name, url: "https://wezzet.com/host/" + name, size: total, files: files.length }, old ? 200 : 201);
+    hostBust(url, ctx);
+    return json({ name, url: "https://wezzet.com/host/" + name, size: total, files: count }, old ? 200 : 201);
   }
   if (path === "delete" && method === "POST") {
     if (!me) return json({ error: "Sign in first." }, 401);
@@ -5695,6 +5760,7 @@ async function hostApi(request, env, url, ctx) {
     if (!s) return json({ error: "That page doesn't exist." }, 404);
     if (s.uid !== me.id && !me.admin) return json({ error: "Only the owner can delete this page." }, 403);
     await hostDelete(env, name);
+    hostBust(url, ctx);
     return json({ ok: true });
   }
   if (path === "report" && method === "POST") {
@@ -5732,12 +5798,15 @@ async function hostServe(request, env, url, ctx) {
     const s = await env.DB.prepare("SELECT name, title, hidden, updated FROM host_sites WHERE name = ?").bind(name).first();
     if (!s) return hostGone("This page doesn't exist yet.", 404);
     if (s.hidden) return hostGone("This page was taken down.", 410);
+    if (request.method === "GET" && request.headers.get("sec-fetch-dest") === "document" && !/bot|crawler|spider|headless/i.test(request.headers.get("user-agent") || "") && !/prefetch|prerender/i.test(request.headers.get("sec-purpose") || request.headers.get("purpose") || "")) {
+      ctx.waitUntil(env.DB.batch([env.DB.prepare("UPDATE host_sites SET views = COALESCE(views, 0) + 1 WHERE name = ?").bind(name), env.DB.prepare("INSERT INTO host_stats (k, v) VALUES ('views', 1) ON CONFLICT(k) DO UPDATE SET v = v + 1")]).catch(() => {}));
+    }
     const t = hostEsc(s.title || name), src = `/host/${name}/${hostVer(s)}/`;
     const page = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${t} | Wezzet Host</title><meta name="robots" content="noindex"><link rel="icon" href="/favicon.ico" sizes="48x48">
 <style>:root{--bg:#fff;--ink:#111;--soft:#666;--line:#e5e5e5}@media (prefers-color-scheme:dark){:root{--bg:#121212;--ink:#eee;--soft:#999;--line:#2a2a2a}}*{box-sizing:border-box}html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font:14px/1.3 system-ui,sans-serif}body{display:flex;flex-direction:column}
 .bar{display:flex;align-items:center;gap:10px;padding:6px 12px;border-bottom:1px solid var(--line);white-space:nowrap;overflow:hidden}.bar a{color:inherit;text-decoration:none}.bar b{overflow:hidden;text-overflow:ellipsis}.soft{color:var(--soft);overflow:hidden;text-overflow:ellipsis}.sp{flex:1}
 button{font:inherit;color:var(--soft);background:none;border:1px solid var(--line);border-radius:6px;padding:3px 9px;cursor:pointer}button:hover{color:var(--ink)}iframe{flex:1;width:100%;border:0;display:block;background:#fff}</style></head>
-<body><div class="bar"><a href="/host" title="Wezzet Host"><b>wezzet.</b></a><b>${t}</b><span class="soft">User-made page. Never type passwords here.</span><span class="sp"></span><button type="button" id="fs">Full screen</button><button type="button" id="rp">Report</button></div>
+<body><div class="bar"><a href="/host#explore" title="More pages on Wezzet Host"><b>wezzet.</b></a><b>${t}</b><span class="soft">User-made page. Never type passwords here.</span><span class="sp"></span><button type="button" id="fs">Full screen</button><button type="button" id="rp">Report</button></div>
 <iframe id="f" src="${src}" title="${t}" sandbox="allow-scripts allow-forms allow-modals allow-popups allow-pointer-lock allow-downloads allow-orientation-lock" allow="fullscreen; autoplay; gamepad; accelerometer; gyroscope" allowfullscreen referrerpolicy="no-referrer"></iframe>
 <script>document.getElementById("fs").onclick=function(){var f=document.getElementById("f");(f.requestFullscreen||f.webkitRequestFullscreen||function(){}).call(f)};
 document.getElementById("rp").onclick=function(){var r=prompt("What's wrong with this page? (scam, malware, hateful, sexual, other)");if(r===null)return;fetch("/api/chat/host/report",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({name:${JSON.stringify(name)},reason:r})}).then(function(x){return x.json()}).then(function(j){alert(j.error||"Thanks. We'll take a look.")}).catch(function(){alert("Couldn't send the report.")})};</script></body></html>`;
