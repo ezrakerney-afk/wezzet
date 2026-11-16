@@ -5126,7 +5126,8 @@ async function trTick(env, force) {
   if (s["key:trongrid"]) C.keys.trongrid = await acUnseal(env, s["key:trongrid"]);
   let seeded = 0;
   if (s.auto_seed !== "0" && (now - Number(s.seeds_at || 0) > 7 * 864e5 || s.seeds_v !== TR_SEEDS_V)) { try { seeded = (await trSeedImport(env)).added; } catch (e) { errors.push("seeds: " + e.message); } }
-  if (s.auto_seed !== "0" && now - Number(s.frz_check || 0) > 20 * 60e3) { try { seeded += await trFreezeFeed(DB, s, C, now); } catch (e) { errors.push("freezes: " + String(e.message).slice(0, 60)); } }
+  // Tether's freeze list runs even when automatic list loading is off (its own switch: freeze_feed = "0" turns it off).
+  if (s.freeze_feed !== "0" && now - Number(s.frz_check || 0) > 20 * 60e3) { try { seeded += await trFreezeFeed(DB, s, C, now); } catch (e) { errors.push("freezes: " + String(e.message).slice(0, 60)); } }
 
   const interval = (Number(s.interval) || 30) * 60e3, maxHops = Number(s.max_hops) || 5, pct = (Number(s.child_pct) || 10) / 100;
   const dormant = (Number(s.dormant_days) || 30) * 864e5, lookback = (Number(s.lookback_days) || 90) * 864e5;
