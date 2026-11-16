@@ -46,9 +46,17 @@
     const act = (label, fn) => { const b = el("button", { type: "button", className: "link", textContent: label }); b.onclick = fn; return b; };
     // Plan and today's usage.
     const pl = a.plan || {};
-    const go = async (path) => { const r = await post(path); if (r.url) location.href = r.url; else msg.textContent = r.error || "Something went wrong."; };
-    rows.append(row("Plan", el("span", {}, el("b", { textContent: pl.plan === "pro" ? "Wezzet Pro" : "Free" }), " ",
-      pl.canManage && pl.stripe ? act("Manage billing", () => go("pro/portal")) : pl.plan !== "pro" ? el("a", { href: "/pro", textContent: "Get Pro" }) : "")));
+    const go = async (path, b) => {
+      b.disabled = true; msg.textContent = "Opening…";
+      const r = await post(path);
+      if (r.url) { location.href = r.url; return; }
+      b.disabled = false;
+      if (r.cleared) { await draw(); msg.textContent = r.error; return; }
+      msg.textContent = r.error || "Something went wrong.";
+    };
+    const billing = pl.canManage && pl.stripe ? act("Manage billing", () => go("pro/portal", billing)) : null;
+    rows.append(row("Plan", el("span", { className: "acct-plan" }, el("b", { textContent: pl.plan === "pro" ? "Wezzet Pro" : "Free" }), " ",
+      el("a", { href: "/pro", textContent: "View benefits" }), ...(billing ? [" ", billing] : pl.plan !== "pro" ? [" ", el("a", { href: "/pro", textContent: "Get Pro" })] : []))));
     if (pl.limits && pl.usage) rows.append(row("Used today", el("span", { className: "acct-usage" }, ...pl.usage.filter((u) => u.used || u.limit).map((u) => el("span", { textContent: u.label + ": " + u.used + (u.limit ? " of " + u.limit : "") })))));
     // Password: change (asks for the current one), or set one when there isn't one.
     const pwRow = row("Password", act(a.password ? "Change" : "Set a password", () => {
