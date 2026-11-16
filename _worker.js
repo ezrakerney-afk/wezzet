@@ -4246,7 +4246,7 @@ const trUrl = (u) => { u = clean(u, 500); return /^https:\/\//i.test(u) ? u : ""
 function trEq(a, b) { if (a.length !== b.length) return false; let x = 0; for (let i = 0; i < a.length; i++) x |= a.charCodeAt(i) ^ b.charCodeAt(i); return x === 0; }
 
 // D1's free plan allows 5M row reads a day for the whole site, so the watcher must read by index, never scan its tables.
-const TR_MIG = "4";
+const TR_MIG = "5";
 async function trInit(env) {
   if (trReady) return;
   const mig = await env.DB.prepare("SELECT v FROM tr_settings WHERE k = 'mig'").first().catch(() => null);
@@ -4265,6 +4265,8 @@ async function trInit(env) {
   } catch {}
   // due = when an address should be looked at next. Indexed, so picking a round reads only the rows it uses.
   try { await env.DB.prepare("ALTER TABLE tr_watch ADD COLUMN due INTEGER").run(); } catch {}
+  // cut = 1: switched off automatically because the money reached it through an exchange or payment service.
+  try { await env.DB.prepare("ALTER TABLE tr_watch ADD COLUMN cut INTEGER").run(); } catch {}
   await env.DB.batch([
     env.DB.prepare("UPDATE tr_watch SET due = COALESCE(checked, 0) WHERE due IS NULL"),
     env.DB.prepare("CREATE INDEX IF NOT EXISTS tr_watch_due ON tr_watch (paused, chain, due)"),
@@ -4273,6 +4275,10 @@ async function trInit(env) {
     env.DB.prepare("CREATE INDEX IF NOT EXISTS tr_watch_bal ON tr_watch (bal_usd)"),
     env.DB.prepare("CREATE INDEX IF NOT EXISTS tr_watch_laddr ON tr_watch (chain, lower(address))"),
     env.DB.prepare("CREATE INDEX IF NOT EXISTS tr_alerts_watch ON tr_alerts (watch_id, ts)"),
+    env.DB.prepare("CREATE INDEX IF NOT EXISTS tr_watch_parent ON tr_watch (parent_id)"),
+    // The checks changed (2026-11-16): redo them, parents first. 1 keeps the old result showing until then.
+    env.DB.prepare("UPDATE tr_watch SET vet_at = 1 WHERE vet_at > 1"),
+    env.DB.prepare(`WITH RECURSIVE d(id) AS (SELECT id FROM tr_watch WHERE parent_id IN (SELECT id FROM tr_watch WHERE hop > 0 AND vet_service = 1 AND vet_peers >= ${TR_SVC_PEERS}) UNION SELECT w.id FROM tr_watch w JOIN d ON w.parent_id = d.id) UPDATE tr_watch SET paused = 1, cut = 1 WHERE paused = 0 AND id IN (SELECT id FROM d)`),
     trSet(env.DB, "mig", TR_MIG),
   ]);
   trReady = true;
@@ -4308,7 +4314,7 @@ async function trBrowser(request, env, p, d, q, sess) {
   // Overview numbers for the cards at the top of the page.
   if (p === "/summary") {
     const [w, a, l, r, st] = await DB.batch([
-      DB.prepare("SELECT COUNT(*) total, SUM(parent_id IS NULL) seeds, SUM(paused) paused, SUM(checked IS NOT NULL) checked, SUM(bal_usd) usd, SUM(freeze_usd) freeze, SUM(freeze_usd >= 1000) freeze_n, SUM(bal_usd >= 1000) holding_n FROM tr_watch"),
+      DB.prepare("SELECT COUNT(*) total, SUM(parent_id IS NULL) seeds, SUM(paused > 0) paused, SUM(checked IS NOT NULL) checked, SUM(bal_usd) usd, SUM(freeze_usd) freeze, SUM(freeze_usd >= 1000) freeze_n, SUM(bal_usd >= 1000) holding_n FROM tr_watch"),
       DB.prepare("SELECT SUM(status = 'new') new, COUNT(*) total, SUM(created > ?) day, SUM(CASE WHEN status = 'new' THEN usd END) new_usd, MAX(CASE WHEN status = 'new' THEN score END) top FROM tr_alerts").bind(now - 86400e3),
       DB.prepare("SELECT SUM(status IN ('investigating', 'ready')) open, SUM(status = 'ready') ready, SUM(status = 'submitted') submitted FROM tr_leads"),
       DB.prepare("SELECT started, finished, errors FROM tr_runs ORDER BY id DESC LIMIT 1"),
@@ -4322,7 +4328,7 @@ async function trBrowser(request, env, p, d, q, sess) {
 
   // Biggest balances still sitting at watched addresses. Stablecoins (USDT/USDC) can be frozen by their issuer.
   if (p === "/holdings" && !post) {
-    const rows = (await DB.prepare("SELECT id, chain, address, label, source, source_url, hop, balance, bal_usd, freeze_usd, frozen, bal_at, last_activity, COALESCE(root_id, id) AS root, json_object('hop', hop, 'at', vet_at, 'share', vet_share, 'link', vet_link_ts, 'peers', vet_peers, 'svc', vet_service) AS vet, (SELECT 1 FROM tr_leads WHERE tr_leads.status = 'submitted' AND instr(tr_leads.notes, tr_watch.address) > 0) AS reported FROM tr_watch WHERE bal_usd >= 100 ORDER BY (CASE WHEN frozen = 1 THEN 0 ELSE freeze_usd END) DESC, bal_usd DESC LIMIT 100").all()).results;
+    const rows = (await DB.prepare("SELECT id, chain, address, label, source, source_url, hop, balance, bal_usd, freeze_usd, frozen, bal_at, last_activity, COALESCE(root_id, id) AS root, json_object('hop', hop, 'at', vet_at, 'share', vet_share, 'link', vet_link_ts, 'peers', vet_peers, 'svc', CASE WHEN (vet_service = 1 AND vet_peers >= 30) OR bal_usd >= 20000000 OR vet_in >= 1000000000 OR cut = 1 THEN 1 ELSE 0 END) AS vet, (SELECT 1 FROM tr_leads WHERE tr_leads.status = 'submitted' AND instr(tr_leads.notes, tr_watch.address) > 0) AS reported FROM tr_watch WHERE bal_usd >= 100 ORDER BY (CASE WHEN frozen = 1 THEN 0 ELSE freeze_usd END) DESC, bal_usd DESC LIMIT 100").all()).results;
     return trOut({ holdings: rows });
   }
   // Turn a holding into a lead with the facts already filled in.
@@ -4438,7 +4444,7 @@ async function trBrowser(request, env, p, d, q, sess) {
     if (TR_TAGS.includes(q.get("tag"))) { where.push("tag = ?"); args.push(q.get("tag")); }
     if (TR_ALERT_ST.includes(q.get("status"))) { where.push("status = ?"); args.push(q.get("status")); }
     const before = Number(q.get("before")); if (before > 0) { where.push("id < ?"); args.push(before); }
-    const rows = (await DB.prepare(`SELECT *, (SELECT source || ' ' || COALESCE(label, '') FROM tr_watch WHERE tr_watch.id = tr_alerts.watch_id) AS wsrc, (SELECT 1 FROM tr_leads WHERE tr_leads.status = 'submitted' AND EXISTS (SELECT 1 FROM json_each(tr_leads.alert_ids) WHERE value = tr_alerts.id)) AS reported, (SELECT COALESCE(root_id, id) FROM tr_watch WHERE tr_watch.id = tr_alerts.watch_id) AS root, (SELECT json_object('hop', hop, 'at', vet_at, 'share', vet_share, 'link', vet_link_ts, 'peers', vet_peers, 'svc', vet_service) FROM tr_watch WHERE tr_watch.id = tr_alerts.watch_id) AS vet, (SELECT 1 FROM tr_leads WHERE tr_leads.status = 'submitted' AND tr_alerts.counterparty <> '' AND instr(COALESCE(tr_leads.draft, ''), tr_alerts.counterparty) > 0) AS cp_reported FROM tr_alerts ${where.length ? "WHERE " + where.join(" AND ") : ""} ORDER BY ${q.get("sort") === "top" ? "COALESCE(score, 0) DESC, " : ""}id DESC LIMIT ${Math.min(200, Math.max(1, Number(q.get("limit")) || 200))}`).bind(...args).all()).results;
+    const rows = (await DB.prepare(`SELECT *, (SELECT source || ' ' || COALESCE(label, '') FROM tr_watch WHERE tr_watch.id = tr_alerts.watch_id) AS wsrc, (SELECT 1 FROM tr_leads WHERE tr_leads.status = 'submitted' AND EXISTS (SELECT 1 FROM json_each(tr_leads.alert_ids) WHERE value = tr_alerts.id)) AS reported, (SELECT COALESCE(root_id, id) FROM tr_watch WHERE tr_watch.id = tr_alerts.watch_id) AS root, (SELECT json_object('hop', hop, 'at', vet_at, 'share', vet_share, 'link', vet_link_ts, 'peers', vet_peers, 'svc', CASE WHEN (vet_service = 1 AND vet_peers >= 30) OR bal_usd >= 20000000 OR vet_in >= 1000000000 OR cut = 1 THEN 1 ELSE 0 END) FROM tr_watch WHERE tr_watch.id = tr_alerts.watch_id) AS vet, (SELECT 1 FROM tr_leads WHERE tr_leads.status = 'submitted' AND tr_alerts.counterparty <> '' AND instr(COALESCE(tr_leads.draft, ''), tr_alerts.counterparty) > 0) AS cp_reported FROM tr_alerts ${where.length ? "WHERE " + where.join(" AND ") : ""} ORDER BY ${q.get("sort") === "top" ? "COALESCE(score, 0) DESC, " : ""}id DESC LIMIT ${Math.min(200, Math.max(1, Number(q.get("limit")) || 200))}`).bind(...args).all()).results;
     const counts = (await DB.prepare("SELECT status, COUNT(*) n FROM tr_alerts GROUP BY status").all()).results;
     const sent24 = (await DB.prepare("SELECT COUNT(*) n FROM tr_leads WHERE status = 'submitted' AND updated > ?").bind(now - 864e5).first()).n;
     return trOut({ alerts: rows, counts, explorer: TR_EXPLORER, sent24 });
@@ -4615,7 +4621,7 @@ async function trDraft(DB, lead, profile = {}, dest = "fbi", max = 12) {
   if (path.length) L.push("", `The funds below did not move from that address directly. They reached ${path[path.length - 1].address} through ${path.length === 1 ? "one transfer" : path.length + " transfers"}: ${[seed, ...path].filter(Boolean).map((x) => x.address).join(" -> ")}.`);
   if (path.length && w && w.vet_at) {
     const pct = Math.round((w.vet_share || 0) * 100);
-    L.push("", `About ${pct}% of the stablecoins ${w.address} received${w.vet_in ? " (roughly " + money(w.vet_in * pct / 100) + " of " + money(w.vet_in) + ")" : ""} came from the listed address or wallets already linked to it${w.vet_link_ts ? ", most recently on " + when(w.vet_link_ts) : ""}. ${w.vet_service ? "It has received funds from " + w.vet_peers + " different addresses, so it may be a service with other customers." : "It has received from only " + w.vet_peers + " different address" + (w.vet_peers === 1 ? "" : "es") + ", so it doesn't look like an exchange or payment service."}`);
+    L.push("", `About ${pct}% of the stablecoins ${w.address} received${w.vet_in ? " (roughly " + money(w.vet_in * pct / 100) + " of " + money(w.vet_in) + ")" : ""} traces to the listed address, directly or through wallets that themselves passed these checks${w.vet_link_ts ? ", most recently on " + when(w.vet_link_ts) : ""}. ${w.vet_service ? "It has received funds from " + w.vet_peers + " different addresses, so it may be a service with other customers." : "It has received from only " + w.vet_peers + " different address" + (w.vet_peers === 1 ? "" : "es") + ", so it doesn't look like an exchange or payment service."}`);
   }
   if (alerts.length) {
     L.push("", alerts.length === 1 ? "What happened:" : "What happened (oldest first):");
@@ -4886,21 +4892,34 @@ async function trVet(DB, w, C) {
     const d = await trGet(`${base}module=account&action=tokentx&address=${addr}&sort=desc&page=1&offset=200`, C);
     ins = (Array.isArray(d.result) ? d.result : []).filter((t) => (t.to || "").toLowerCase() === lower && /^(USDT|USDC)$/.test(t.tokenSymbol || "")).map((t) => ({ from: (t.from || "").toLowerCase(), amount: Number(t.value) / 10 ** (Number(t.tokenDecimal) || 6), ts: Number(t.timeStamp) * 1000 }));
   }
+  ins = ins.filter((t) => t.from !== (w.chain === "tron" ? addr : lower));
   const senders = [...new Set(ins.map((t) => t.from))];
-  let linked = new Set();
+  // How much of each sender's money traces to the named source: the named address itself 1, a wallet that passed its own
+  // checks its share, an exchange or service 0, a watched wallet not checked yet 0.5 (unknown). Unwatched senders 0, and so are
+  // wallets found at the same or a later step (siblings and its own children sending money back).
+  // Counting every watched wallet as "linked" made customers of a service look 100% linked (2026-11-16 audit).
+  const weight = new Map();
   for (let i = 0; i < senders.length; i += 90) {
     const part = senders.slice(i, i + 90);
-    const rows = (await DB.prepare(`SELECT address FROM tr_watch ${w.chain === "tron" ? "" : "INDEXED BY tr_watch_laddr "}WHERE chain = ? AND ${w.chain === "tron" ? "address" : "lower(address)"} IN (${part.map(() => "?").join(",")})`).bind(w.chain, ...part).all()).results;
-    for (const r of rows) linked.add(w.chain === "tron" ? r.address : r.address.toLowerCase());
+    const rows = (await DB.prepare(`SELECT address, hop, vet_at, vet_share, vet_service, vet_peers, bal_usd, cut FROM tr_watch ${w.chain === "tron" ? "" : "INDEXED BY tr_watch_laddr "}WHERE chain = ? AND ${w.chain === "tron" ? "address" : "lower(address)"} IN (${part.map(() => "?").join(",")})`).bind(w.chain, ...part).all()).results;
+    for (const r of rows) weight.set(w.chain === "tron" ? r.address : r.address.toLowerCase(), r.hop === 0 ? 1 : trIsService(r) || r.cut || r.hop >= w.hop ? 0 : r.vet_at ? Math.min(1, r.vet_share || 0) : 0.5);
   }
-  const total = ins.reduce((a, t) => a + t.amount, 0), fromLinked = ins.filter((t) => linked.has(t.from));
-  const share = total > 0 ? fromLinked.reduce((a, t) => a + t.amount, 0) / total : 0;
-  const linkTs = fromLinked.reduce((a, t) => Math.max(a, t.ts || 0), 0);
-  const span = ins.length ? Math.max(...ins.map((t) => t.ts)) - Math.min(...ins.map((t) => t.ts)) : 0;
-  const service = senders.length >= 40 || (ins.length >= 200 && span < 30 * 864e5) ? 1 : 0;
+  const total = ins.reduce((a, t) => a + t.amount, 0);
+  const share = total > 0 ? ins.reduce((a, t) => a + t.amount * (weight.get(t.from) || 0), 0) / total : 0;
+  const linkTs = ins.filter((t) => (weight.get(t.from) || 0) >= 0.5).reduce((a, t) => Math.max(a, t.ts || 0), 0);
+  // A service has many different customers sending to it. Many transfers from a few senders is one operator, not a service.
+  const service = trIsService({ vet_service: senders.length >= TR_SVC_PEERS ? 1 : 0, vet_peers: senders.length, bal_usd: w.bal_usd, vet_in: total }) ? 1 : 0;
   await DB.prepare("UPDATE tr_watch SET vet_at = ?, vet_share = ?, vet_link_ts = ?, vet_peers = ?, vet_service = ?, vet_in = ? WHERE id = ?").bind(Date.now(), Math.round(share * 1000) / 1000, linkTs || null, senders.length, service, Math.round(total), w.id).run();
+  // Money that reached wallets through a service belongs to that service's customers: stop following those trails.
+  if (service || share < 0.2) await DB.prepare("WITH RECURSIVE d(id) AS (SELECT id FROM tr_watch WHERE parent_id = ? UNION SELECT x.id FROM tr_watch x JOIN d ON x.parent_id = d.id) UPDATE tr_watch SET paused = 1, cut = 1 WHERE paused = 0 AND COALESCE(vet_share, 0) < 0.5 AND id IN (SELECT id FROM d)").bind(w.id).run();
+  Object.assign(w, { vet_at: Date.now(), vet_share: share, vet_link_ts: linkTs || null, vet_peers: senders.length, vet_service: service, vet_in: total });
   return { share, linkTs, peers: senders.length, service };
 }
+const TR_SVC_PEERS = 30;
+// Exchange hot wallets and payment services: many different senders, or far more money than one person moves.
+const trIsService = (r) => (r.vet_service === 1 && (r.vet_peers || 0) >= TR_SVC_PEERS) || (r.bal_usd || 0) >= 20e6 || (r.vet_in || 0) >= 1e9;
+// A found wallet may be reported as the bad actor only once its checks pass.
+const trVetOk = (w, now = Date.now()) => w.hop === 0 || (w.vet_at > 1 && !trIsService(w) && !w.cut && (w.vet_share || 0) >= 0.5 && w.vet_link_ts && now - w.vet_link_ts < 60 * 864e5);
 async function trTron(w, C) {
   const since = Number(String(w.last_seen_tx || "").replace(/^t:/, "")) || 0;
   const d = await trGet(`https://api.trongrid.io/v1/accounts/${w.address}/transactions/trc20?limit=25&only_from=true&contract_address=${TR_TRON_USDT}&min_timestamp=${since + 1}`, C, C.keys.trongrid ? { "TRON-PRO-API-KEY": C.keys.trongrid } : undefined);
@@ -5090,7 +5109,7 @@ async function trTick(env, force) {
         const usd = Math.round(m.amount * trPx(prices, m.asset));
         const r = await DB.prepare("INSERT OR IGNORE INTO tr_alerts (watch_id, chain, address, tx, ts, tag, amount, asset, counterparty, summary, status, created, usd, score) VALUES (?, ?, ?, ?, ?, 'inflow', ?, ?, ?, ?, 'new', ?, ?, ?)")
           .bind(w.id, w.chain, w.address, m.tx, m.ts, trFmt(m.amount), m.asset, m.from, `${w.label || "Watched address"} (${w.hop ? "hop " + w.hop : "seed"}) received ${trFmt(m.amount)} ${m.asset}${m.from ? " from " + trShort(m.from) : ""}. New money arriving can mean a fresh theft or funds being gathered before a move. Look at where it came from.`, now, usd, trScore("inflow", usd, m.asset)).run();
-        if (r.meta?.changes) fresh.push({ tag: "inflow", usd, summary: `${w.label || "Watched address"} received ${trFmt(m.amount)} ${m.asset}`, id: r.meta.last_row_id });
+        if (r.meta?.changes) fresh.push({ tag: "inflow", usd, w, summary: `${w.label || "Watched address"} received ${trFmt(m.amount)} ${m.asset}`, id: r.meta.last_row_id });
       }
       if (moves.length) {
         const newest = Math.max(...moves.map((m) => m.ts));
@@ -5129,7 +5148,7 @@ async function trTick(env, force) {
           if (m.call && !lab.kind) continue; // a contract call we can't name: not worth an alert
           let tag = lab.kind || (first && woke ? "dormant_wake" : first && wide ? "dispersal" : "transfer");
           const kids = [];
-          const follow = (chain, address, amount, label) => { if (w.hop + 1 <= maxHops && total < TR_MAX_WATCH && now - m.ts < lookback) kids.push([chain, address, label || ""]); };
+          const follow = (chain, address, amount, label) => { if (w.hop + 1 <= maxHops && !(w.hop > 0 && trIsService(w)) && total < TR_MAX_WATCH && now - m.ts < lookback) kids.push([chain, address, label || ""]); };
           let extra = "";
           const floor = (wide ? 3 : 10) * (TR_MIN[m.asset] || 0);
           if (lab.kind === "bridge" && /thorchain/i.test(lab.name)) {
@@ -5152,7 +5171,7 @@ async function trTick(env, force) {
             const usd = m.call ? 0 : Math.round(m.amount * trPx(prices, m.asset));
             const r = await DB.prepare("INSERT OR IGNORE INTO tr_alerts (watch_id, chain, address, tx, ts, tag, amount, asset, counterparty, summary, status, created, usd, score) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'new', ?, ?, ?)")
               .bind(w.id, w.chain, w.address, m.tx, m.ts, tag, m.call ? "" : trFmt(m.amount), m.call ? "" : m.asset, to, summary, now, usd, trScore(tag, usd, m.asset)).run();
-            if (r.meta?.changes) fresh.push({ tag, usd, summary, id: r.meta.last_row_id });
+            if (r.meta?.changes) fresh.push({ tag, usd, w, summary, id: r.meta.last_row_id });
           }
           first = false;
         }
@@ -5179,7 +5198,8 @@ async function trTick(env, force) {
         DB.prepare("SELECT * FROM tr_watch WHERE freeze_usd >= 100000 AND hop > 0 AND +paused = 0 AND COALESCE(vet_at, 0) < ? ORDER BY COALESCE(vet_at, 0) LIMIT 5").bind(cut),
         DB.prepare("SELECT w.* FROM tr_alerts a JOIN tr_watch w ON w.id = a.watch_id WHERE a.created > ? AND a.usd >= 100000 AND w.hop > 0 AND w.paused = 0 AND COALESCE(w.vet_at, 0) < ? LIMIT 20").bind(now - 3 * 864e5, cut),
       ]);
-      const v = [...big.results, ...moved.results].filter((x) => okc.includes(x.chain)).sort((p, q) => (p.vet_at || 0) - (q.vet_at || 0) || (q.freeze_usd || 0) - (p.freeze_usd || 0))[0];
+      const urgent = fresh.find((f) => f.usd >= 100000 && f.w.hop > 0 && okc.includes(f.w.chain) && (f.w.vet_at || 0) < cut);
+      const v = urgent ? urgent.w : [...big.results, ...moved.results].filter((x) => okc.includes(x.chain)).sort((p, q) => ((p.vet_at || 0) > 1) - ((q.vet_at || 0) > 1) || p.hop - q.hop || (p.vet_at || 0) - (q.vet_at || 0) || (q.freeze_usd || 0) - (p.freeze_usd || 0))[0];
       if (v) { if (v.chain === "tron") await new Promise((r) => setTimeout(r, 1100)); await trVet(DB, v, C); }
     }
   } catch (e) { errors.push("checks: " + String(e.message).slice(0, 80)); }
@@ -5200,7 +5220,7 @@ async function trTick(env, force) {
   // Notify only for what the owner chose: by default just moves worth reporting (same rule as the page's "Report now").
   const worth = (f) => (f.tag === "exchange" && f.usd >= 250000) || (f.tag === "bridge" && f.usd >= 2e6);
   const look = (f) => worth(f) || (f.usd >= 100000 && trScore(f.tag, f.usd, "") >= 55);
-  const notify = s.notify === "all" ? fresh : fresh.filter(s.notify === "look" ? look : worth);
+  const notify = s.notify === "all" ? fresh : fresh.filter((f) => (s.notify === "look" ? look(f) : worth(f)) && f.w && trVetOk(f.w, now));
   if (notify.length) await trNotify(env, s, notify).catch(() => {});
   return { checked: batch.length, calls: C.calls, alerts: fresh.length, seeded, errors };
 }

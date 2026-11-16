@@ -46,12 +46,13 @@
   // Wallets the watcher found by itself (not named in a notice) must pass the automatic checks before "Report now".
   function vetted(v, x, kind) {
     let d = x.vet; if (typeof d === "string") { try { d = JSON.parse(d); } catch { d = null; } }
-    if (!d || !d.hop || v.level !== "now") return v;
-    const pct = Math.round((d.share || 0) * 100), facts = d.at ? "About " + pct + "% of the stablecoins this wallet received came from the sanctioned address or wallets linked to it" + (d.link ? ", most recently " + ago(d.link) : "") + ". " + d.peers + " different wallet" + (d.peers === 1 ? "" : "s") + " sent it money." : "";
-    if (!d.at) return { ...v, level: "look", word: "Checking", why: v.why + " This wallet was found by following the money, so it's being checked automatically first (who else sends it money, and how much came from the sanctioned source). That takes a few minutes." };
-    if (d.svc) return { ...v, level: "look", word: "Service", why: facts + " That many senders means it's probably an exchange or payment service, so the money isn't all the sanctioned party's. Only worth reporting to that service, not as the bad actor." };
-    if (d.share < 0.5) return { ...v, level: "look", word: "Weak link", why: facts + " Most of its money came from elsewhere, so it may belong to an ordinary customer. Not worth reporting on its own." };
-    if (!d.link || Date.now() - d.link > 60 * 864e5) return { ...v, level: "look", word: "Old link", why: facts + " The link to the sanctioned source is more than 60 days old, so it's weak evidence now." };
+    if (!d || !d.hop || (v.level !== "now" && v.level !== "look")) return v;
+    const down = v.level === "now" ? "look" : "skip";
+    const pct = Math.round((d.share || 0) * 100), facts = d.at ? "About " + pct + "% of the stablecoins this wallet received traces to the sanctioned address (directly, or through wallets that passed these checks)" + (d.link ? ", most recently " + ago(d.link) : "") + ". " + d.peers + " different wallet" + (d.peers === 1 ? "" : "s") + " sent it money." : "";
+    if (!d.at) return v.level === "look" ? v : { ...v, level: "look", word: "Checking", why: v.why + " This wallet was found by following the money, so it's being checked automatically first (who else sends it money, and how much came from the sanctioned source). That takes a few minutes." };
+    if (d.svc) return { ...v, level: "skip", word: "Service", why: facts + " That many senders means it's probably an exchange or payment service, so the money isn't all the sanctioned party's. Only worth reporting to that service, not as the bad actor." };
+    if (d.share < 0.5) return { ...v, level: "skip", word: "Weak link", why: facts + " Most of its money came from elsewhere, so it may belong to an ordinary customer. Not worth reporting on its own." };
+    if (!d.link || Date.now() - d.link > 60 * 864e5) return { ...v, level: down, word: "Old link", why: facts + " The link to the sanctioned source is more than 60 days old, so it's weak evidence now." };
     return { ...v, why: v.why + " Checks passed: " + facts + " So it isn't a busy service, and most of its money traces to the sanctioned source." };
   }
   function analyze0(x, kind) { return vetted(analyze1(x, kind), x, kind); }
