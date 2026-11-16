@@ -1,6 +1,7 @@
 import { FFmpeg } from '/vendor/ffmpeg-0.12.15/index.js';
 import { toBlobURL } from '/vendor/ffmpeg-util-0.12.2/index.js';
 import { $, save, readCaptions, subtitles } from './studio-common.js';
+import { wzUse } from './limits.js?v=1';
 const mode=document.querySelector('[data-mode]').dataset.mode, CORE='https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/esm';
 let ff, worker, file, inputURL, resultURL, busy=false, generation=0, rejectWorker;
 const status=s=>$('status').textContent=s;
@@ -61,6 +62,7 @@ $('run').onclick=async()=>{
       if(!Number.isFinite(start)||!Number.isFinite(end)||start<0||end<=start)throw new Error('Set an end time after the start time.');
       if(Number.isFinite($('preview').duration)&&end>$('preview').duration+.05)throw new Error('End time is beyond the video duration.');
     }
+    await wzUse(mode);if(token!==generation)return;
     f=await engine(token);if(token!==generation)return;
     await f.writeFile('input',new Uint8Array(await file.arrayBuffer()));if(token!==generation)return;
     if(mode==='transcribe'){

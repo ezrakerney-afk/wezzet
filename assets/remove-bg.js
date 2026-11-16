@@ -1,3 +1,4 @@
+import { wzUse } from "./limits.js?v=1";
 /* Wezzet background remover. Runs an open-source cutout model in the browser
    with Transformers.js; the model downloads once, photos never leave the device.
    Runs on the CPU (wasm); full-resolution images can require substantial device memory. */
@@ -97,6 +98,7 @@ async function handle(files) {
     const actions = document.createElement("span"); actions.className = "factions";
     li.append(name, meta, actions); list.prepend(li);
     try {
+      await wzUse("remove-bg");
       const blob = await cutout(file, (s) => { meta.textContent = s; });
       const outName = file.name.replace(/\.[^.]+$/, "") + "-no-bg.png";
       const href = URL.createObjectURL(blob);
