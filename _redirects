@@ -7,3 +7,4 @@
 /domain-checker          /domains     301
 /domain-checker/         /domains     301
 /domain                  /domains     301
+/account /signin 301
