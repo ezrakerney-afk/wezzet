@@ -4246,7 +4246,7 @@ const trUrl = (u) => { u = clean(u, 500); return /^https:\/\//i.test(u) ? u : ""
 function trEq(a, b) { if (a.length !== b.length) return false; let x = 0; for (let i = 0; i < a.length; i++) x |= a.charCodeAt(i) ^ b.charCodeAt(i); return x === 0; }
 
 // D1's free plan allows 5M row reads a day for the whole site, so the watcher must read by index, never scan its tables.
-const TR_MIG = "6";
+const TR_MIG = "7";
 async function trInit(env) {
   if (trReady) return;
   const mig = await env.DB.prepare("SELECT v FROM tr_settings WHERE k = 'mig'").first().catch(() => null);
@@ -4279,6 +4279,10 @@ async function trInit(env) {
     env.DB.prepare("CREATE INDEX IF NOT EXISTS tr_watch_laddr ON tr_watch (chain, lower(address))"),
     env.DB.prepare("CREATE INDEX IF NOT EXISTS tr_alerts_watch ON tr_alerts (watch_id, ts)"),
     env.DB.prepare("CREATE INDEX IF NOT EXISTS tr_watch_parent ON tr_watch (parent_id)"),
+    // tr_flags: every "Report now" the watcher would show, so each one can be reviewed (2026-11-16 to 23, Ezra).
+    env.DB.prepare("CREATE TABLE IF NOT EXISTS tr_flags (id INTEGER PRIMARY KEY, kind TEXT, alert_id INTEGER, watch_id INTEGER, usd REAL, why TEXT, created INTEGER, reviewed INTEGER DEFAULT 0, verdict TEXT)"),
+    env.DB.prepare("CREATE INDEX IF NOT EXISTS tr_flags_rev ON tr_flags (reviewed, created)"),
+    env.DB.prepare("CREATE INDEX IF NOT EXISTS tr_flags_watch ON tr_flags (watch_id, kind, created)"),
     // The checks changed (2026-11-16): redo them, parents first. 1 keeps the old result showing until then.
     ...(prev >= 5 ? [] : [env.DB.prepare("UPDATE tr_watch SET vet_at = 1 WHERE vet_at > 1"),
     env.DB.prepare(`WITH RECURSIVE d(id) AS (SELECT id FROM tr_watch WHERE parent_id IN (SELECT id FROM tr_watch WHERE hop > 0 AND vet_service = 1 AND vet_peers >= ${TR_SVC_PEERS}) UNION SELECT w.id FROM tr_watch w JOIN d ON w.parent_id = d.id) UPDATE tr_watch SET paused = 1, cut = 1 WHERE paused = 0 AND id IN (SELECT id FROM d)`)]),
@@ -4921,6 +4925,20 @@ async function trVet(DB, w, C) {
   return { share, linkTs, peers: senders.length, service };
 }
 const TR_SVC_PEERS = 30;
+// Log a "Report now" once: alerts by alert, holdings once per wallet a week. Same rules as the page (tracker.js analyze).
+async function trFlag(DB, kind, w, alertId, usd, why) {
+  const now = Date.now();
+  await (alertId
+    ? DB.prepare("INSERT INTO tr_flags (kind, alert_id, watch_id, usd, why, created) SELECT ?, ?, ?, ?, ?, ? WHERE NOT EXISTS (SELECT 1 FROM tr_flags WHERE watch_id = ? AND kind = ? AND alert_id = ?)").bind(kind, alertId, w.id, Math.round(usd || 0), why, now, w.id, kind, alertId)
+    : DB.prepare("INSERT INTO tr_flags (kind, watch_id, usd, why, created) SELECT ?, ?, ?, ?, ? WHERE NOT EXISTS (SELECT 1 FROM tr_flags WHERE watch_id = ? AND kind = ? AND created > ?)").bind(kind, w.id, Math.round(usd || 0), why, now, w.id, kind, now - 7 * 864e5)).run().catch(() => {});
+}
+async function trHoldFlag(DB, w, freeze, frozen) {
+  if (frozen !== 0 || !(freeze >= 50000)) return;
+  const tf = /Tether freeze/.test(w.source || ""), peers = w.vet_peers || 0;
+  const why = w.hop === 0 ? (freeze >= 500000 ? "named wallet holds $500k+ unfrozen stablecoins" : "")
+    : !trVetOk(w) ? "" : freeze >= 500000 ? "found wallet holds $500k+ unfrozen, checks passed" : freeze >= 250000 && peers > 0 && peers <= 5 ? "parking wallet ($250k+, " + peers + " senders), checks passed" : tf ? "money from a Tether-frozen wallet ($50k+), checks passed" : "";
+  if (why) await trFlag(DB, "holding", w, null, freeze, why);
+}
 // Exchange hot wallets and payment services: many different senders, or far more money than one person moves.
 const trIsService = (r) => (r.vet_service === 1 && (r.vet_peers || 0) >= TR_SVC_PEERS) || (r.bal_usd || 0) >= 20e6 || (r.vet_in || 0) >= 1e9;
 // A found wallet may be reported as the bad actor only once its checks pass.
@@ -5057,6 +5075,7 @@ async function trSaveBalance(DB, w, list, prices, C) {
   if (freeze >= 100 && C) { try { frozen = await trFrozen(w, has, C); } catch {} if (frozen === 1) freeze = 0; }
   const text = has.sort((a, b) => b.amount * px(b.asset) - a.amount * px(a.asset)).slice(0, 3).map((x) => trFmt(x.amount) + " " + x.asset).join(" · ") || "Empty";
   await DB.prepare("UPDATE tr_watch SET balance = ?, bal_usd = ?, freeze_usd = ?, bal_at = ?, frozen = ? WHERE id = ?").bind(text, Math.round(usd), Math.round(freeze), Date.now(), frozen, w.id).run();
+  await trHoldFlag(DB, w, freeze, frozen);
 }
 
 // How much an alert is worth a look, 0 to 100: what happened, then how much money.
@@ -5238,7 +5257,7 @@ async function trTick(env, force) {
       ]);
       const urgent = fresh.find((f) => f.usd >= 100000 && f.w.hop > 0 && okc.includes(f.w.chain) && (f.w.vet_at || 0) < cut);
       const v = urgent ? urgent.w : [...big.results, ...moved.results].filter((x) => okc.includes(x.chain)).sort((p, q) => ((p.vet_at || 0) > 1) - ((q.vet_at || 0) > 1) || p.hop - q.hop || (p.vet_at || 0) - (q.vet_at || 0) || (q.freeze_usd || 0) - (p.freeze_usd || 0))[0];
-      if (v) { if (v.chain === "tron") await new Promise((r) => setTimeout(r, 1100)); await trVet(DB, v, C); }
+      if (v) { if (v.chain === "tron") await new Promise((r) => setTimeout(r, 1100)); await trVet(DB, v, C); if (v.bal_at && now - v.bal_at < 12 * 3600e3) await trHoldFlag(DB, v, v.freeze_usd, v.frozen); }
     }
   } catch (e) { errors.push("checks: " + String(e.message).slice(0, 80)); }
   await DB.prepare("INSERT INTO tr_runs (started, finished, checked, calls, alerts, errors) VALUES (?, ?, ?, ?, ?, ?)").bind(now, Date.now(), batch.length, C.calls, fresh.length, errors.slice(0, 8).join("\n")).run();
@@ -5258,6 +5277,7 @@ async function trTick(env, force) {
   // Notify only for what the owner chose: by default just moves worth reporting (same rule as the page's "Report now").
   const worth = (f) => (f.tag === "exchange" && f.usd >= 250000) || (f.tag === "bridge" && f.usd >= 2e6);
   const look = (f) => worth(f) || (f.usd >= 100000 && trScore(f.tag, f.usd, "") >= 55);
+  for (const f of fresh) if (worth(f) && f.w && trVetOk(f.w, now)) await trFlag(DB, "alert", f.w, f.id, f.usd, f.tag + " $" + Math.round(f.usd) + (f.w.hop ? ", found wallet passed checks" : ", named wallet"));
   const notify = s.notify === "all" ? fresh : fresh.filter((f) => (s.notify === "look" ? look(f) : worth(f)) && f.w && trVetOk(f.w, now));
   if (notify.length) await trNotify(env, s, notify).catch(() => {});
   return { checked: batch.length, calls: C.calls, alerts: fresh.length, seeded, errors };
