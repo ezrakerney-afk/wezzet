@@ -162,9 +162,21 @@
   document.addEventListener("click", (e) => { if (!e.target.closest("#tr-bellwrap") && !$("#tr-bellpanel").hidden) { $("#tr-bellpanel").hidden = true; $("#tr-bell").setAttribute("aria-expanded", "false"); loadBell(); } });
 
   // ---- gate ----
+  // Visitors without Pro see the Pro popup (Chain Watch opens to Pro members after the private beta).
+  async function proOffer() {
+    const st = await fetch("/api/chat/pro/status", { credentials: "same-origin" }).then((x) => x.json()).catch(() => null);
+    if (!st || (st.me && st.me.plan === "pro")) return;
+    import("/assets/limits.js?v=2").then((m) => m.wzProPopup({
+      title: "Chain Watch is coming to Pro",
+      text: "Chain Watch is in private beta. When it opens, it will be part of Wezzet Pro.",
+      price: st.stripe ? "Pro is $5 a month and includes unlimited use of every tool. Cancel any time." : "Wezzet Pro is coming soon.",
+      cta: st.stripe ? "Get Pro" : "See Pro",
+    })).catch(() => {});
+  }
   async function start() {
     const me = window.wzAccount ? await window.wzAccount.ready : null;
     const r = me ? await api("me") : { status: 401 };
+    if (r.status === 401 || !r.ok) proOffer();
     if (r.status === 401) { $("#tr-msg").textContent = "Chain Watch is in private beta. Sign in with an invited Wezzet account to open it."; $("#wz-account").hidden = false; return; }
     if (!r.ok) { $("#tr-msg").textContent = "Chain Watch is in private beta, so it's only open to invited accounts for now. It watches wallets named in FBI and Treasury notices and follows where stolen crypto moves."; $("#wz-account").hidden = true; return; }
     $("#tr-gate").hidden = true; $("#tr-app").hidden = false; $("#tr-run").hidden = false;
