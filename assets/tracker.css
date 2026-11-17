@@ -215,3 +215,5 @@ body.tr-full main > .wrap.tr,body.tr-full .site-header .wrap,body.tr-full .site-
   .tr-side:not(:hover):not(:has(:focus-visible)) .tr-tabs .n{display:none}
 }
 @media (prefers-reduced-motion:reduce){.tr-side{transition:none}}
+
+.tr-rep-row{border-top:1px solid var(--line);margin-top:12px;padding-top:10px}.tr-rep-row p{margin:0 0 6px}.tr-rep-row.win{border-top-color:var(--good)}.tr-rep-row.win strong{color:var(--good)}

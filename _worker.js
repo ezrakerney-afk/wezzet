@@ -4254,7 +4254,7 @@ const trUrl = (u) => { u = clean(u, 500); return /^https:\/\//i.test(u) ? u : ""
 function trEq(a, b) { if (a.length !== b.length) return false; let x = 0; for (let i = 0; i < a.length; i++) x |= a.charCodeAt(i) ^ b.charCodeAt(i); return x === 0; }
 
 // D1's free plan allows 5M row reads a day for the whole site, so the watcher must read by index, never scan its tables.
-const TR_MIG = "8";
+const TR_MIG = "9";
 async function trInit(env) {
   if (trReady) return;
   const mig = await env.DB.prepare("SELECT v FROM tr_settings WHERE k = 'mig'").first().catch(() => null);
@@ -4297,6 +4297,9 @@ async function trInit(env) {
     // The checks changed (2026-11-16): redo them, parents first. 1 keeps the old result showing until then.
     ...(prev >= 5 ? [] : [env.DB.prepare("UPDATE tr_watch SET vet_at = 1 WHERE vet_at > 1"),
     env.DB.prepare(`WITH RECURSIVE d(id) AS (SELECT id FROM tr_watch WHERE parent_id IN (SELECT id FROM tr_watch WHERE hop > 0 AND vet_service = 1 AND vet_peers >= ${TR_SVC_PEERS}) UNION SELECT w.id FROM tr_watch w JOIN d ON w.parent_id = d.id) UPDATE tr_watch SET paused = 1, cut = 1 WHERE paused = 0 AND id IN (SELECT id FROM d)`)]),
+    // tr_reports: every report sent, its exact text, a Bitcoin timestamp of that text, and what happened to the money afterwards.
+    env.DB.prepare("CREATE TABLE IF NOT EXISTS tr_reports (id INTEGER PRIMARY KEY, lead_id INTEGER, dest TEXT, at INTEGER, text TEXT, hash TEXT, ots TEXT, targets TEXT, outcome TEXT, outcome_at INTEGER, chk INTEGER DEFAULT 0)"),
+    env.DB.prepare("CREATE INDEX IF NOT EXISTS tr_reports_chk ON tr_reports (outcome, chk)"),
     trSet(env.DB, "mig", TR_MIG),
   ]);
   trReady = true;
@@ -4311,7 +4314,7 @@ const trSet = (DB, k, v) => DB.prepare("INSERT INTO tr_settings (k, v) VALUES (?
 
 // Owner = login name in TRACKER_OWNER, or the account id saved in tr_settings 'owner_uid' (so renaming the login keeps access).
 async function trOwnerId(env) {
-  const owner = String(env.TRACKER_OWNER || "").trim();
+  const owner = String(env.TRACKER_OWNER || "").split(",")[0].trim();
   if (!owner || !env.DB) return 0;
   const r = await env.DB.prepare("SELECT v FROM tr_settings WHERE k = 'owner_uid'").first().catch(() => null);
   if (r && Number(r.v) > 0) return Number(r.v);
@@ -4319,9 +4322,18 @@ async function trOwnerId(env) {
   return u ? u.id : 0;
 }
 
+// Extra names after the first in TRACKER_OWNER ("owner,partner") share the owner's Chain Watch: same watchlist, alerts and leads.
+async function trAllowed(env, uid) {
+  if (!uid) return false;
+  if (uid === await trOwnerId(env)) return true;
+  const more = String(env.TRACKER_OWNER || "").split(",").map((x) => x.trim()).filter(Boolean).slice(1, 6);
+  if (!more.length) return false;
+  return !!(await env.DB.prepare(`SELECT 1 FROM ch_users WHERE id = ? AND name IN (${more.map(() => "?").join(",")})`).bind(uid, ...more).first().catch(() => null));
+}
+
 // ---- Browser side: /api/chat/tracker/* (cookie session from chRoute, its CSRF guard already ran) ----
 async function trBrowser(request, env, p, d, q, sess) {
-  if (sess.id !== await trOwnerId(env)) return trOut({ error: "Not available." }, 403);
+  if (!(await trAllowed(env, sess.id))) return trOut({ error: "Not available." }, 403);
   await trInit(env);
   const DB = env.DB, post = request.method === "POST", now = Date.now();
   const ids = (v) => (Array.isArray(v) ? v : [v]).map((x) => Math.round(Number(x))).filter((x) => x > 0).slice(0, 500);
@@ -4345,6 +4357,7 @@ async function trBrowser(request, env, p, d, q, sess) {
     const { w, a, l } = trSumCache;
     const set = Object.fromEntries(st.results.map((x) => [x.k, x.v]));
     return trOut({ watch: w.results[0], alerts: a.results[0], leads: l.results[0], last: r.results[0] || null,
+      reports: await DB.prepare("SELECT COUNT(*) sent, SUM(outcome LIKE 'frozen:%') frozen FROM tr_reports").first().catch(() => null),
       engine: set.engine || "wezzet", seeds_at: Number(set.seeds_at) || 0, seeds_updated: set.seeds_updated || "",
       interval: Number(set.interval) || 30, paused: set.paused === "1", token: !!set.token_hash, channel: set.channel || "email", seal: !!(await acSealKey(env)) });
   }
@@ -4406,7 +4419,23 @@ async function trBrowser(request, env, p, d, q, sess) {
     if (!lead) return trOut({ error: "That lead is gone." }, 404);
     const line = `Sent to ${clean(d.dest, 60) || "?"} on ${new Date(now).toISOString().slice(0, 16).replace("T", " ")} UTC (one-click report).`;
     await DB.prepare("UPDATE tr_leads SET status = 'submitted', notes = ?, updated = ? WHERE id = ?").bind(((lead.notes || "") + "\n" + line).trim().slice(0, 10000), now, lead.id).run();
-    return trOut({ ok: true });
+    const text = typeof d.text === "string" ? d.text.slice(0, 20000) : "";
+    if (!text) return trOut({ ok: true });
+    // Bounties pay whoever reported first. Only the text's SHA-256 hash leaves Wezzet; the report itself stays private.
+    const C = { calls: 0, keys: {} }, s = await trSettings(DB);
+    if (s["key:trongrid"]) C.keys.trongrid = await acUnseal(env, s["key:trongrid"]);
+    const [stamp, targets] = await Promise.all([trStamp(text), trTargets(DB, lead)]);
+    for (const t of targets) { t.frozen0 = await trFrozen(t, TR_BOTH, C).catch(() => null); }
+    const r = await DB.prepare("INSERT INTO tr_reports (lead_id, dest, at, text, hash, ots, targets, chk) VALUES (?, ?, ?, ?, ?, ?, ?, ?)").bind(lead.id, clean(d.dest, 60) || "?", now, text, stamp.hex, stamp.ots, JSON.stringify(targets), now).run();
+    return trOut({ ok: true, report_id: r.meta.last_row_id, proof: !!stamp.ots, hash: stamp.hex, watching: targets.filter((t) => t.frozen0 !== 1).length });
+  }
+  if (p === "/reports/file" && !post) {
+    const rp = await DB.prepare("SELECT id, text, ots FROM tr_reports WHERE id = ?").bind(Math.round(Number(q.get("id"))) || 0).first();
+    if (!rp) return trOut({ error: "That report is gone." }, 404);
+    const ots = q.get("kind") === "ots";
+    if (ots && !rp.ots) return trOut({ error: "This report has no timestamp." }, 404);
+    const body = ots ? Uint8Array.from(atob(rp.ots), (c) => c.charCodeAt(0)) : rp.text;
+    return new Response(body, { headers: { "content-type": ots ? "application/octet-stream" : "text/plain; charset=utf-8", "content-disposition": `attachment; filename="wezzet-report-${rp.id}.txt${ots ? ".ots" : ""}"`, "x-robots-tag": "noindex", "cache-control": "no-store" } });
   }
   if (post && p === "/run") { try { return trOut({ result: await trTick(env, true) }); } catch (e) { return trOut({ error: "The check failed: " + String(e.message).slice(0, 120) }, 500); } }
   if (post && p === "/seeds") { try { return trOut(await trSeedImport(env)); } catch (e) { return trOut({ error: "Couldn't load the official lists." }, 500); } }
@@ -4508,7 +4537,10 @@ async function trBrowser(request, env, p, d, q, sess) {
     const all = [...new Set(leads.flatMap((l) => JSON.parse(l.alert_ids || "[]")))].slice(0, 2000);
     let alerts = [];
     for (let i = 0; i < all.length; i += 90) alerts = alerts.concat((await DB.prepare(`SELECT id, chain, address, tx, ts, tag, amount, asset, counterparty FROM tr_alerts WHERE id IN (${inIds(all.slice(i, i + 90))})`).bind(...all.slice(i, i + 90)).all()).results);
-    return trOut({ leads, alerts, explorer: TR_EXPLORER });
+    const reports = (await DB.prepare("SELECT id, lead_id, dest, at, hash, ots IS NOT NULL AS proof, targets, outcome, outcome_at FROM tr_reports ORDER BY id DESC LIMIT 500").all()).results
+      .map((x) => { const t = JSON.parse(x.targets || "[]"); delete x.targets; return { ...x, watching: t.filter((y) => y.frozen0 !== 1).length }; });
+    const prof = await trProfile(env, DB);
+    return trOut({ leads, alerts, reports, sig: ["name", "email", "phone", "country"].map((k) => prof[k]).filter(Boolean), explorer: TR_EXPLORER });
   }
   if (post && p === "/leads") {
     const id = Math.round(Number(d.id)) || 0;
@@ -5082,6 +5114,36 @@ async function trFrozen(w, list, C) {
   }
   return null;
 }
+// Proof of first report. The SHA-256 of the exact text goes to public OpenTimestamps calendars, which anchor it in a Bitcoin block
+// within a few hours. The saved .ots file plus the text prove the report existed at that time (check at opentimestamps.org).
+const TR_OTS = ["https://a.pool.opentimestamps.org", "https://b.pool.opentimestamps.org", "https://a.pool.eternitywall.com"];
+const TR_BOTH = [{ asset: "USDT", amount: 1 }, { asset: "USDC", amount: 1 }];
+async function trStamp(text) {
+  const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text)));
+  const hex = [...digest].map((b) => b.toString(16).padStart(2, "0")).join("");
+  // Every calendar that answers goes in the proof (0xff marks a fork), so it still completes if one calendar shuts down.
+  const got = (await Promise.allSettled(TR_OTS.map((u) => fetch(u + "/digest", { method: "POST", body: digest, signal: AbortSignal.timeout(6000), headers: { accept: "application/vnd.opentimestamps.v1", "user-agent": "Wezzet" } })
+    .then(async (r) => { if (!r.ok) throw new Error("calendar " + r.status); const b = new Uint8Array(await r.arrayBuffer()); if (!b.length || b.length > 8000 || b[0] === 0xff) throw new Error("bad reply"); return b; }))))
+    .filter((x) => x.status === "fulfilled").map((x) => x.value);
+  if (!got.length) return { hex, ots: null };
+  const body = got.flatMap((b, i) => (i < got.length - 1 ? [0xff, ...b] : [...b]));
+  // Detached .ots file: magic, version 1, SHA-256 (0x08), the digest, then the calendar's timestamp for that digest.
+  const head = [0x00, ...new TextEncoder().encode("OpenTimestamps"), 0x00, 0x00, ...new TextEncoder().encode("Proof"), 0x00, 0xbf, 0x89, 0xe2, 0xe8, 0x84, 0xe8, 0x92, 0x94, 0x01, 0x08];
+  const file = new Uint8Array([...head, ...digest, ...body]);
+  let bin = ""; for (const b of file) bin += String.fromCharCode(b);
+  return { hex, ots: btoa(bin) };
+}
+// Where a lead's money sits: stablecoin addresses the issuer could freeze (Tron and Ethereum). Services are skipped: their freezes can't be seen.
+async function trTargets(DB, lead) {
+  const out = new Map(), add = (c, a) => { if ((c === "tron" || c === "eth") && trAddr(a) && out.size < 4 && !out.has(c + ":" + a)) out.set(c + ":" + a, { chain: c, address: a }); };
+  const ids = JSON.parse(lead.alert_ids || "[]").slice(-20);
+  if (ids.length) for (const a of (await DB.prepare(`SELECT chain, address, counterparty, tag FROM tr_alerts WHERE id IN (${ids.map(() => "?").join(",")}) ORDER BY ts DESC`).bind(...ids).all()).results) {
+    if (!["exchange", "bridge", "mixer", "dex_swap"].includes(a.tag)) add(a.chain, a.counterparty);
+    add(a.chain, a.address);
+  }
+  const m = (lead.notes || "").match(/Address: (\w+) (\S+)/); if (m) add(m[1], m[2]);
+  return [...out.values()];
+}
 async function trSaveBalance(DB, w, list, prices, C) {
   const px = (a) => TR_STABLE[a] ? 1 : a === "WETH" || a === "stETH" || a === "mETH" ? prices.ETH : a === "WBTC" ? prices.BTC : prices[a] || 0;
   const has = list.filter((x) => x.amount > 0);
@@ -5145,6 +5207,18 @@ async function trTick(env, force) {
   // Tether's freeze list runs even when automatic list loading is off (its own switch: freeze_feed = "0" turns it off).
   if (s.freeze_feed !== "0" && now - Number(s.frz_check || 0) > 20 * 60e3) { try { seeded += await trFreezeFeed(DB, s, C, now); } catch (e) { errors.push("freezes: " + String(e.message).slice(0, 60)); } }
 
+  try {
+    const rp = await DB.prepare("SELECT id, targets FROM tr_reports WHERE outcome IS NULL AND chk < ? AND at > ? ORDER BY chk LIMIT 1").bind(now - 30 * 60e3, now - 60 * 864e5).first();
+    if (rp) {
+      let hit = null;
+      for (const t of JSON.parse(rp.targets || "[]")) {
+        if (t.frozen0 === 1) continue; // already frozen when reported: not this report's doing
+        if (t.chain === "tron") await new Promise((r) => setTimeout(r, 1100));
+        if ((await trFrozen(t, TR_BOTH, C).catch(() => null)) === 1) { hit = t; break; }
+      }
+      await DB.prepare("UPDATE tr_reports SET chk = ?, outcome = ?, outcome_at = ? WHERE id = ?").bind(now, hit ? `frozen:${hit.chain}:${hit.address}` : null, hit ? now : null, rp.id).run();
+    }
+  } catch (e) { errors.push("report check: " + String(e.message).slice(0, 60)); }
   const interval = (Number(s.interval) || 30) * 60e3, maxHops = Number(s.max_hops) || 5, pct = (Number(s.child_pct) || 10) / 100;
   const dormant = (Number(s.dormant_days) || 30) * 864e5, lookback = (Number(s.lookback_days) || 90) * 864e5;
   // Each chain's most overdue addresses, read through the (paused, chain, due) index: a round reads about 50 rows, not the whole table.

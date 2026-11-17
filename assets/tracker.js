@@ -125,7 +125,10 @@
     const text = (S.rep.drafts && S.rep.drafts[k]) || S.rep.draft; t.value = text;
     navigator.clipboard.writeText(text).catch(() => { ok = false; t.closest("details").open = true; t.select(); });
     window.open(DEST[k].url, "_blank", "noopener");
-    api("report/sent", { lead_id: S.rep.lead_id, dest: DEST[k].name }).then(() => { summary(); loadBell(); });
+    api("report/sent", { lead_id: S.rep.lead_id, dest: DEST[k].name, text }).then((r) => {
+      summary(); loadBell();
+      if (r && r.hash) $("#rp-status").textContent += r.proof ? " Its exact text is now timestamped in Bitcoin, so you can prove you reported first." + (r.watching ? " Chain Watch will tell you if the money gets frozen." : "") : " The timestamp servers didn't answer, so this one has no Bitcoin proof.";
+    });
     $("#rp-status").textContent = "Copied. The " + DEST[k].name + " form opened in a new tab: paste the report there and send. It's saved under Leads as sent.";
     $("#rp-status").className = "tr-note good";
   }
@@ -206,7 +209,7 @@
     set("money", w.usd ? usd(w.usd) : "–", w.freeze ? usd(w.freeze) + " freezable at " + (w.freeze_n || 0) + " addresses" : w.checked ? "Balances fill in as addresses are checked" : "Waiting for the first check", w.freeze ? "hot" : "");
     opps();
     set("alerts", a.new || 0, a.new_usd >= 1 ? usd(a.new_usd) + " moved, " + (a.day || 0) + " in 24 h" : (a.day || 0) + " in the last 24 h", a.new ? "hot" : "");
-    set("leads", l.open || 0, (l.ready || 0) + " ready, " + (l.submitted || 0) + " submitted");
+    set("leads", l.open || 0, (l.ready || 0) + " ready, " + (l.submitted || 0) + " submitted" + (r.reports && r.reports.frozen ? ", " + r.reports.frozen + " frozen after your report" : ""));
     const t = last && (last.finished || last.started), stale = t && Date.now() - t > 2 * r.interval * 60000;
     const state = r.paused ? "off" : !last ? "" : stale || last.errors ? "warn" : "ok";
     const word = r.paused ? "Paused" : !last ? "Starting" : stale ? "Late" : last.errors ? "Errors" : "Running";
@@ -395,7 +398,7 @@
   // ---- leads ----
   async function loadLeads() {
     const r = await api("leads"); if (!show(r)) return;
-    S.leads = r.leads; S.explorer = r.explorer;
+    S.leads = r.leads; S.explorer = r.explorer; S.reports = r.reports || []; S.sig = r.sig || [];
     const byId = new Map(r.alerts.map((a) => [a.id, a]));
     $("#l-list").replaceChildren(...(S.leads.length ? S.leads.map((l) => leadBox(l, byId)) : [el("div", { className: "tr-card tr-empty", textContent: "No leads yet. Promote alerts from the Alerts tab." })]));
   }
@@ -418,7 +421,28 @@
         el("button", { type: "button", className: "btn btn-quiet", textContent: "Add Claude summary", onclick: () => draft(true) }),
         copy,
         el("button", { type: "button", className: "btn btn-quiet tr-danger", textContent: "Delete", onclick: async () => { if (confirm("Delete this lead? Its alerts stay.") && show(await api("leads/delete", { ids: [l.id] }))) { loadLeads(); summary(); } } })),
-      pre);
+      pre, ...(S.reports || []).filter((x) => x.lead_id === l.id).map((x) => repRow(x, l)));
+  }
+  // A sent report: its proof files, and whether the money was frozen afterwards (that's when a bounty can be claimed).
+  function repRow(x, l) {
+    const fz = x.outcome && x.outcome.startsWith("frozen:") ? x.outcome.split(":") : null, utc = (t) => new Date(t).toISOString().slice(0, 16).replace("T", " ") + " UTC";
+    const dl = (kind) => async () => {
+      const r = await fetch("/api/chat/tracker/reports/file?id=" + x.id + "&kind=" + kind, { credentials: "same-origin" });
+      if (!r.ok) return status("Couldn't download that file.", true);
+      const a = el("a", { href: URL.createObjectURL(await r.blob()), download: "wezzet-report-" + x.id + (kind === "ots" ? ".txt.ots" : ".txt") }); a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    };
+    const claim = () => ["Hello,", "", `On ${utc(x.at)} I sent a report to ${x.dest} about funds at ${fz[2]} on ${fz[1] === "tron" ? "Tron" : "Ethereum"} (${l.title}).`,
+      "", `Since then that address has been frozen by the stablecoin issuer (I saw the freeze on ${utc(x.outcome_at)}). I believe my report may have helped, and I'd like it considered under your bounty program.`,
+      "", `I've attached the exact report I sent and its OpenTimestamps proof (SHA-256 ${x.hash}), which anchors the report in the Bitcoin blockchain. Anyone can check at https://opentimestamps.org that it existed before the freeze.`,
+      "", "Thank you,", ...(S.sig || [])].join("\n");
+    return el("div", { className: "tr-rep-row" + (fz ? " win" : "") },
+      el("p", {}, el("b", { textContent: "Sent to " + x.dest }), " · " + when(x.at) + " · ",
+        fz ? el("strong", { textContent: "Frozen " + Math.max(1, Math.round((x.outcome_at - x.at) / 36e5)) + " h after your report. Claim the bounty." }) : el("span", { textContent: x.watching ? "Checking " + x.watching + " address" + (x.watching > 1 ? "es" : "") + " for a freeze every 30 minutes" : "No freezable address to watch" })),
+      el("p", { className: "tr-sm", textContent: x.proof ? "Bitcoin timestamp of this exact text (SHA-256 " + x.hash.slice(0, 12) + "…). Keep both files: together they prove when you reported." : "No Bitcoin timestamp: the timestamp servers didn't answer. The send time is still recorded." }),
+      el("div", { className: "btn-row" },
+        el("button", { type: "button", className: "btn btn-quiet", textContent: "Report text", onclick: dl("txt") }),
+        x.proof ? el("button", { type: "button", className: "btn btn-quiet", textContent: "Proof file (.ots)", onclick: dl("ots") }) : "",
+        fz ? el("button", { type: "button", className: "btn", textContent: "Copy bounty claim", onclick: () => copyText(claim(), "Claim copied. Attach the report text and the proof file when you send it.") }) : ""));
   }
 
   // ---- settings ----
