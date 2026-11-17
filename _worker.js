@@ -1664,7 +1664,7 @@ function acPickBot(env, text, among) {
   for (const [re, n] of rules) if (re.test(t) && ok(n)) return n;
   return ['gemini-bot', 'wezzet-helper', 'openrouter-bot'].find(ok) || (among || []).find(ok) || null;
 }
-let acJobReady = false;
+let acJobReady = false, acJobSeen = false;
 async function acJobInit(env) {
   if (acJobReady) return;
   await env.DB.batch([
@@ -1760,7 +1760,8 @@ async function acJobsKick(env) {
   if (Date.now() - acKickAt < 15e3) return;
   acKickAt = Date.now();
   try {
-    if (!acJobReady && !(await env.DB.prepare("SELECT 1 FROM sqlite_master WHERE name='ac_jobs'").first())) return;
+    // sqlite_master reads ~170 rows each time, so only look until the table is known to exist (this ran every 15s per instance).
+    if (!acJobReady && !acJobSeen) { if (!(await env.DB.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='ac_jobs'").first())) return; acJobSeen = true; }
     const j = await env.DB.prepare("SELECT id FROM ac_jobs WHERE step NOT IN ('done','failed') AND updated < ? ORDER BY id LIMIT 1").bind(Date.now() - 35e3).first();
     if (j) await acJobRun(env, j.id, Date.now() + 24e3);
   } catch {}
@@ -4064,13 +4065,18 @@ async function recordToolVisit(request, env) {
 }
 async function toolStats(request, env) {
   if (request.method !== 'GET') return json({error: 'Method not allowed'}, 405, {Allow: 'GET'});
+  // The ranking reads every row of tool_visits, so it is kept 10 minutes in the edge cache (shared by all instances in a data center).
+  const edge = typeof caches !== 'undefined' && caches.default, ck = new Request(new URL('/api/tool-stats', request.url).toString());
+  if (edge) { const hit = await edge.match(ck).catch(() => null); if (hit) return hit; }
   try {
     const catalog = await toolCatalog(request, env);
     await toolStatsDatabase(env);
     const { results } = await env.DB.prepare('SELECT path, visits FROM tool_visits WHERE visits > 0 ORDER BY visits DESC, path ASC').all();
     const top = results.filter(row => catalog.byPath.has(row.path)).slice(0, 5)
       .map(row => ({...catalog.byPath.get(row.path), visits: row.visits}));
-    return json({count: catalog.count, top, metric: 'tool page visits'}, 200, {'cache-control': 'public, max-age=60'});
+    const out = json({count: catalog.count, top, metric: 'tool page visits'}, 200, {'cache-control': 'public, max-age=60'});
+    if (edge) { const c = out.clone(), h = new Headers(c.headers); h.set('cache-control', 'public, max-age=600'); await edge.put(ck, new Response(c.body, { status: 200, headers: h })).catch(() => {}); }
+    return out;
   } catch {
     return json({error: 'Tool rankings temporarily unavailable'}, 503);
   }
@@ -4248,7 +4254,7 @@ const trUrl = (u) => { u = clean(u, 500); return /^https:\/\//i.test(u) ? u : ""
 function trEq(a, b) { if (a.length !== b.length) return false; let x = 0; for (let i = 0; i < a.length; i++) x |= a.charCodeAt(i) ^ b.charCodeAt(i); return x === 0; }
 
 // D1's free plan allows 5M row reads a day for the whole site, so the watcher must read by index, never scan its tables.
-const TR_MIG = "7";
+const TR_MIG = "8";
 async function trInit(env) {
   if (trReady) return;
   const mig = await env.DB.prepare("SELECT v FROM tr_settings WHERE k = 'mig'").first().catch(() => null);
@@ -4285,6 +4291,9 @@ async function trInit(env) {
     env.DB.prepare("CREATE TABLE IF NOT EXISTS tr_flags (id INTEGER PRIMARY KEY, kind TEXT, alert_id INTEGER, watch_id INTEGER, usd REAL, why TEXT, created INTEGER, reviewed INTEGER DEFAULT 0, verdict TEXT)"),
     env.DB.prepare("CREATE INDEX IF NOT EXISTS tr_flags_rev ON tr_flags (reviewed, created)"),
     env.DB.prepare("CREATE INDEX IF NOT EXISTS tr_flags_watch ON tr_flags (watch_id, kind, created)"),
+    // Partial indexes for the per-round check picks (2026-11-17): without them each round read about 4,000 rows.
+    env.DB.prepare("CREATE INDEX IF NOT EXISTS tr_alerts_big ON tr_alerts (created) WHERE usd >= 100000"),
+    env.DB.prepare("CREATE INDEX IF NOT EXISTS tr_watch_vetq ON tr_watch (COALESCE(vet_at, 0)) WHERE freeze_usd >= 50000 AND hop > 0"),
     // The checks changed (2026-11-16): redo them, parents first. 1 keeps the old result showing until then.
     ...(prev >= 5 ? [] : [env.DB.prepare("UPDATE tr_watch SET vet_at = 1 WHERE vet_at > 1"),
     env.DB.prepare(`WITH RECURSIVE d(id) AS (SELECT id FROM tr_watch WHERE parent_id IN (SELECT id FROM tr_watch WHERE hop > 0 AND vet_service = 1 AND vet_peers >= ${TR_SVC_PEERS}) UNION SELECT w.id FROM tr_watch w JOIN d ON w.parent_id = d.id) UPDATE tr_watch SET paused = 1, cut = 1 WHERE paused = 0 AND id IN (SELECT id FROM d)`)]),
@@ -4322,13 +4331,18 @@ async function trBrowser(request, env, p, d, q, sess) {
   if (p === "/" || p === "/me") return trOut({ ok: true, seal: !!(await acSealKey(env)) });
   // Overview numbers for the cards at the top of the page.
   if (p === "/summary") {
-    const [w, a, l, r, st] = await DB.batch([
-      DB.prepare("SELECT COUNT(*) total, SUM(parent_id IS NULL) seeds, SUM(frz_at IS NOT NULL AND hop > 0) caught, SUM(source = 'Tether freeze' AND hop = 0) frz_seeds, SUM(paused > 0) paused, SUM(checked IS NOT NULL) checked, SUM(bal_usd) usd, SUM(freeze_usd) freeze, SUM(freeze_usd >= 1000) freeze_n, SUM(bal_usd >= 1000) holding_n FROM tr_watch"),
+    // The counts read every watched address and alert (~5,000 rows), so they are kept 10 minutes per instance.
+    const fresh = trSumCache.at > now - 600e3 && !q.get("fresh");
+    const res = await DB.batch([
+      ...(fresh ? [] : [DB.prepare("SELECT COUNT(*) total, SUM(parent_id IS NULL) seeds, SUM(frz_at IS NOT NULL AND hop > 0) caught, SUM(source = 'Tether freeze' AND hop = 0) frz_seeds, SUM(paused > 0) paused, SUM(checked IS NOT NULL) checked, SUM(bal_usd) usd, SUM(freeze_usd) freeze, SUM(freeze_usd >= 1000) freeze_n, SUM(bal_usd >= 1000) holding_n FROM tr_watch"),
       DB.prepare("SELECT SUM(status = 'new') new, COUNT(*) total, SUM(created > ?) day, SUM(CASE WHEN status = 'new' THEN usd END) new_usd, MAX(CASE WHEN status = 'new' THEN score END) top FROM tr_alerts").bind(now - 86400e3),
-      DB.prepare("SELECT SUM(status IN ('investigating', 'ready')) open, SUM(status = 'ready') ready, SUM(status = 'submitted') submitted FROM tr_leads"),
+      DB.prepare("SELECT SUM(status IN ('investigating', 'ready')) open, SUM(status = 'ready') ready, SUM(status = 'submitted') submitted FROM tr_leads")]),
       DB.prepare("SELECT started, finished, errors FROM tr_runs ORDER BY id DESC LIMIT 1"),
       DB.prepare("SELECT k, v FROM tr_settings WHERE k IN ('interval', 'paused', 'token_hash', 'channel', 'engine', 'seeds_at', 'seeds_updated')"),
     ]);
+    const [r, st] = res.slice(-2);
+    if (!fresh) trSumCache = { at: now, w: res[0], a: res[1], l: res[2] };
+    const { w, a, l } = trSumCache;
     const set = Object.fromEntries(st.results.map((x) => [x.k, x.v]));
     return trOut({ watch: w.results[0], alerts: a.results[0], leads: l.results[0], last: r.results[0] || null,
       engine: set.engine || "wezzet", seeds_at: Number(set.seeds_at) || 0, seeds_updated: set.seeds_updated || "",
@@ -4752,7 +4766,7 @@ async function tlLimitN(env, who, action, max, win) {
    Etherscan (when a key is saved) or Blockscout for EVM chains, Blockstream / mempool.space for Bitcoin,
    TronGrid for USDT on Tron, THORChain Midgard to find the far side of a cross-chain swap. */
 const TR_GAP = 90e3, TR_BATCH = 6, TR_MAX_WATCH = 6000;
-let trNextTry = 0, trCount = { n: 0, at: 0 };
+let trNextTry = 0, trCount = { n: 0, at: 0 }, trSumCache = { at: 0 };
 const TR_SCOUT = { eth: "eth.blockscout.com", base: "base.blockscout.com", arb: "arbitrum.blockscout.com", op: "optimism.blockscout.com", polygon: "polygon.blockscout.com" };
 const TR_CHAINID = { eth: 1, bsc: 56, arb: 42161, base: 8453, polygon: 137, op: 10, avax: 43114 };
 const TR_NATIVE = { eth: "ETH", bsc: "BNB", arb: "ETH", base: "ETH", polygon: "POL", op: "ETH", avax: "AVAX", btc: "BTC", tron: "TRX" };
@@ -5150,7 +5164,7 @@ async function trTick(env, force) {
   };
   // Mark them checked first, so one slow or broken address can never block the queue.
   await DB.prepare(`UPDATE tr_watch SET checked = ?, due = CASE id ${batch.map((x) => `WHEN ${x.id} THEN ${next(x)}`).join(" ")} END WHERE id IN (${batch.map((x) => x.id).join(",")})`).bind(now).run();
-  if (!trCount.n || now - trCount.at > 3600e3) trCount = { n: (await DB.prepare("SELECT COUNT(*) n FROM tr_watch").first()).n, at: now };
+  if (!trCount.n || now - trCount.at > 3600e3) trCount = { n: (await DB.prepare("SELECT MAX(id) n FROM tr_watch").first()).n || 0, at: now }; // reads 1 row; never below the real count
   let total = trCount.n;
 
   // Tron's free API allows only a slow trickle, so those go one after another.
@@ -5255,8 +5269,9 @@ async function trTick(env, force) {
     if (C.calls < 36) {
       const cut = now - 6 * 3600e3, okc = ["tron", "eth", "base", "arb", "op", "polygon"];
       const [big, moved] = await DB.batch([
-        DB.prepare("SELECT * FROM tr_watch WHERE freeze_usd >= 50000 AND hop > 0 AND +paused = 0 AND COALESCE(vet_at, 0) < ? ORDER BY COALESCE(vet_at, 0) LIMIT 5").bind(cut),
-        DB.prepare("SELECT w.* FROM tr_alerts a JOIN tr_watch w ON w.id = a.watch_id WHERE a.created > ? AND a.usd >= 100000 AND w.hop > 0 AND w.paused = 0 AND COALESCE(w.vet_at, 0) < ? LIMIT 20").bind(now - 3 * 864e5, cut),
+        DB.prepare("SELECT * FROM tr_watch INDEXED BY tr_watch_vetq WHERE freeze_usd >= 50000 AND hop > 0 AND +paused = 0 AND COALESCE(vet_at, 0) < ? ORDER BY COALESCE(vet_at, 0) LIMIT 5").bind(cut),
+        // Big recent alerts first (partial index), then their wallet by id. Letting SQLite pick the order scanned all of tr_watch.
+        DB.prepare("SELECT w.* FROM tr_alerts a INDEXED BY tr_alerts_big CROSS JOIN tr_watch w ON w.id = a.watch_id WHERE a.created > ? AND a.usd >= 100000 AND w.hop > 0 AND +w.paused = 0 AND COALESCE(w.vet_at, 0) < ? LIMIT 20").bind(now - 3 * 864e5, cut),
       ]);
       const urgent = fresh.find((f) => f.usd >= 100000 && f.w.hop > 0 && okc.includes(f.w.chain) && (f.w.vet_at || 0) < cut);
       const v = urgent ? urgent.w : [...big.results, ...moved.results].filter((x) => okc.includes(x.chain)).sort((p, q) => ((p.vet_at || 0) > 1) - ((q.vet_at || 0) > 1) || p.hop - q.hop || (p.vet_at || 0) - (q.vet_at || 0) || (q.freeze_usd || 0) - (p.freeze_usd || 0))[0];

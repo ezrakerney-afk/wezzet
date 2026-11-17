@@ -189,13 +189,14 @@
     $("#tr-notify").onchange = async (e) => { S.notify = e.target.value; await api("settings", { notify: S.notify }); const f = $("#s-form"); if (f.elements.notify) f.elements.notify.value = S.notify; loadBell(); };
     await loadBell().catch(() => {});
     tab(location.hash.slice(1) || "overview");
-    summary(); setInterval(() => { if (!document.hidden) { summary(); loadBell(); } }, 600000);
+    // Every 30 minutes while the tab is visible: each refresh reads several thousand database rows (D1 free plan: 5M a day).
+    summary(true); setInterval(() => { if (!document.hidden) { summary(true); loadBell(); } }, 1800000);
   }
   document.addEventListener("wz-account", () => location.reload());
 
   // ---- overview cards + setup checklist ----
-  async function summary() {
-    const r = await api("summary"); if (r.error) return;
+  async function summary(cached) {
+    const r = await api(cached ? "summary" : "summary?fresh=1"); if (r.error) return;
     const w = r.watch, a = r.alerts, l = r.leads, last = r.last;
     const set = (id, v, s, cls) => { $("#st-" + id).textContent = v; $("#st-" + id + "-s").textContent = s; $("#st-" + id).parentElement.className = "tr-stat" + (cls ? " " + cls : ""); };
     set("watch", w.total || 0, (w.seeds || 0) + " seeds, " + ((w.total || 0) - (w.seeds || 0)) + " children" + (w.paused ? ", " + w.paused + " paused" : "") + (w.frz_seeds ? ", " + w.frz_seeds + " Tether freezes" : "") + (w.caught ? ". Tether later froze " + w.caught + " wallet" + (w.caught === 1 ? "" : "s") + " the watcher had found" : ""));
