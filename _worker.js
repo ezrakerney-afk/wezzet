@@ -4837,12 +4837,27 @@ function trKind(name) {
 }
 const trFmt = (n) => (n >= 1000 ? Math.round(n).toLocaleString("en-US") : n >= 1 ? String(Math.round(n * 100) / 100) : String(Number(n.toPrecision(3))));
 const trShort = (a) => (a.length > 16 ? a.slice(0, 8) + "…" + a.slice(-6) : a);
+// Free explorers throttle bursts, and Cloudflare's shared addresses make it worse: space out the requests to each one.
+const TR_PACE = { "eth.blockscout.com": 350, "base.blockscout.com": 350, "optimism.blockscout.com": 350, "polygon.blockscout.com": 350, "arbitrum.blockscout.com": 350, "api.etherscan.io": 250, "mempool.space": 200, "blockstream.info": 200 };
+async function trSlot(C, host) {
+  const gap = TR_PACE[host]; if (!gap) return;
+  C.next = C.next || {};
+  const now = Date.now(), at = Math.max(now, C.next[host] || 0);
+  C.next[host] = at + gap;
+  if (at > now) await new Promise((ok) => setTimeout(ok, at - now));
+}
 async function trGet(url, C, headers) {
-  if (C.calls >= 40) throw new Error("call budget used up for this round");
-  C.calls++;
-  const r = await fetch(url, { headers: { accept: "application/json", ...(headers || {}) }, signal: AbortSignal.timeout(8000) });
-  if (!r.ok) throw new Error(new URL(url).hostname + " " + r.status);
-  return r.json();
+  const host = new URL(url).hostname;
+  for (let attempt = 0; ; attempt++) {
+    if (C.calls >= 40) throw new Error("call budget used up for this round");
+    C.calls++;
+    await trSlot(C, host);
+    const r = await fetch(url, { headers: { accept: "application/json", ...(headers || {}) }, signal: AbortSignal.timeout(8000) });
+    // One more try after a short wait when the explorer says "too many requests"; a second refusal goes back in the queue.
+    if (r.status === 429 && attempt === 0 && C.calls < 36) { C.next[host] = Math.max(C.next[host] || 0, Date.now() + 1500); continue; }
+    if (!r.ok) throw new Error(host + " " + r.status);
+    return r.json();
+  }
 }
 
 // Label for a destination: {name, kind, contract}. Cached in tr_labels for 30 days.
@@ -5238,6 +5253,10 @@ async function trTick(env, force) {
   // Tron's free API (TronGrid without a key) answers "too many requests" past about one address per round, so mix chains.
   const tronCap = C.keys.trongrid ? 4 : 1;
   await DB.prepare("UPDATE tr_watch SET due = 0 WHERE due IS NULL").run();
+  if (s.fix_btc_tron !== "1") {
+    await DB.batch([DB.prepare("UPDATE OR IGNORE tr_watch SET chain = 'tron' WHERE chain = 'btc' AND address GLOB 'T[1-9A-HJ-NP-Za-km-z]*' AND length(address) = 34"),
+      DB.prepare("UPDATE tr_watch SET paused = 1 WHERE chain = 'btc' AND address GLOB 'T[1-9A-HJ-NP-Za-km-z]*' AND length(address) = 34"), trSet(DB, "fix_btc_tron", "1")]);
+  }
   const picks = await DB.batch(Object.keys(TR_CHAIN_NAME).map((c) => DB.prepare("SELECT * FROM tr_watch WHERE paused = 0 AND chain = ? AND due < ? ORDER BY due LIMIT ?").bind(c, now, c === "tron" ? tronCap : TR_BATCH)));
   // Take turns between chains (most overdue chain first), so one explorer isn't asked for six addresses at once.
   const lists = picks.map((r) => r.results || []).filter((l) => l.length).sort((p, q) => (p[0].due || 0) - (q[0].due || 0)), batch = [];
@@ -5262,6 +5281,8 @@ async function trTick(env, force) {
   for (let i = 0; i < batch.length; i++) {
     const w = batch[i], res = results[i];
     if (res.status === "rejected" && / 429$/.test(String(res.reason && res.reason.message))) { await DB.prepare("UPDATE tr_watch SET due = ? WHERE id = ?").bind(now + 5 * 60e3, w.id).run(); }
+    // Can't be checked at all (no key for that chain, explorer refuses, or not a valid address): look again in a day, not every round.
+    else if (res.status === "rejected" && /needs an Etherscan key| 40[03]$/.test(String(res.reason && res.reason.message))) { await DB.prepare("UPDATE tr_watch SET due = ? WHERE id = ?").bind(now + 864e5, w.id).run(); }
     if (res.status === "rejected") { errors.push(`${w.chain} ${trShort(w.address)}: ${String(res.reason && res.reason.message || res.reason).slice(0, 90)}`); continue; }
     const { moves, marker } = res.value;
     try {
