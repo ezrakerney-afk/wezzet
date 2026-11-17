@@ -4812,6 +4812,10 @@ async function tlLimitN(env, who, action, max, win) {
    TronGrid for USDT on Tron, THORChain Midgard to find the far side of a cross-chain swap. */
 const TR_GAP = 90e3, TR_BATCH = 6, TR_MAX_WATCH = 6000;
 let trNextTry = 0, trCount = { n: 0, at: 0 }, trSumCache = { at: 0 };
+// Routescan: free, keyless, Etherscan-style answers for these chains. Blockscout allows only 10 requests per ~43 minutes per IP,
+// and Cloudflare's IPs are shared by many sites, so it's the fallback. Balances and freeze checks use a public Ethereum node.
+const TR_RS = { eth: 1, avax: 43114 }, TR_ETH_RPC = "https://ethereum-rpc.publicnode.com";
+const trEvmBase = (chain, key) => key ? `https://api.etherscan.io/v2/api?chainid=${TR_CHAINID[chain]}&apikey=${key}&` : TR_RS[chain] ? `https://api.routescan.io/v2/network/mainnet/evm/${TR_RS[chain]}/etherscan/api?` : `https://${TR_SCOUT[chain]}/api?`;
 const TR_SCOUT = { eth: "eth.blockscout.com", base: "base.blockscout.com", arb: "arbitrum.blockscout.com", op: "optimism.blockscout.com", polygon: "polygon.blockscout.com" };
 const TR_CHAINID = { eth: 1, bsc: 56, arb: 42161, base: 8453, polygon: 137, op: 10, avax: 43114 };
 const TR_NATIVE = { eth: "ETH", bsc: "BNB", arb: "ETH", base: "ETH", polygon: "POL", op: "ETH", avax: "AVAX", btc: "BTC", tron: "TRX" };
@@ -4838,7 +4842,7 @@ function trKind(name) {
 const trFmt = (n) => (n >= 1000 ? Math.round(n).toLocaleString("en-US") : n >= 1 ? String(Math.round(n * 100) / 100) : String(Number(n.toPrecision(3))));
 const trShort = (a) => (a.length > 16 ? a.slice(0, 8) + "…" + a.slice(-6) : a);
 // Free explorers throttle bursts, and Cloudflare's shared addresses make it worse: space out the requests to each one.
-const TR_PACE = { "eth.blockscout.com": 350, "base.blockscout.com": 350, "optimism.blockscout.com": 350, "polygon.blockscout.com": 350, "arbitrum.blockscout.com": 350, "api.etherscan.io": 250, "mempool.space": 200, "blockstream.info": 200 };
+const TR_PACE = { "api.routescan.io": 550, "eth.blockscout.com": 350, "base.blockscout.com": 350, "optimism.blockscout.com": 350, "polygon.blockscout.com": 350, "arbitrum.blockscout.com": 350, "api.etherscan.io": 250, "mempool.space": 200, "blockstream.info": 200 };
 async function trSlot(C, host) {
   const gap = TR_PACE[host]; if (!gap) return;
   C.next = C.next || {};
@@ -4915,8 +4919,8 @@ async function trLabelOther(DB, chain, addr, C) {
 async function trEvm(w, C) {
   const addr = w.address.toLowerCase(), since = Number(String(w.last_seen_tx || "").replace(/^b:/, "")) || 0;
   const key = C.keys.etherscan && TR_CHAINID[w.chain] ? C.keys.etherscan : "";
-  if (!key && !TR_SCOUT[w.chain]) throw new Error(w.chain + " needs an Etherscan key");
-  const base = key ? `https://api.etherscan.io/v2/api?chainid=${TR_CHAINID[w.chain]}&apikey=${key}&` : `https://${TR_SCOUT[w.chain]}/api?`;
+  if (!key && !TR_SCOUT[w.chain] && !TR_RS[w.chain]) throw new Error(w.chain + " needs an Etherscan key");
+  const base = trEvmBase(w.chain, key);
   const q = (action) => trGet(`${base}module=account&action=${action}&address=${w.address}&startblock=${since + 1}&endblock=999999999&sort=desc&page=1&offset=25`, C);
   const list = (d) => { if (Array.isArray(d.result)) return d.result; if (/no transactions|no token transfers/i.test(d.message || "") || d.result === null) return []; throw new Error("explorer: " + String(d.result || d.message).slice(0, 80)); };
   const [txs, toks] = await Promise.all([q("txlist").then(list), w.chain === "eth" ? q("tokentx").then(list) : []]);
@@ -4972,8 +4976,8 @@ async function trVet(DB, w, C) {
     ins = (d.data || []).filter((t) => t.to === addr && t.type === "Transfer").map((t) => ({ from: t.from, amount: Number(t.value) / 1e6, ts: t.block_timestamp }));
   } else {
     const key = C.keys.etherscan && TR_CHAINID[w.chain] ? C.keys.etherscan : "";
-    if (!key && !TR_SCOUT[w.chain]) return null;
-    const base = key ? `https://api.etherscan.io/v2/api?chainid=${TR_CHAINID[w.chain]}&apikey=${key}&` : `https://${TR_SCOUT[w.chain]}/api?`;
+    if (!key && !TR_SCOUT[w.chain] && !TR_RS[w.chain]) return null;
+    const base = trEvmBase(w.chain, key);
     const d = await trGet(`${base}module=account&action=tokentx&address=${addr}&sort=desc&page=1&offset=200`, C);
     ins = (Array.isArray(d.result) ? d.result : []).filter((t) => (t.to || "").toLowerCase() === lower && /^(USDT|USDC)$/.test(t.tokenSymbol || "")).map((t) => ({ from: (t.from || "").toLowerCase(), amount: Number(t.value) / 10 ** (Number(t.tokenDecimal) || 6), ts: Number(t.timeStamp) * 1000 }));
   }
@@ -5104,6 +5108,18 @@ async function trBalances(w, C) {
     const a = (d.data || [])[0] || {};
     out.push({ asset: "TRX", amount: (a.balance || 0) / 1e6 });
     for (const t of a.trc20 || []) if (t[TR_TRON_USDT]) out.push({ asset: "USDT", amount: Number(t[TR_TRON_USDT]) / 1e6 });
+  } else if (w.chain === "eth") {
+    const toks = Object.entries(TR_TOKENS).filter(([a]) => a.startsWith("0x")), pad = w.address.toLowerCase().replace(/^0x/, "").padStart(64, "0");
+    if (C.calls >= 40) throw new Error("call budget used up for this round");
+    C.calls++;
+    const r = await fetch(TR_ETH_RPC, { method: "POST", signal: AbortSignal.timeout(8000), headers: { "content-type": "application/json" },
+      body: JSON.stringify([{ jsonrpc: "2.0", id: 0, method: "eth_getBalance", params: [w.address, "latest"] }, ...toks.map(([a], i) => ({ jsonrpc: "2.0", id: i + 1, method: "eth_call", params: [{ to: a, data: "0x70a08231" + pad }, "latest"] }))]) });
+    if (!r.ok) throw new Error("ethereum node " + r.status);
+    const res = new Map((await r.json()).map((x) => [x.id, x.result]));
+    if (!res.get(0)) throw new Error("ethereum node: no balance");
+    out.push({ asset: "ETH", amount: Number(BigInt(res.get(0))) / 1e18 });
+    const DEC = { USDT: 6, USDC: 6, WBTC: 8 };
+    toks.forEach(([, sym], i) => { const v = res.get(i + 1); if (v && v !== "0x") out.push({ asset: sym, amount: Number(BigInt(v)) / 10 ** (DEC[sym] || 18) }); });
   } else if (TR_SCOUT[w.chain]) {
     const host = TR_SCOUT[w.chain];
     const [a, toks] = await Promise.all([trGet(`https://${host}/api/v2/addresses/${w.address}`, C), w.chain === "eth" ? trGet(`https://${host}/api/v2/addresses/${w.address}/token-balances`, C) : []]);
@@ -5134,7 +5150,7 @@ async function trFrozen(w, list, C) {
     if (list.some((x) => x.asset === "USDC" && x.amount > 0)) calls.push(["0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48", "0xfe575a87"]);
     let any = 0;
     for (const [to, sel] of calls) {
-      const r = await fetch("https://eth.blockscout.com/api/eth-rpc", { method: "POST", signal: AbortSignal.timeout(8000), headers: { "content-type": "application/json" }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "eth_call", params: [{ to, data: sel + pad(w.address) }, "latest"] }) });
+      const r = await fetch(TR_ETH_RPC, { method: "POST", signal: AbortSignal.timeout(8000), headers: { "content-type": "application/json" }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "eth_call", params: [{ to, data: sel + pad(w.address) }, "latest"] }) });
       const d = await r.json(); if (!d.result) return null;
       if (BigInt(d.result)) any = 1;
     }
