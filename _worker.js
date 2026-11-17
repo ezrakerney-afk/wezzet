@@ -3366,7 +3366,7 @@ async function chRoute(request, env, url, ctx) {
   if (p === "/account") {
     const agents = (await DB.prepare("SELECT agent FROM wz_links WHERE uid = ? ORDER BY ts LIMIT 50").bind(me).all()).results.map((r) => r.agent);
     const u = await DB.prepare("SELECT name, created, (SELECT 1 FROM ch_google g WHERE g.uid = ch_users.id) AS google FROM ch_users WHERE id = ?").bind(me).first();
-    const ownerId = await trOwnerId(env);
+    const trOk = await trAllowed(env, me);
     // login = the private sign-in name, shown only to its own account. Google-only accounts have none.
     await wzProInit(DB);
     const extra = await DB.batch([
@@ -3374,7 +3374,7 @@ async function chRoute(request, env, url, ctx) {
       DB.prepare("SELECT created FROM wz_recovery WHERE uid = ?").bind(me),
       DB.prepare("SELECT COUNT(*) n FROM ch_sessions WHERE uid = ? AND created > ?").bind(me, now - 30 * 86400e3),
     ]).then((rs) => rs.map((r) => (r.results || [])[0] || null)).catch(() => [null, null, null]);
-    return chOut({ me: { id: me, name: sess.name }, agents, login: u.name.startsWith("google:") ? "" : u.name, created: u.created, google: !!u.google, tracker: ownerId === me,
+    return chOut({ me: { id: me, name: sess.name }, agents, login: u.name.startsWith("google:") ? "" : u.name, created: u.created, google: !!u.google, tracker: trOk,
       password: !!extra[0]?.has, recovery: extra[1]?.created || null, sessions: extra[2]?.n || 1, plan: await wzPlan(env, me) });
   }
   // Change (or, for Google-only accounts, set) the password. Signs out every other device.
@@ -4323,12 +4323,25 @@ async function trOwnerId(env) {
 }
 
 // Extra names after the first in TRACKER_OWNER ("owner,partner") share the owner's Chain Watch: same watchlist, alerts and leads.
+// Each extra entry may be a sign-in name or a public username. The first account it matches is pinned in tr_settings,
+// so a later username change can't hand that name, and the access, to someone else.
+async function trMemberIds(env) {
+  const more = String(env.TRACKER_OWNER || "").split(",").map((x) => x.trim()).filter(Boolean).slice(1, 6), ids = [];
+  for (const n of more) {
+    const k = "member:" + n.toLowerCase();
+    let id = Number((await env.DB.prepare("SELECT v FROM tr_settings WHERE k = ?").bind(k).first().catch(() => null))?.v) || 0;
+    if (!id) {
+      const u = await env.DB.prepare("SELECT id FROM ch_users WHERE name = ? OR display = ? COLLATE NOCASE ORDER BY name = ? DESC LIMIT 1").bind(n, n, n).first().catch(() => null);
+      if (u) { id = u.id; await env.DB.prepare("INSERT OR REPLACE INTO tr_settings (k, v) VALUES (?, ?)").bind(k, String(id)).run().catch(() => {}); }
+    }
+    if (id) ids.push(id);
+  }
+  return ids;
+}
 async function trAllowed(env, uid) {
   if (!uid) return false;
   if (uid === await trOwnerId(env)) return true;
-  const more = String(env.TRACKER_OWNER || "").split(",").map((x) => x.trim()).filter(Boolean).slice(1, 6);
-  if (!more.length) return false;
-  return !!(await env.DB.prepare(`SELECT 1 FROM ch_users WHERE id = ? AND name IN (${more.map(() => "?").join(",")})`).bind(uid, ...more).first().catch(() => null));
+  return (await trMemberIds(env)).includes(uid);
 }
 
 // ---- Browser side: /api/chat/tracker/* (cookie session from chRoute, its CSRF guard already ran) ----
@@ -5410,8 +5423,9 @@ async function trExplain(env, DB, a, key) {
 async function trNotify(env, s, fresh) {
   const DB = env.DB, head = fresh.length === 1 ? "1 new alert" : fresh.length + " new alerts";
   if (s.channel !== "page") {
-    const u = { id: await trOwnerId(env) };
-    if (u.id) { await DB.prepare("INSERT INTO ch_notes (uid, room, kind, title, body, ts) VALUES (?, 'tracker', 'tracker', ?, ?, ?)").bind(u.id, "Chain Watch: " + head, fresh[0].summary.slice(0, 140), Date.now()).run(); await pushTo(DB, u.id); }
+    // Everyone with access (the owner and the extra names in TRACKER_OWNER) gets the note and the push.
+    const ids = [await trOwnerId(env), ...(await trMemberIds(env))];
+    for (const id of [...new Set(ids)].filter(Boolean)) { await DB.prepare("INSERT INTO ch_notes (uid, room, kind, title, body, ts) VALUES (?, 'tracker', 'tracker', ?, ?, ?)").bind(id, "Chain Watch: " + head, fresh[0].summary.slice(0, 140), Date.now()).run(); await pushTo(DB, id); }
   }
   if ((s.channel === "telegram" || s.channel === "both") && s["key:telegram_token"] && s["key:telegram_chat"]) {
     const tok = await acUnseal(env, s["key:telegram_token"]), chat = await acUnseal(env, s["key:telegram_chat"]);
