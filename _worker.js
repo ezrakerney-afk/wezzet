@@ -4863,7 +4863,7 @@ async function trGet(url, C, headers) {
     await trSlot(C, host);
     const r = await fetch(url, { headers: { accept: "application/json", ...(headers || {}) }, signal: AbortSignal.timeout(8000) });
     // One more try after a short wait when the explorer says "too many requests"; a second refusal goes back in the queue.
-    if (r.status === 429 && attempt === 0 && C.calls < 36) { C.next[host] = Math.max(C.next[host] || 0, Date.now() + 1500); continue; }
+    if (r.status === 429 && attempt === 0 && C.calls < 36) { C.next = C.next || {}; C.next[host] = Math.max(C.next[host] || 0, Date.now() + 1500); continue; }
     if (!r.ok) throw new Error(host + " " + r.status);
     return r.json();
   }
@@ -4926,7 +4926,8 @@ async function trEvm(w, C) {
   const key = C.keys.etherscan && TR_CHAINID[w.chain] ? C.keys.etherscan : "";
   if (!key && !TR_SCOUT[w.chain] && !TR_RS[w.chain]) throw new Error(w.chain + " needs an Etherscan key");
   const base = trEvmBase(w.chain, key);
-  const q = (action) => trGet(`${base}module=account&action=${action}&address=${w.address}&startblock=${since + 1}&endblock=999999999&sort=desc&page=1&offset=25`, C);
+  const path = (action) => `module=account&action=${action}&address=${w.address}&startblock=${since + 1}&endblock=999999999&sort=desc&page=1&offset=25`;
+  const q = (action) => trGet(base + path(action), C).catch((e) => { if (key || !TR_RS[w.chain] || !TR_SCOUT[w.chain] || !/ 429$/.test(e.message)) throw e; return trGet(`https://${TR_SCOUT[w.chain]}/api?` + path(action), C); });
   const list = (d) => { if (Array.isArray(d.result)) return d.result; if (/no transactions|no token transfers/i.test(d.message || "") || d.result === null) return []; throw new Error("explorer: " + String(d.result || d.message).slice(0, 80)); };
   const [txs, toks] = await Promise.all([q("txlist").then(list), w.chain === "eth" ? q("tokentx").then(list) : []]);
   const moves = [], ins = []; let top = since;
