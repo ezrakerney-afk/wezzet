@@ -4318,7 +4318,8 @@ async function trOwnerId(env) {
   if (!owner || !env.DB) return 0;
   const r = await env.DB.prepare("SELECT v FROM tr_settings WHERE k = 'owner_uid'").first().catch(() => null);
   if (r && Number(r.v) > 0) return Number(r.v);
-  const u = await env.DB.prepare("SELECT id FROM ch_users WHERE name = ?").bind(owner).first().catch(() => null);
+  if (/^#?\d+$/.test(owner)) return Number(owner.replace("#", ""));
+  const u = await env.DB.prepare("SELECT id FROM ch_users WHERE name = ? COLLATE NOCASE LIMIT 1").bind(owner).first().catch(() => null);
   return u ? u.id : 0;
 }
 
@@ -4328,6 +4329,10 @@ async function trOwnerId(env) {
 async function trMemberIds(env) {
   const more = String(env.TRACKER_OWNER || "").split(",").map((x) => x.trim()).filter(Boolean).slice(1, 6), ids = [];
   for (const n of more) {
+    // "#3" (or "3") is an account number: always exact, works for Google sign-ins too. A sign-in name never changes, so it needs no pin.
+    if (/^#?\d+$/.test(n)) { ids.push(Number(n.replace("#", ""))); continue; }
+    const login = await env.DB.prepare("SELECT id FROM ch_users WHERE name = ? COLLATE NOCASE LIMIT 1").bind(n).first().catch(() => null);
+    if (login) { ids.push(login.id); continue; }
     const k = "member:" + n.toLowerCase();
     let id = Number((await env.DB.prepare("SELECT v FROM tr_settings WHERE k = ?").bind(k).first().catch(() => null))?.v) || 0;
     if (!id) {
