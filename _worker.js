@@ -4847,7 +4847,7 @@ function trKind(name) {
 const trFmt = (n) => (n >= 1000 ? Math.round(n).toLocaleString("en-US") : n >= 1 ? String(Math.round(n * 100) / 100) : String(Number(n.toPrecision(3))));
 const trShort = (a) => (a.length > 16 ? a.slice(0, 8) + "…" + a.slice(-6) : a);
 // Free explorers throttle bursts, and Cloudflare's shared addresses make it worse: space out the requests to each one.
-const TR_PACE = { "api.routescan.io": 550, "eth.blockscout.com": 350, "base.blockscout.com": 350, "optimism.blockscout.com": 350, "polygon.blockscout.com": 350, "arbitrum.blockscout.com": 350, "api.etherscan.io": 250, "mempool.space": 200, "blockstream.info": 200 };
+const TR_PACE = { "api.routescan.io": 550, "eth.blockscout.com": 350, "base.blockscout.com": 350, "optimism.blockscout.com": 350, "polygon.blockscout.com": 350, "arbitrum.blockscout.com": 350, "api.etherscan.io": 400, "mempool.space": 200, "blockstream.info": 200 };
 async function trSlot(C, host) {
   const gap = TR_PACE[host]; if (!gap) return;
   C.next = C.next || {};
@@ -4865,7 +4865,10 @@ async function trGet(url, C, headers) {
     // One more try after a short wait when the explorer says "too many requests"; a second refusal goes back in the queue.
     if (r.status === 429 && attempt === 0 && C.calls < 36) { C.next = C.next || {}; C.next[host] = Math.max(C.next[host] || 0, Date.now() + 1500); continue; }
     if (!r.ok) throw new Error(host + " " + r.status);
-    return r.json();
+    const j = await r.json();
+    // Etherscan says "slow down" inside a normal answer: treat it like a 429.
+    if (j && j.status === "0" && /rate limit/i.test(String(j.result || j.message)) && attempt === 0 && C.calls < 36) { C.next = C.next || {}; C.next[host] = Math.max(C.next[host] || 0, Date.now() + 1200); continue; }
+    return j;
   }
 }
 
