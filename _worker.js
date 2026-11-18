@@ -5006,7 +5006,7 @@ async function trVet(DB, w, C) {
   const service = trIsService({ vet_service: senders.length >= TR_SVC_PEERS ? 1 : 0, vet_peers: senders.length, bal_usd: w.bal_usd, vet_in: total }) ? 1 : 0;
   await DB.prepare("UPDATE tr_watch SET vet_at = ?, vet_share = ?, vet_link_ts = ?, vet_peers = ?, vet_service = ?, vet_in = ? WHERE id = ?").bind(Date.now(), Math.round(share * 1000) / 1000, linkTs || null, senders.length, service, Math.round(total), w.id).run();
   // Money that reached wallets through a service belongs to that service's customers: stop following those trails.
-  if (service || share < 0.2) await DB.prepare("WITH RECURSIVE d(id) AS (SELECT id FROM tr_watch WHERE parent_id = ? UNION SELECT x.id FROM tr_watch x JOIN d ON x.parent_id = d.id) UPDATE tr_watch SET paused = 1, cut = 1 WHERE paused = 0 AND COALESCE(vet_share, 0) < 0.5 AND id IN (SELECT id FROM d)").bind(w.id).run();
+  if (service || share < 0.2) await DB.prepare("WITH RECURSIVE d(id) AS (SELECT id FROM tr_watch WHERE parent_id = ? UNION SELECT x.id FROM tr_watch x JOIN d ON x.parent_id = d.id) UPDATE tr_watch SET paused = 1, cut = 1 WHERE id IN (SELECT id FROM d) AND +paused = 0 AND COALESCE(vet_share, 0) < 0.5").bind(w.id).run();
   Object.assign(w, { vet_at: Date.now(), vet_share: share, vet_link_ts: linkTs || null, vet_peers: senders.length, vet_service: service, vet_in: total });
   return { share, linkTs, peers: senders.length, service };
 }
