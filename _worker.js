@@ -5378,7 +5378,7 @@ async function trTick(env, force) {
             const usd = m.call ? 0 : Math.round(m.amount * trPx(prices, m.asset));
             const r = await DB.prepare("INSERT OR IGNORE INTO tr_alerts (watch_id, chain, address, tx, ts, tag, amount, asset, counterparty, summary, status, created, usd, score) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'new', ?, ?, ?)")
               .bind(w.id, w.chain, w.address, m.tx, m.ts, tag, m.call ? "" : trFmt(m.amount), m.call ? "" : m.asset, to, summary, now, usd, trScore(tag, usd, m.asset)).run();
-            if (r.meta?.changes) fresh.push({ tag, usd, w, summary, id: r.meta.last_row_id });
+            if (r.meta?.changes) fresh.push({ tag, usd, w, summary, id: r.meta.last_row_id, ts: m.ts });
           }
           first = false;
         }
@@ -5408,7 +5408,12 @@ async function trTick(env, force) {
       ]);
       const urgent = fresh.find((f) => f.usd >= 100000 && f.w.hop > 0 && okc.includes(f.w.chain) && (f.w.vet_at || 0) < cut);
       const v = urgent ? urgent.w : [...big.results, ...moved.results].filter((x) => okc.includes(x.chain)).sort((p, q) => ((p.vet_at || 0) > 1) - ((q.vet_at || 0) > 1) || p.hop - q.hop || (p.vet_at || 0) - (q.vet_at || 0) || (q.freeze_usd || 0) - (p.freeze_usd || 0))[0];
-      if (v) { if (v.chain === "tron") await new Promise((r) => setTimeout(r, 1100)); await trVet(DB, v, C); if (v.bal_at && now - v.bal_at < 12 * 3600e3) await trHoldFlag(DB, v, v.freeze_usd, v.frozen); }
+      if (v) { if (v.chain === "tron") await new Promise((r) => setTimeout(r, 1100)); await trVet(DB, v, C); if (v.bal_at && now - v.bal_at < 12 * 3600e3) {
+        // A balance from hours ago may be gone: a $320k holding was flagged 2.5h after it left (2026-11-19 review). Re-read it first;
+        // trSaveBalance flags it if the money is still there.
+        if (now - v.bal_at > 3600e3 && C.calls < 40) { try { if (v.chain === "tron") await new Promise((r) => setTimeout(r, 1100)); const b = await trBalances(v, C); if (b) await trSaveBalance(DB, v, b, prices, C); } catch {} }
+        else if (now - v.bal_at <= 3600e3) await trHoldFlag(DB, v, v.freeze_usd, v.frozen);
+      } }
     }
   } catch (e) { errors.push("checks: " + String(e.message).slice(0, 80)); }
   await DB.prepare("INSERT INTO tr_runs (started, finished, checked, calls, alerts, errors) VALUES (?, ?, ?, ?, ?, ?)").bind(now, Date.now(), batch.length, C.calls, fresh.length, errors.slice(0, 8).join("\n")).run();
@@ -5428,7 +5433,8 @@ async function trTick(env, force) {
   // Notify only for what the owner chose: by default just moves worth reporting (same rule as the page's "Report now").
   const worth = (f) => (f.tag === "exchange" && f.usd >= 250000) || (f.tag === "bridge" && f.usd >= 2e6);
   const look = (f) => worth(f) || (f.usd >= 100000 && trScore(f.tag, f.usd, "") >= 55);
-  for (const f of fresh) if (worth(f) && f.w && trVetOk(f.w, now)) await trFlag(DB, "alert", f.w, f.id, f.usd, f.tag + " $" + Math.round(f.usd) + (f.w.hop ? ", found wallet passed checks" : ", named wallet"));
+  // "Report now" only for moves under 24h old, like the page. A wallet found late re-alerts on day-old moves (2026-11-19 review).
+  for (const f of fresh) if (worth(f) && f.w && !(f.ts && now - f.ts > 864e5) && trVetOk(f.w, now)) await trFlag(DB, "alert", f.w, f.id, f.usd, f.tag + " $" + Math.round(f.usd) + (f.w.hop ? ", found wallet passed checks" : ", named wallet"));
   const notify = s.notify === "all" ? fresh : fresh.filter((f) => (s.notify === "look" ? look(f) : worth(f)) && f.w && trVetOk(f.w, now));
   if (notify.length) await trNotify(env, s, notify).catch(() => {});
   return { checked: batch.length, calls: C.calls, alerts: fresh.length, seeded, errors };
