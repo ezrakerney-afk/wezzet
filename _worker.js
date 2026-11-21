@@ -5024,8 +5024,10 @@ async function trFlag(DB, kind, w, alertId, usd, why) {
 async function trHoldFlag(DB, w, freeze, frozen) {
   if (frozen !== 0 || !(freeze >= 50000)) return;
   const tf = /Tether freeze/.test(w.source || ""), peers = w.vet_peers || 0;
+  // $50k Tether-freeze rule is for direct recipients only: review 2026-11-21 found a hop-2 $56k wallet that was an active
+  // spending wallet, mixed with other inflows, and spent it within hours. Hop 2+ needs the $250k parking or $500k rule.
   const why = w.hop === 0 ? (freeze >= 500000 ? "named wallet holds $500k+ unfrozen stablecoins" : "")
-    : !trVetOk(w) ? "" : freeze >= 500000 ? "found wallet holds $500k+ unfrozen, checks passed" : freeze >= 250000 && peers > 0 && peers <= 5 ? "parking wallet ($250k+, " + peers + " senders), checks passed" : tf ? "money from a Tether-frozen wallet ($50k+), checks passed" : "";
+    : !trVetOk(w) ? "" : freeze >= 500000 ? "found wallet holds $500k+ unfrozen, checks passed" : freeze >= 250000 && peers > 0 && peers <= 5 ? "parking wallet ($250k+, " + peers + " senders), checks passed" : tf && w.hop === 1 ? "money from a Tether-frozen wallet ($50k+), checks passed" : "";
   if (why) await trFlag(DB, "holding", w, null, freeze, why);
 }
 // Exchange hot wallets and payment services: many different senders, or far more money than one person moves.
