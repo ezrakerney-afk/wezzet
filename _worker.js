@@ -4993,18 +4993,20 @@ async function trVet(DB, w, C) {
   ins = ins.filter((t) => t.from !== (w.chain === "tron" ? addr : lower));
   const senders = [...new Set(ins.map((t) => t.from))];
   // How much of each sender's money traces to the named source: the named address itself 1, a wallet that passed its own
-  // checks its share, an exchange or service 0, a watched wallet not checked yet 0.5 (unknown). Unwatched senders 0, and so are
+  // checks its share, an exchange or service 0, a watched wallet not checked yet 0.4 (unknown, not enough alone). Unwatched senders 0, and so are
   // wallets found at the same or a later step (siblings and its own children sending money back).
   // Counting every watched wallet as "linked" made customers of a service look 100% linked (2026-11-16 audit).
   const weight = new Map();
   for (let i = 0; i < senders.length; i += 90) {
     const part = senders.slice(i, i + 90);
     const rows = (await DB.prepare(`SELECT address, hop, vet_at, vet_share, vet_service, vet_peers, bal_usd, cut FROM tr_watch ${w.chain === "tron" ? "" : "INDEXED BY tr_watch_laddr "}WHERE chain = ? AND ${w.chain === "tron" ? "address" : "lower(address)"} IN (${part.map(() => "?").join(",")})`).bind(w.chain, ...part).all()).results;
-    for (const r of rows) weight.set(w.chain === "tron" ? r.address : r.address.toLowerCase(), r.hop === 0 ? 1 : trIsService(r) || r.cut || r.hop >= w.hop ? 0 : r.vet_at ? Math.min(1, r.vet_share || 0) : 0.5);
+    for (const r of rows) weight.set(w.chain === "tron" ? r.address : r.address.toLowerCase(), r.hop === 0 ? 1 : trIsService(r) || r.cut || r.hop >= w.hop ? 0 : r.vet_at ? Math.min(1, r.vet_share || 0) : 0.4);
   }
   const total = ins.reduce((a, t) => a + t.amount, 0);
   const share = total > 0 ? ins.reduce((a, t) => a + t.amount * (weight.get(t.from) || 0), 0) / total : 0;
-  const linkTs = ins.filter((t) => (weight.get(t.from) || 0) >= 0.5).reduce((a, t) => Math.max(a, t.ts || 0), 0);
+  // Unchecked senders count 0.4, below the 0.5 pass mark: review 2026-11-23 found a hop-3 "parking wallet" whose only sender
+  // was an unchecked hop-2 hub fed by MEXC and many others; 0.5 let it pass with no real link to the frozen wallet.
+  const linkTs = ins.filter((t) => (weight.get(t.from) || 0) >= 0.4).reduce((a, t) => Math.max(a, t.ts || 0), 0);
   // A service has many different customers sending to it. Many transfers from a few senders is one operator, not a service.
   const service = trIsService({ vet_service: senders.length >= TR_SVC_PEERS ? 1 : 0, vet_peers: senders.length, bal_usd: w.bal_usd, vet_in: total }) ? 1 : 0;
   await DB.prepare("UPDATE tr_watch SET vet_at = ?, vet_share = ?, vet_link_ts = ?, vet_peers = ?, vet_service = ?, vet_in = ? WHERE id = ?").bind(Date.now(), Math.round(share * 1000) / 1000, linkTs || null, senders.length, service, Math.round(total), w.id).run();
