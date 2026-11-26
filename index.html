@@ -71,7 +71,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400..700&display=swap">
 <link rel="stylesheet" href="/assets/site.css?v=8" />
-    <link rel="stylesheet" href="/assets/dashboard.css?v=9" />
+    <link rel="stylesheet" href="/assets/dashboard.css?v=10" />
     <link rel="stylesheet" href="/assets/home.css?v=6" />
     <link rel="stylesheet" href="/assets/sidepanel.css?v=3" />
   </head>
@@ -556,17 +556,10 @@
     </main>
     </div>
     <div class="chat-launchers">
-      <button
-        id="messages-toggle"
-        class="bubble messages-bubble"
-        aria-label="Messages" title="Messages"
-        aria-expanded="false"
-        aria-controls="messages-panel"
-        type="button"
-      >
-        <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11.5a8 8 0 0 1-8 8H5l-4 3 1.6-6A8 8 0 1 1 20 11.5Z"/><path d="M6 9h8M6 13h5"/></svg>
-        <span class="unread-badge" data-chat-badge hidden></span></button
-      ><button
+      <a id="messages-toggle" class="bubble messages-bubble" href="/chat" aria-label="Messages" title="Messages">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H9l-5 4V5Z"/></svg>
+        <span class="unread-badge" data-chat-badge hidden></span>
+      </a><button
         id="support-toggle"
         class="bubble support-bubble"
         aria-expanded="false"
@@ -576,24 +569,6 @@
         <span aria-hidden="true">✦</span> Ask Wezzet
       </button>
     </div>
-    <section
-      id="messages-panel"
-      class="floating-panel messages-panel"
-      aria-label="Messages"
-      hidden
-    >
-      <header>
-        <strong>Your messages</strong><a href="/chat">Open full chat →</a
-        ><button
-          data-close="messages"
-          aria-label="Close messages"
-          type="button"
-        >
-          ×
-        </button>
-      </header>
-      <iframe id="chat-frame" title="Wezzet chat"></iframe>
-    </section>
     <section
       id="support-panel"
       class="floating-panel"
@@ -636,7 +611,7 @@
     <script src="/assets/account.js?v=3" defer></script>
     <script src="/assets/home-catalog.js?v=1" defer></script>
     <script src="/assets/home-stats.js?v=4" defer></script>
-    <script src="/assets/dashboard.js?v=messages-6" defer></script>
+    <script src="/assets/dashboard.js?v=messages-7" defer></script>
     <script src="/assets/theme.js?v=5" defer></script>
   </body>
 </html>

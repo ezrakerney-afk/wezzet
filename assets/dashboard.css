@@ -539,16 +539,6 @@ input:focus-visible {
 .floating-panel header a {
   font-size: 11px;
 }
-.messages-panel {
-  width: 750px;
-  height: 650px;
-}
-.messages-panel iframe {
-  width: 100%;
-  flex: 1;
-  border: 0;
-  background: var(--bg);
-}
 #support-log {
   overflow: auto;
   flex: 1;
@@ -936,6 +926,8 @@ input:focus-visible {
 
 /* Compact messaging launcher, with the count outside the icon. */
 #messages-toggle { position: relative; width: 48px; height: 48px; padding: 12px; border-radius: 50%; justify-content: center; flex: none; }
-#messages-toggle > svg { width: 23px; height: 23px; flex: none; }
+#messages-toggle > svg { display: block; width: 23px; height: 23px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+#messages-toggle { color: var(--ink); text-decoration: none; }
+#messages-toggle:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
 #messages-toggle .unread-badge { position: absolute; top: -5px; right: -5px; min-width: 20px; height: 20px; padding: 0 5px; display: grid; place-items: center; border: 2px solid var(--bg); font-size: 10px; font-weight: 700; line-height: 1; }
 #messages-toggle .unread-badge[hidden] { display: none; }

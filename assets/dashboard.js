@@ -11,9 +11,6 @@
       b.setAttribute("aria-label", count + " unread messages");
     });
   };
-  window.addEventListener("message", event => {
-    if (event.origin === location.origin && event.source === $("chat-frame").contentWindow && event.data?.type === "wz-chat-unread") setBadge(event.data.count);
-  });
   let checking = false;
   async function refreshMessages() {
     if (document.hidden || checking) return;
@@ -82,18 +79,13 @@
     panel.hidden = !open;
     button.setAttribute("aria-expanded", String(open));
     if (open) {
-      const other = name === "support" ? "messages" : "support";
-      $(other + "-panel").hidden = true;
-      $(other + "-toggle").setAttribute("aria-expanded", "false");
-      if (name === "messages" && !$("chat-frame").getAttribute("src"))
-        $("chat-frame").src = "/chat";
       if (name === "support") $("support-input").focus();
     } else {
       button.focus();
       refreshMessages();
     }
   }
-  for (const name of ["support", "messages"])
+  for (const name of ["support"])
     $(name + "-toggle").onclick = () =>
       togglePanel(name, $(name + "-panel").hidden);
   document
@@ -102,7 +94,7 @@
   let focusSearch = false;
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape")
-      for (const name of ["support", "messages"])
+      for (const name of ["support"])
         if (!$(name + "-panel").hidden) togglePanel(name, false);
     if ((e.ctrlKey || e.metaKey) && e.key === "k") {
       e.preventDefault();

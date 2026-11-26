@@ -112,3 +112,7 @@ body.chat-page .picture-link { display: block; padding: 2px 0 0; min-height: 0; 
 .picture-link:hover { text-decoration: underline; }
 body.chat-page .side .me .nm { font-size: 14px; }
 @media (min-width:760px) and (max-width:1000px) { .chat-app { grid-template-columns: 250px minmax(0,1fr); } }
+
+/* Keep wheel, touch and keyboard scrolling without visible scrollbar tracks. */
+body.chat-page .side-scroll, body.chat-page .log { scrollbar-width: none; -ms-overflow-style: none; }
+body.chat-page .side-scroll::-webkit-scrollbar, body.chat-page .log::-webkit-scrollbar { width: 0; height: 0; display: none; }
