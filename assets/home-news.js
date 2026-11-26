@@ -4,7 +4,6 @@
   const dots = carousel.querySelector('.news-dots');
   const controls = carousel.querySelector('.news-controls');
   const position = document.getElementById('news-position');
-  const pause = document.getElementById('news-pause');
   const motion = matchMedia('(prefers-reduced-motion: reduce)');
   let paused = motion.matches;
   let current = 0;
@@ -31,8 +30,6 @@
   function setPaused(value) {
     paused = value;
     clearInterval(timer);
-    pause.textContent = paused ? '▶' : 'Ⅱ';
-    pause.setAttribute('aria-label', paused ? 'Play slideshow' : 'Pause slideshow');
     if (!paused) {
       timer = setInterval(() => {
         if (!document.hidden && !carousel.closest('[hidden]') &&
@@ -48,9 +45,6 @@
     show(index, true);
   }
 
-  pause.addEventListener('click', () => setPaused(!paused));
-  document.getElementById('news-prev').addEventListener('click', () => select(current - 1));
-  document.getElementById('news-next').addEventListener('click', () => select(current + 1));
   motion.addEventListener('change', event => {
     if (event.matches) setPaused(true);
   });
