@@ -3887,10 +3887,11 @@ async function aiCall(env, msgs, o = {}) {
     let timer;
     try {
       const r = await Promise.race([
-        env.AI.run(AI_MODEL, { messages: msgs, max_tokens: max, temperature: o.temp ?? 0.4, ...(o.json ? { response_format: { type: "json_object" } } : {}) }),
+        env.AI.run(AI_MODEL, { messages: msgs, max_tokens: max, temperature: o.temp ?? 0.4, ...(o.json ? { response_format: { type: "json_schema", json_schema: { type: "object", properties: { ids: { type: "array", items: { type: "integer" }, maxItems: 4 } }, required: ["ids"], additionalProperties: false } } } : {}) }),
         new Promise(resolve => { timer = setTimeout(() => resolve(null), o.cfTimeout || 12000); })
       ]);
-      const t = clean(r && r.response);
+      const value = r && r.response;
+      const t = clean(o.json && value && typeof value === "object" ? JSON.stringify(value) : value);
       return t ? { text: t, src: "cf" } : null;
     } catch { return null; } finally { clearTimeout(timer); }
   };

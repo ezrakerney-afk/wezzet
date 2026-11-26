@@ -7,6 +7,8 @@ try {
   globalThis.fetch = () => { throw Error('slow primary must not be called'); };
   const fast = await aiCall({AI:{run:async()=>({response:'hello'})},WEZZETAI_URL:'https://primary.test'},[{role:'user',content:'hello'}]);
   assert.equal(fast.src,'cf');
+  const structured = await aiCall({AI:{run:async()=>({response:{ids:[0,2]}})}},[],{json:true});
+  assert.deepEqual(JSON.parse(structured.text),{ids:[0,2]});
   let urls=[];
   globalThis.fetch = async (url, options) => {
     urls.push(url);
