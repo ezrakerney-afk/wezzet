@@ -18,9 +18,7 @@
       rank.textContent = String(i + 1);
       rank.setAttribute('aria-hidden', 'true');
       const name = document.createElement('strong'); name.textContent = tool.name;
-      const count = document.createElement('span'); count.className = 'popular-visits';
-      count.textContent = tool.visits.toLocaleString() + (tool.visits === 1 ? ' visit' : ' visits');
-      link.append(rank, name, count); li.append(link); list.append(li);
+      link.append(rank, name); li.append(link); list.append(li);
     });
     status.hidden = data.top.length > 0;
     status.textContent = 'Rankings will appear once tools receive visits.';
