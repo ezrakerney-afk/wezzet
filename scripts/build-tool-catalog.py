@@ -1,9 +1,10 @@
 """Rebuild the homepage inventory from search, public tool pages and calculators."""
-import json, re
+import json, re, runpy
 from html import escape
 from urllib.parse import urlencode
 from pathlib import Path
 root = Path(__file__).resolve().parents[1]
+is_basic_converter = runpy.run_path(str(root / 'scripts/catalog-visibility.py'))['is_basic_converter']
 source = (root / 'assets/home.js').read_text()
 rows = json.loads('[' + source.split('const TOOLS = [', 1)[1].split('].map', 1)[0].rstrip().rstrip(',') + ']')
 entries = {url: {'url': url, 'name': name} for name, url, _ in rows}
@@ -24,6 +25,8 @@ index = root / 'index.html'
 html = re.sub(r'(<strong id="feature-count">).*?(</strong>)', lambda m: m[1] + str(count) + m[2], index.read_text())
 links = [(entry['name'], entry['url']) for entry in entries.values() if entry['url'] != '/calculators']
 links.extend((name, '/calculators?' + urlencode({'calc': name})) for name in calculators)
+links = [(name, url) for name, url in links if not is_basic_converter(url)]
+html = re.sub(r'(<strong id="catalog-count">).*?(</strong>)', lambda m: m[1] + str(len(links)) + m[2], html)
 items = '\n'.join(
     f'          <li><a href="{escape(url, quote=True)}">{escape(name)}</a></li>'
     for name, url in sorted(links, key=lambda link: (link[0].casefold(), link[1]))

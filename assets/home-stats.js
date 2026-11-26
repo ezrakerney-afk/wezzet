@@ -5,7 +5,8 @@
     const response = await fetch('/api/tool-stats');
     if (!response.ok) throw new Error('unavailable');
     const data = await response.json();
-    if (Number.isInteger(data.count)) document.getElementById('feature-count').textContent = data.count.toLocaleString();
+    const featureCount = document.getElementById('feature-count');
+    if (featureCount && Number.isInteger(data.count)) featureCount.textContent = data.count.toLocaleString();
     const list = document.getElementById('popular-tools');
     list.replaceChildren();
     data.top.forEach((tool, i) => {
