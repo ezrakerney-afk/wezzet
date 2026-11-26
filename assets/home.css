@@ -637,7 +637,7 @@
 .catalog-list a { display: inline-block; }
 .catalog-list a::first-letter { text-transform: uppercase; }
 .home-foot { margin: 56px 0 120px; padding-top: 36px; border-top: 1px solid var(--home-rule); font-size: 14px; color: var(--ink-soft); }
-.home-foot-grid { display: grid; grid-template-columns: 1.5fr repeat(3, 1fr); gap: 30px; }
+.home-foot-grid { display: grid; grid-template-columns: 1fr; gap: 30px; }
 .home-foot-brand { font-size: 24px; font-weight: 750; letter-spacing: -1.1px; color: var(--ink); text-decoration: none; }
 .home-foot-brand span { color: #7045e8; }
 .home-foot p { margin: 10px 0 0; max-width: 30ch; }
@@ -646,7 +646,7 @@
 .home-foot ul a { color: var(--ink); text-decoration: none; }
 .home-foot ul a:hover { color: var(--home-link); text-decoration: underline; }
 .home-foot-base { margin-top: 34px; padding-top: 18px; border-top: 1px solid var(--home-rule); font-size: 13px; }
-@media (max-width: 760px) { .home-foot-grid { grid-template-columns: 1fr 1fr; } .home-foot-grid > div:first-child { grid-column: 1 / -1; } .home-extension { padding: 20px; } }
+@media (max-width: 760px) { .home-extension { padding: 20px; } }
 @media (prefers-reduced-motion: reduce) { .home-cards a, .home-page .home-categories a { transition: none; } }
 .home-page main::before { -webkit-mask-image: linear-gradient(to right, transparent, #000 18%, #000 82%, transparent); mask-image: linear-gradient(to right, transparent, #000 18%, #000 82%, transparent); }
 .home-search .search-section { padding: 10px 12px 6px; color: var(--home-muted, #777); font-size: 12px; font-weight: 600; line-height: 1.5; border-top: 1px solid var(--home-rule); }
