@@ -820,7 +820,7 @@
     if (aiCache.has(key)) { suggestions = aiCache.get(key); status = suggestions.length ? "" : "AI found no additional tools."; paint(); return; }
     debounce = setTimeout(async () => {
       const ctl = new AbortController(); controller = ctl;
-      const timeout = setTimeout(() => ctl.abort(), 16000);
+      const timeout = setTimeout(() => ctl.abort(), 24000);
       try {
         const response = await fetch("/api/ai/tool-search", {
           method: "POST", headers: { "content-type": "application/json" },

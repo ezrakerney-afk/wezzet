@@ -7,6 +7,7 @@ root = Path(__file__).resolve().parents[1]
 is_basic_converter = runpy.run_path(str(root / 'scripts/catalog-visibility.py'))['is_basic_converter']
 source = (root / 'assets/home.js').read_text()
 rows = json.loads('[' + source.split('const TOOLS = [', 1)[1].split('].map', 1)[0].rstrip().rstrip(',') + ']')
+(root / 'assets/tool-search-keywords.json').write_text(json.dumps({url: kw for _, url, kw in rows}, ensure_ascii=False, separators=(',', ':')) + '\n')
 entries = {url: {'url': url, 'name': name} for name, url, _ in rows}
 excluded = {'index', '404', 'about', 'contact', 'privacy', 'signin'}
 for page in sorted(root.glob('*.html')):

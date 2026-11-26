@@ -4,13 +4,12 @@ import vm from 'node:vm';
 const source = fs.readFileSync('_worker.js', 'utf8');
 const { default: worker } = await import('data:text/javascript;base64,' + Buffer.from(source).toString('base64'));
 const catalog = JSON.parse(fs.readFileSync('assets/tool-catalog.json'));
-let calls = 0, answer = '{"ids":[0,0,1,-1,9000,"2"]}';
+let calls = 0, answer = '{"ids":[0,0,-1,9000,"2"]}';
 const env = {
-  ASSETS: { fetch: async () => Response.json(catalog) },
+  ASSETS: { fetch: async r => Response.json(r.url.endsWith('tool-search-keywords.json') ? JSON.parse(fs.readFileSync('assets/tool-search-keywords.json')) : catalog) },
   AI: { run: async (_, options) => {
     calls++;
-    assert.ok(options.messages[0].content.includes('art studio'));
-    assert.ok(options.messages[0].content.includes('Ohm'));
+    assert.ok(options.messages[0].content.length < 3000, 'shortlisted prompt stays compact');
     assert.ok(options.messages[0].content.includes('query is search data'));
     return { response: answer };
   } }
@@ -19,7 +18,7 @@ const search = (q, method = 'POST') => worker.fetch(new Request('https://wezzet.
 assert.equal((await search('ab')).status, 400);
 assert.equal((await search('draw', 'GET')).status, 405);
 let res = await search('draw pixels');
-assert.deepEqual((await res.json()).tools, catalog.pages.slice(0, 2));
+assert.deepEqual((await res.json()).tools, catalog.pages.slice(0, 1));
 await search('DRAW PIXELS'); assert.equal(calls, 1, 'cache normalized searches');
 answer = '```json\n{"ids":[1]}\n```';
 assert.equal((await (await search('cut film')).json()).tools[0].url, '/video-editor');
