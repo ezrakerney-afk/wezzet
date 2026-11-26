@@ -61,7 +61,13 @@
     await api("logout", {}).catch(() => {}); location.reload();
   });
 
-  const showMe = () => { $("me-name").textContent = me.name; $("me-av").replaceWith(Object.assign(avatar(me.name), { id: "me-av", title: "Change your profile picture" })); };
+  const showMe = () => {
+    $("me-name").textContent = me.name;
+    known[me.name] = { id: me.id, av: me.av || 0 };
+    const picture = document.createElement("button"); picture.type = "button"; picture.id = "me-av";
+    picture.className = "av"; picture.title = "Change your profile picture"; picture.setAttribute("aria-label", "Change your profile picture");
+    picture.append(avatar(me.name)); $("me-av").replaceWith(picture);
+  };
   async function start(user) {
     me = user; $("auth-wrap").hidden = true; $("app").hidden = false; showMe();
     if ("Notification" in window) enablePush(false);
@@ -198,7 +204,7 @@
   const pic = el("input"); pic.type = "file"; pic.accept = "image/*"; pic.hidden = true; document.body.append(pic);
   pic.onchange = () => run(async () => { const f = pic.files[0]; pic.value = ""; if (f) await setAvatar(await shrink(f)); });
   $("me-bar").addEventListener("click", (e) => {
-    if (!e.target.closest("#me-av")) return;
+    if (!e.target.closest("#me-av, #picture-btn")) return;
     const old = document.getElementById("pic-menu"); if (old) return old.remove();
     const m = el("div", "pic-menu"); m.id = "pic-menu";
     const up = el("button", "", me.av ? "Change picture" : "Add a profile picture"); up.type = "button"; up.onclick = () => { m.remove(); pic.click(); };
@@ -372,7 +378,8 @@
       h.append(b, t); const av = avatar(m.name, "lg"); div.append(av, h, p);
       if (m.uid !== me.id) av.onclick = b.onclick = () => profile(m.name);
     } else {
-      const t = document.createElement("time"); t.className = "side-time"; t.textContent = fmt(m.ts); div.append(t, p);
+      const av = avatar(m.name); av.title = m.name + " · " + fmt(m.ts); div.append(av, p);
+      if (m.uid !== me.id) av.onclick = () => profile(m.name);
     }
     if (m.uid !== me.id && m.id) {
       const rep = document.createElement("button"); rep.className = "rep"; rep.type = "button"; rep.textContent = "Report";

@@ -195,7 +195,7 @@
     .profile { position: fixed; inset: 0; z-index: 15; border: 0; }
   }
 </style>
-<link rel="stylesheet" href="/assets/messages.css?v=2">
+<link rel="stylesheet" href="/assets/messages.css?v=3">
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1814434432126124" crossorigin="anonymous"></script>
 </head>
 <body class="chat-page">
@@ -231,7 +231,7 @@
 
     <div class="chat-app" id="app" hidden>
       <aside class="side">
-        <div class="inbox-heading"><span class="eyebrow">YOUR SPACE</span><h2>Messages</h2><p>Direct messages and groups.</p>
+        <div class="inbox-heading">
           <label class="conversation-search"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="10" cy="10" r="6"/><path d="m15 15 5 5"/></svg><input id="conversation-search" type="search" placeholder="Find a conversation" aria-label="Find a conversation"></label>
           <p id="conversation-empty" hidden role="status">No matching conversations.</p>
         </div>
@@ -253,14 +253,14 @@
           </div>
           <div><h2>Messages</h2><ul id="dms"></ul></div>
           <div id="on-wrap" hidden><h2>Online now</h2><ul id="online"></ul></div>
-          <form class="add" id="dm-form"><input type="text" id="dm-name" placeholder="Find people by name" maxlength="25" aria-label="Search people by name"><button class="btn btn-quiet" type="submit">Search</button></form><div id="people-results" class="people-results" aria-live="polite"></div>
+          <form class="add" id="dm-form"><input type="text" id="dm-name" placeholder="Find people" maxlength="25" aria-label="Search people by name"><button class="btn btn-quiet" type="submit">Search</button></form><div id="people-results" class="people-results" aria-live="polite"></div>
           <div id="blk-wrap" hidden><h2>Blocked</h2><ul id="blocks"></ul></div>
           <button class="btn btn-quiet wide" type="button" id="notif-btn" hidden>Turn on notifications</button>
         </div>
         <form class="rename" id="rename-form" hidden><input type="text" id="rename-input" maxlength="24" aria-label="New username" autocomplete="nickname"><button class="btn" type="submit">Save</button><button class="btn btn-quiet" type="button" id="rename-cancel">Cancel</button></form>
         <div class="me" id="me-bar">
           <span class="av" id="me-av"></span>
-          <span class="nm"><span id="me-name"></span><small>Online</small></span>
+          <span class="nm"><span id="me-name"></span><button type="button" class="picture-link" id="picture-btn">Profile picture</button></span>
           <button class="icon-btn" type="button" id="rename-btn" aria-label="Change username" title="Change username"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M4 17.25V20h2.75L17.81 8.94l-2.75-2.75L4 17.25Zm16.71-10.04a1 1 0 0 0 0-1.41l-2.51-2.51a1 1 0 0 0-1.41 0l-1.96 1.96 3.92 3.92 1.96-1.96Z"/></svg></button>
           <button class="icon-btn" type="button" id="logout" aria-label="Sign out" title="Sign out"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M10 3h9a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-9v-2h9V5h-9V3Zm-.6 4.6L10.8 9l-2 2H16v2H8.8l2 2-1.4 1.4L5 12l4.4-4.4Z"/></svg></button>
         </div>
@@ -282,7 +282,7 @@
           </div>
         </div>
         <div class="log" id="log" aria-live="polite"></div>
-        <form class="composer" id="send-form"><div id="attachment-preview" hidden></div><input type="file" id="attachment-input" accept=".jpg,.jpeg,.png,.txt,.md,.csv,.json" hidden><button type="button" id="attach-button" class="icon-btn" aria-label="Attach a file" title="Attach JPEG/PNG (1 MB) or text file (12 KB)"><svg viewBox="0 0 24 24" aria-hidden="true" width="22" height="22"><path d="m8 13 6-6a3 3 0 0 1 4 4l-8 8a5 5 0 0 1-7-7l9-9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button><textarea id="text" rows="1" maxlength="2000" placeholder="Message" aria-label="Message"></textarea><button class="send" type="submit" aria-label="Send"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3.4 20.4 21 12 3.4 3.6 3.4 10l12.6 2-12.6 2z"/></svg></button><small class="attachment-help">JPEG/PNG up to 1 MB · Text files up to 12 KB · AI checks before sending</small><div id="attachment-status" role="status"></div></form>
+        <form class="composer" id="send-form"><div id="attachment-preview" hidden></div><input type="file" id="attachment-input" accept=".jpg,.jpeg,.png,.txt,.md,.csv,.json" hidden><button type="button" id="attach-button" class="icon-btn" aria-label="Attach a file" title="Attach JPEG/PNG (1 MB) or text file (12 KB)"><svg viewBox="0 0 24 24" aria-hidden="true" width="22" height="22"><path d="m8 13 6-6a3 3 0 0 1 4 4l-8 8a5 5 0 0 1-7-7l9-9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button><textarea id="text" rows="1" maxlength="2000" placeholder="Message" aria-label="Message"></textarea><button class="send" type="submit" aria-label="Send"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3.4 20.4 21 12 3.4 3.6 3.4 10l12.6 2-12.6 2z"/></svg></button><div id="attachment-status" role="status"></div></form>
       </section>
       <aside class="profile" id="profile" hidden aria-label="Details">
         <div class="top"><button class="icon-btn" type="button" id="profile-close" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M18.3 5.7 16.9 4.3 12 9.2 7.1 4.3 5.7 5.7 10.6 12l-4.9 4.9 1.4 1.4 4.9-4.9 4.9 4.9 1.4-1.4-4.9-4.9z"/></svg></button></div>
@@ -305,7 +305,7 @@
     <div class="wz-foot-base"><span>© 2026 Wezzet</span><span>Press <kbd>Ctrl K</kbd> to search every tool</span></div>
   </div>
 </footer>
-<script src="/assets/chat.js?v=11" defer></script>
+<script src="/assets/chat.js?v=12" defer></script>
 <script src="/assets/ui.js?v=1" defer></script>
 <script src="/assets/theme.js?v=5" defer></script>
 </body>
