@@ -748,7 +748,13 @@
   ].map(([name, url, kw]) => ({ name, url, name_l: name.toLowerCase(), hay: (name + " " + kw).toLowerCase() }));
 
   const q = document.getElementById("q"), list = document.getElementById("results"), form = document.getElementById("search-form");
-  let shown = [], active = -1;
+  let shown = [], active = -1, local = [], suggestions = [], status = "";
+  let debounce, controller, revision = 0;
+  const aiCache = new Map();
+  const announcement = document.createElement("span");
+  announcement.className = "sr-only";
+  announcement.setAttribute("role", "status");
+  form.append(announcement);
 
   function score(t, words) {
     let s = 0;
@@ -762,26 +768,80 @@
     return s;
   }
 
-  function render() {
-    const words = q.value.toLowerCase().trim().split(/\s+/).filter(Boolean);
-    shown = words.length
-      ? TOOLS.map((t, i) => ({ t, s: score(t, words), i })).filter((x) => x.s >= 0).sort((a, b) => b.s - a.s || a.i - b.i).map((x) => x.t)
-      : TOOLS.slice();
-    active = words.length && shown.length ? 0 : -1;
+  function paint() {
+    const selected = shown[active]?.url;
+    const scroll = list.scrollTop;
+    // Keep ordinary matches first, with AI picks just below the first few matches.
+    const first = local.slice(0, 5), rest = local.slice(5);
+    const picks = suggestions.filter(t => !first.some(x => x.url === t.url));
+    const remainder = rest.filter(t => !picks.some(x => x.url === t.url));
+    shown = [...first, ...picks, ...remainder];
+    active = selected ? shown.findIndex(t => t.url === selected) : (q.value.trim() && first.length ? 0 : -1);
     list.textContent = "";
-    if (!shown.length) {
-      const li = document.createElement("li"); li.className = "none"; li.innerHTML = 'no tool matches that yet. <a href="/ai?q=' + encodeURIComponent(q.value) + '">ask wezzetai</a>';
-      list.append(li);
+    let index = 0;
+    function heading(text) {
+      const li = document.createElement("li"); li.className = "search-section";
+      li.setAttribute("role", "presentation"); li.textContent = text; list.append(li);
     }
-    shown.forEach((t, i) => {
-      const li = document.createElement("li");
-      const a = document.createElement("a");
-      a.href = t.url; a.textContent = t.name; a.id = "opt-" + i; a.setAttribute("role", "option");
-      a.setAttribute("aria-selected", i === active ? "true" : "false");
-      a.tabIndex = -1;
-      li.append(a); list.append(li);
-    });
-    open(true);
+    function items(tools) {
+      tools.forEach(t => {
+        const i = index++, li = document.createElement("li"), a = document.createElement("a");
+        li.setAttribute("role", "presentation");
+        a.href = t.url; a.textContent = t.name; a.id = "opt-" + i;
+        a.setAttribute("role", "option"); a.setAttribute("aria-selected", String(i === active));
+        a.tabIndex = -1; li.append(a); list.append(li);
+      });
+    }
+    items(first);
+    if (suggestions.length) {
+      heading(picks.length ? "AI recommendations" : "AI agrees with the matches above"); items(picks);
+    } else if (status) heading(status);
+    if (remainder.length && (status || suggestions.length)) heading("More matching tools");
+    items(remainder);
+    if (!local.length && !suggestions.length) heading("No exact matches. Try describing what you want to do.");
+    if (active >= 0) q.setAttribute("aria-activedescendant", "opt-" + active);
+    else q.removeAttribute("aria-activedescendant");
+    list.scrollTop = scroll;
+  }
+
+  function render() {
+    clearTimeout(debounce); controller?.abort();
+    const version = ++revision, query = q.value.trim();
+    const words = query.toLowerCase().split(/\s+/).filter(Boolean);
+    local = words.length
+      ? TOOLS.map((t, i) => ({ t, s: score(t, words), i })).filter(x => x.s >= 0).sort((a, b) => b.s - a.s || a.i - b.i).map(x => x.t)
+      : TOOLS.slice();
+    shown = []; active = -1; suggestions = []; status = "";
+    const eligible = query.length >= 3 && query.length <= 200;
+    if (eligible) status = "AI is finding tools for you…";
+    paint(); open(true); list.scrollTop = 0;
+    if (!eligible) return;
+    const key = query.toLowerCase();
+    if (aiCache.has(key)) { suggestions = aiCache.get(key); status = suggestions.length ? "" : "AI found no additional tools."; paint(); return; }
+    debounce = setTimeout(async () => {
+      const ctl = new AbortController(); controller = ctl;
+      const timeout = setTimeout(() => ctl.abort(), 16000);
+      try {
+        const response = await fetch("/api/ai/tool-search", {
+          method: "POST", headers: { "content-type": "application/json" },
+          body: JSON.stringify({ q: query }), signal: ctl.signal
+        });
+        if (!response.ok) throw new Error("Unavailable");
+        const data = await response.json();
+        if (!Array.isArray(data.tools)) throw new Error("Invalid results");
+        if (version !== revision) return;
+        suggestions = data.tools.filter(t => typeof t.name === "string" && /^\/[a-z0-9-]+$/.test(t.url)).slice(0, 4);
+        if (aiCache.size >= 50) aiCache.delete(aiCache.keys().next().value);
+        aiCache.set(key, suggestions);
+        status = suggestions.length ? "" : "AI found no additional tools.";
+        announcement.textContent = suggestions.length ? "AI tool recommendations are ready." : status;
+      } catch {
+        if (version !== revision) return;
+        status = "AI is unavailable. You can still use the normal search.";
+        announcement.textContent = status;
+      } finally { clearTimeout(timeout); }
+      if (version === revision) paint();
+    }, 450);
   }
 
   function open(on) {
@@ -793,7 +853,7 @@
   function move(d) {
     if (!shown.length) return;
     active = (active + d + shown.length) % shown.length;
-    list.querySelectorAll("a").forEach((a, i) => a.setAttribute("aria-selected", i === active ? "true" : "false"));
+    list.querySelectorAll('[role="option"]').forEach((a, i) => a.setAttribute("aria-selected", i === active ? "true" : "false"));
     const el = document.getElementById("opt-" + active);
     q.setAttribute("aria-activedescendant", el.id);
     el.scrollIntoView({ block: "nearest" });

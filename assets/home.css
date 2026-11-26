@@ -649,3 +649,4 @@
 @media (max-width: 760px) { .home-foot-grid { grid-template-columns: 1fr 1fr; } .home-foot-grid > div:first-child { grid-column: 1 / -1; } .home-extension { padding: 20px; } }
 @media (prefers-reduced-motion: reduce) { .home-cards a, .home-page .home-categories a { transition: none; } }
 .home-page main::before { -webkit-mask-image: linear-gradient(to right, transparent, #000 18%, #000 82%, transparent); mask-image: linear-gradient(to right, transparent, #000 18%, #000 82%, transparent); }
+.home-search .search-section { padding: 10px 12px 6px; color: var(--home-muted, #777); font-size: 12px; font-weight: 600; line-height: 1.5; border-top: 1px solid var(--home-rule); }
