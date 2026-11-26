@@ -2,12 +2,18 @@
 (() => {
   const $ = (id) => document.getElementById(id);
   const account = window.wzAccount;
-  const setBadge = (count) =>
+  const setBadge = (count) => {
+    count = Number.isFinite(count) ? Math.max(0, Math.floor(count)) : 0;
+    $("messages-toggle").setAttribute("aria-label", count ? `Messages, ${count} unread` : "Messages");
     document.querySelectorAll("[data-chat-badge]").forEach((b) => {
       b.hidden = !count;
       b.textContent = count > 99 ? "99+" : String(count);
       b.setAttribute("aria-label", count + " unread messages");
     });
+  };
+  window.addEventListener("message", event => {
+    if (event.origin === location.origin && event.source === $("chat-frame").contentWindow && event.data?.type === "wz-chat-unread") setBadge(event.data.count);
+  });
   let checking = false;
   async function refreshMessages() {
     if (document.hidden || checking) return;

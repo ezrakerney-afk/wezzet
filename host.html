@@ -31,7 +31,7 @@
 <link rel="stylesheet" href="/assets/aicomms-layout.css?v=3">
 <link rel="stylesheet" href="/assets/workspace.css?v=1">
 <link rel="stylesheet" href="/assets/sidepanel.css?v=2">
-<link rel="stylesheet" href="/assets/host.css?v=1">
+<link rel="stylesheet" href="/assets/host.css?v=2">
 <script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"SoftwareApplication","name":"Wezzet Host","url":"https://wezzet.com/host","applicationCategory":"DeveloperApplication","operatingSystem":"Any (web browser)","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"description":"Upload an HTML page, game or small website and get your own link at wezzet.com/host/your-name. Free, with a Wezzet account."},{"@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Who can see my page?","acceptedAnswer":{"@type":"Answer","text":"Anyone with the link. Pages also show in the Explore list unless you turn that off when you publish or in My pages."}},{"@type":"Question","name":"What can I upload?","acceptedAnswer":{"@type":"Answer","text":"HTML, CSS, JavaScript, images, sounds, fonts, JSON and WebAssembly, up to 2 MB per page. Free accounts get 1 page, and Wezzet Pro gets 5. Name the start page index.html, or upload a single HTML file."}},{"@type":"Question","name":"Can I make a page without any files?","acceptedAnswer":{"@type":"Answer","text":"Yes. Open the Editor, pick a template or write your own HTML, watch the live preview, then publish."}},{"@type":"Question","name":"Why can't my page save data?","acceptedAnswer":{"@type":"Answer","text":"Hosted pages run in a sandbox, cut off from the rest of Wezzet, so your visitors' accounts stay safe. That also blocks cookies and localStorage. Password fields aren't allowed either."}},{"@type":"Question","name":"How do I update or delete it?","acceptedAnswer":{"@type":"Answer","text":"Go to My pages. Edit opens the page in the editor, Replace uploads new files under the same name, and Delete removes it."}},{"@type":"Question","name":"How are views counted?","acceptedAnswer":{"@type":"Answer","text":"Each time someone opens your page link, it counts one view. Bots and previews are skipped."}}]}]}</script>
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1814434432126124" crossorigin="anonymous"></script>
 </head>
@@ -51,6 +51,7 @@
     <a href="#new"><svg class="si" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V5M7 10l5-5 5 5M5 19h14"/></svg>Publish</a>
     <a href="#editor"><svg class="si" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 8l-4 4 4 4M16 8l4 4-4 4M13.5 5l-3 14"/></svg>Editor</a>
     <a href="#mine"><svg class="si" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg>My pages</a>
+    <a href="#ai"><svg class="si" viewBox="0 0 24 24" aria-hidden="true"><path d="m8 8-4 4 4 4m8-8 4 4-4 4M14 4l-4 16"/></svg>Publish with AI</a>
     <a href="#help"><svg class="si" viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.7.4-1 1-1 1.7M12 17h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>Help</a>
   </nav>
   <div class="sidebar-bottom"><a href="/forum/tools">Feedback ↗</a><p><a href="/contact">Contact support</a></p></div>
@@ -59,10 +60,10 @@
   <div class="comms-content">
     <div class="breadcrumb"><a href="/">Workspace</a><span>/</span><span>Host</span></div>
     <div class="page-heading">
-      <div><p class="eyebrow">YOUR OWN LINK</p><h1>Wezzet Host</h1><p>Put a page, game or small site online at wezzet.com/host/your-name. <a href="/forum/tools">Community</a></p></div>
+      <div><p class="eyebrow">WEZZET HOST</p><h1>Your idea. Its own address.</h1><p>Games, portfolios, experiments. Upload your files or let your AI publish them. One free page, with a clean link and no added toolbar.</p></div>
       <a class="primary-link" href="#new">Publish a page <span aria-hidden="true">＋</span></a>
     </div>
-    <div class="comms-activity"><span class="ac-kicker"><span class="ac-dot live" aria-hidden="true"></span><span>Host activity</span></span><div class="ac-tiles" id="h-stats" aria-label="Host activity"></div></div>
+    <div class="host-start"><a href="#new"><span>01 / UPLOAD</span><strong>Bring your files</strong><p>Drop in a page or a complete folder.</p></a><a href="#editor"><span>02 / BUILD</span><strong>Start in the editor</strong><p>Write, preview and publish in one place.</p></a><a href="#ai"><span>03 / CONNECT</span><strong>Let your AI handle it</strong><p>Give it access to publish and update one page.</p></a></div><div class="comms-activity"><span class="ac-kicker"><span class="ac-dot live" aria-hidden="true"></span><span>Host activity</span></span><div class="ac-tiles" id="h-stats" aria-label="Host activity"></div></div>
     <div class="ac-layout"><div class="ac-pane-m">
 
       <section class="ac-card ac-tab" id="explore" aria-labelledby="explore-h">
@@ -112,9 +113,9 @@
           <button class="btn btn-quiet" type="button" id="e-dl">Download</button>
           <button class="btn btn-quiet" type="button" id="e-new">New</button>
         </div>
-        <div class="h-edit">
+        <div class="h-preview-tools"><label>Editing <select id="e-file" aria-label="Project file"><option>index.html</option></select></label><span id="e-save-state" role="status">Draft saved locally</span><label>Preview <select id="e-device"><option value="100%">Desktop</option><option value="768px">iPad</option><option value="390px">Phone</option></select></label><button type="button" class="btn btn-quiet" id="e-refresh">Restart preview</button></div><div class="h-edit">
           <textarea id="e-code" class="mono" spellcheck="false" aria-label="HTML code" wrap="off"></textarea>
-          <iframe id="e-view" title="Preview" sandbox="allow-scripts allow-forms allow-modals allow-pointer-lock"></iframe>
+          <div class="h-preview-stage"><iframe id="e-view" title="Preview" sandbox="allow-scripts allow-forms allow-modals allow-pointer-lock"></iframe></div>
         </div>
         <p class="note" id="e-msg" role="status" hidden style="margin:0;border-radius:0;max-width:none"></p>
       </section>
@@ -125,9 +126,22 @@
         <div class="ac-guest" id="m-guest"><a href="/signin">Sign in</a> to see your pages, or <a href="#new">publish your first one</a>.</div>
       </section>
 
+      <section class="ac-card ac-tab" id="ai" aria-labelledby="ai-h" hidden>
+        <div class="ac-card-h"><h2 id="ai-h">Publish with your AI</h2><a href="/host-api.md" target="_blank">API guide</a></div>
+        <div class="ac-card-b">
+          <p>Ask your AI to build an HTML game or website, then publish and update it here. Create a key for one page and give it to an AI you trust. It cannot access messages or other pages.</p>
+          <div class="host-ai-steps"><p><b>1. Choose an address</b><span>Use a new page name or one you already own.</span></p><p><b>2. Connect your AI</b><span>Use our MCP tools or the documented HTTP API.</span></p><p><b>3. Keep building</b><span>Updates keep the same public link.</span></p></div>
+          <form id="h-key-form" class="h-row"><label>Page name<input type="text" id="h-key-name" placeholder="my-game" maxlength="32" required pattern="[a-z0-9-]{3,32}"></label><button class="btn" type="submit">Create / replace key</button></form>
+          <p class="h-hint">Keys expire after 90 days. Replacing a key immediately disables the previous one. Creating a key does not reserve the address or publish a page.</p>
+          <div id="h-key-result" hidden><label>Secret key (shown once)<input id="h-key-value" type="password" readonly autocomplete="off"></label><div class="btn-row"><button id="h-key-copy" class="btn" type="button">Copy key</button><button id="h-ai-copy" class="btn btn-quiet" type="button">Copy instructions for AI</button></div><p class="h-hint">Keep this key out of your HTML, screenshots and public repositories.</p></div>
+          <p id="h-key-status" role="status"></p><h3>Page access</h3><ul id="h-key-list" class="ac-list"></ul>
+          <details><summary>What does my AI need?</summary><p>An AI with web/API access or an MCP connection to <code>https://wezzet.com/mcp</code>. The tools are <code>host_publish</code> and <code>host_source</code>. A chat that cannot call tools can still produce files for you to upload.</p><p>Free accounts: one page, 2 MB total, 200 files. Static HTML, CSS and JavaScript only. No server backend, cookies or localStorage.</p></details>
+        </div>
+      </section>
+
       <section class="ac-tab section faq" id="help" aria-labelledby="help-h" hidden>
         <h2 id="help-h">Help</h2>
-        <ul class="ac-feats"><li><b>Upload or write</b>Drop in a folder, or build a page in the editor with live preview.</li><li><b>Your own link</b>Pick a name and share wezzet.com/host/your-name.</li><li><b>Safe by design</b>Every page runs in a sandbox with a Report button.</li></ul>
+        <ul class="ac-feats"><li><b>Upload or write</b>Drop in a folder, or build a page in the editor with live preview.</li><li><b>Your own link</b>Pick a name and share wezzet.com/host/your-name.</li><li><b>Safe by design</b>Every page runs in an isolated sandbox. Report a page from its Explore card.</li></ul>
         <details><summary>Who can see my page?</summary><p>Anyone with the link. Pages also show in the Explore list unless you turn that off when you publish or in My pages.</p></details><details><summary>What can I upload?</summary><p>HTML, CSS, JavaScript, images, sounds, fonts, JSON and WebAssembly, up to 2 MB per page. Free accounts get 1 page, and Wezzet Pro gets 5. Name the start page index.html, or upload a single HTML file.</p></details><details><summary>Can I make a page without any files?</summary><p>Yes. Open the Editor, pick a template or write your own HTML, watch the live preview, then publish.</p></details><details><summary>Why can't my page save data?</summary><p>Hosted pages run in a sandbox, cut off from the rest of Wezzet, so your visitors' accounts stay safe. That also blocks cookies and localStorage. Password fields aren't allowed either.</p></details><details><summary>How do I update or delete it?</summary><p>Go to My pages. Edit opens the page in the editor, Replace uploads new files under the same name, and Delete removes it.</p></details><details><summary>How are views counted?</summary><p>Each time someone opens your page link, it counts one view. Bots and previews are skipped.</p></details>
       </section>
     </div></div>
@@ -136,7 +150,7 @@
 
 <footer class="comms-footer"><a href="/privacy">Privacy</a><a href="mailto:wezzet.com@gmail.com">Support</a><a href="https://x.com/WezzetX" rel="noopener">@WezzetX</a></footer>
 <script src="/assets/account.js?v=3" defer></script>
-<script src="/assets/host.js?v=3" defer></script>
+<script src="/assets/host.js?v=4" defer></script>
 <script src="/assets/sidebar.js?v=2" defer></script>
 <script src="/assets/theme.js?v=5" defer></script>
 </body>

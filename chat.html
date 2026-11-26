@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Chat | Wezzet</title>
+<title>Messages | Wezzet</title>
 <meta name="description" content="Free chat on Wezzet: add friends, send direct messages and make voice calls in your browser.">
 <link rel="manifest" href="/chat.webmanifest">
 <link rel="canonical" href="https://wezzet.com/chat">
@@ -195,12 +195,13 @@
     .profile { position: fixed; inset: 0; z-index: 15; border: 0; }
   }
 </style>
+<link rel="stylesheet" href="/assets/messages.css?v=2">
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1814434432126124" crossorigin="anonymous"></script>
 </head>
 <body class="chat-page">
 <header class="site-header">
   <div class="wrap">
-    <div class="brand"><a class="brand" href="/" aria-label="Wezzet home"><img src="/assets/icon-48.png" width="28" height="28" alt="">wezzet<span class="brand-dot">.</span></a><h1>Chat</h1></div>
+    <div class="brand"><a class="brand" href="/" aria-label="Wezzet home"><img src="/assets/icon-48.png" width="28" height="28" alt="">wezzet<span class="brand-dot">.</span></a><h1>Messages</h1></div>
     <nav class="site-nav" aria-label="Main"><button class="wz-search-btn" type="button" data-wz-search aria-label="Search tools" aria-keyshortcuts="Control+K"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M10 2a8 8 0 0 1 6.32 12.9l5.39 5.4-1.41 1.4-5.4-5.39A8 8 0 1 1 10 2Zm0 2a6 6 0 1 0 0 12 6 6 0 0 0 0-12Z"/></svg><span>Search tools</span><kbd>Ctrl K</kbd></button><a href="/">All tools</a><button class="theme-toggle" type="button" aria-label="Switch between light and dark mode"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm0 2v16a8 8 0 0 1 0-16Z"/></svg></button></nav>
   </div>
 </header>
@@ -209,8 +210,11 @@
   <div class="wrap">
 
     <div class="auth-wrap" id="auth-wrap" hidden>
-    <p><a href="/signin" target="_top">Sign in with Google</a></p>
+    <div class="auth-intro"><span class="messages-symbol" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M20 11a8 8 0 0 1-8 8H5l-4 3 2-6A8 8 0 1 1 20 11Z"/></svg></span><h2>A place for your conversations.</h2><p>Message friends, make a group, or catch up over a voice call.</p></div>
     <form class="auth" id="auth" novalidate>
+      <h2>Welcome to Messages</h2><p class="auth-description">Sign in to pick up where you left off.</p>
+      <a class="google-signin" href="/signin" target="_top">Continue with Google <span aria-hidden="true">→</span></a>
+      <div class="auth-divider">or use your Wezzet account</div>
       <div class="segmented" role="radiogroup" aria-label="Sign in or sign up">
         <label><input type="radio" name="mode" value="login" checked><span>Sign in</span></label>
         <label><input type="radio" name="mode" value="signup"><span>Sign up</span></label>
@@ -227,6 +231,10 @@
 
     <div class="chat-app" id="app" hidden>
       <aside class="side">
+        <div class="inbox-heading"><span class="eyebrow">YOUR SPACE</span><h2>Messages</h2><p>Direct messages and groups.</p>
+          <label class="conversation-search"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="10" cy="10" r="6"/><path d="m15 15 5 5"/></svg><input id="conversation-search" type="search" placeholder="Find a conversation" aria-label="Find a conversation"></label>
+          <p id="conversation-empty" hidden role="status">No matching conversations.</p>
+        </div>
         <div class="on-strip" id="on-strip" aria-live="polite">
           <h2><span class="dot" aria-hidden="true"></span><span id="on-count">Checking who's online…</span></h2>
           <ul id="on-row" aria-label="People online now"></ul>
@@ -245,7 +253,7 @@
           </div>
           <div><h2>Messages</h2><ul id="dms"></ul></div>
           <div id="on-wrap" hidden><h2>Online now</h2><ul id="online"></ul></div>
-          <form class="add" id="dm-form"><input type="text" id="dm-name" placeholder="Add friend by username" maxlength="25" aria-label="Add a friend by username"><button class="btn btn-quiet" type="submit">Add</button></form>
+          <form class="add" id="dm-form"><input type="text" id="dm-name" placeholder="Find people by name" maxlength="25" aria-label="Search people by name"><button class="btn btn-quiet" type="submit">Search</button></form><div id="people-results" class="people-results" aria-live="polite"></div>
           <div id="blk-wrap" hidden><h2>Blocked</h2><ul id="blocks"></ul></div>
           <button class="btn btn-quiet wide" type="button" id="notif-btn" hidden>Turn on notifications</button>
         </div>
@@ -274,7 +282,7 @@
           </div>
         </div>
         <div class="log" id="log" aria-live="polite"></div>
-        <form class="composer" id="send-form"><textarea id="text" rows="1" maxlength="2000" placeholder="Message" aria-label="Message"></textarea><button class="send" type="submit" aria-label="Send"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3.4 20.4 21 12 3.4 3.6 3.4 10l12.6 2-12.6 2z"/></svg></button></form>
+        <form class="composer" id="send-form"><div id="attachment-preview" hidden></div><input type="file" id="attachment-input" accept=".jpg,.jpeg,.png,.txt,.md,.csv,.json" hidden><button type="button" id="attach-button" class="icon-btn" aria-label="Attach a file" title="Attach JPEG/PNG (1 MB) or text file (12 KB)"><svg viewBox="0 0 24 24" aria-hidden="true" width="22" height="22"><path d="m8 13 6-6a3 3 0 0 1 4 4l-8 8a5 5 0 0 1-7-7l9-9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button><textarea id="text" rows="1" maxlength="2000" placeholder="Message" aria-label="Message"></textarea><button class="send" type="submit" aria-label="Send"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3.4 20.4 21 12 3.4 3.6 3.4 10l12.6 2-12.6 2z"/></svg></button><small class="attachment-help">JPEG/PNG up to 1 MB · Text files up to 12 KB · AI checks before sending</small><div id="attachment-status" role="status"></div></form>
       </section>
       <aside class="profile" id="profile" hidden aria-label="Details">
         <div class="top"><button class="icon-btn" type="button" id="profile-close" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M18.3 5.7 16.9 4.3 12 9.2 7.1 4.3 5.7 5.7 10.6 12l-4.9 4.9 1.4 1.4 4.9-4.9 4.9 4.9 1.4-1.4-4.9-4.9z"/></svg></button></div>
@@ -297,7 +305,7 @@
     <div class="wz-foot-base"><span>© 2026 Wezzet</span><span>Press <kbd>Ctrl K</kbd> to search every tool</span></div>
   </div>
 </footer>
-<script src="/assets/chat.js?v=9" defer></script>
+<script src="/assets/chat.js?v=11" defer></script>
 <script src="/assets/ui.js?v=1" defer></script>
 <script src="/assets/theme.js?v=5" defer></script>
 </body>

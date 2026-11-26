@@ -24,6 +24,7 @@
     tabs.forEach((t) => (t.hidden = t.id !== id));
     links.forEach((a) => (a.hash === "#" + id ? a.setAttribute("aria-current", "page") : a.removeAttribute("aria-current")));
     if (id === "mine") loadMine();
+    if (id === "ai") loadKeys();
     if (id === "editor") preview();
   }
   document.addEventListener("click", (e) => {
@@ -43,6 +44,17 @@
       el("p", { textContent: s.about || "" }),
       el("small", { textContent: num(s.views) + (s.views === 1 ? " view" : " views") + (s.by ? " · by " + s.by : "") + " · " + ago($("x-sort").value === "new" ? s.created : s.updated) })))) : [el("li", { className: "h-empty", textContent: q ? "Nothing matches." : "No pages yet. Yours could be the first." })]));
   }
+  const originalDrawExplore = drawExplore;
+  drawExplore = function () {
+    originalDrawExplore();
+    for (const card of $("x-list").querySelectorAll("li:not(.h-empty)")) {
+      const name = card.querySelector("a").getAttribute("href").split("/").pop();
+      card.append(el("button", {type:"button",className:"host-report",textContent:"Report page",onclick:async()=>{
+        const reason = prompt("Why are you reporting this page?"); if (!reason) return;
+        const r = await call("report",{method:"POST",body:JSON.stringify({name,reason})}); alert(r.error || "Report received.");
+      }}));
+    }
+  };
   let xBust = "";
   async function loadExplore(fresh) {
     if (fresh) { xPage = 0; xBust = "&t=" + Date.now(); }
@@ -131,19 +143,37 @@
   const code = $("e-code"), view = $("e-view");
   let editing = null, ptimer;
   const draft = { get: () => { try { return localStorage.getItem("wz-host-draft") || ""; } catch (e) { return ""; } }, set: (v) => { try { localStorage.setItem("wz-host-draft", v); } catch (e) {} } };
-  function preview() { view.srcdoc = code.value; }
+  let dirty = false;
+  function preview() {
+    const file = editing?.file || "index.html";
+    if (/\.html?$/i.test(file)) {
+      const base = editing ? `<base href="https://wezzet.com/host/${editing.name}/v${Number(editing.updated).toString(36)}/${file.includes("/") ? file.slice(0,file.lastIndexOf("/")+1) : ""}">` : "";
+      view.srcdoc = code.value.replace(/<head[^>]*>/i, match => match + base);
+      if (!/<head[^>]*>/i.test(code.value)) view.srcdoc = base + code.value;
+    } else view.srcdoc = "<meta charset=utf-8><style>body{font:14px/1.6 monospace;padding:20px}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><p>Source preview · publish to apply changes to the live page.</p><pre>" + code.value.replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"})[c]) + "</pre>";
+  }
+  $("e-device").onchange = () => { view.style.width = $("e-device").value; };
+  $("e-refresh").onclick = preview;
+  code.addEventListener("input", () => { dirty = true; $("e-save-state").textContent = editing ? "Unpublished changes" : "Draft saved locally"; });
+  addEventListener("beforeunload", ev => { if (dirty && editing) { ev.preventDefault(); ev.returnValue = ""; } });
+  $("e-file").onchange = async () => {
+    const path = $("e-file").value;
+    if (!editing) return;
+    if (dirty && !confirm("Discard unpublished changes to this file?")) { $("e-file").value = editing.file; return; }
+    await openInEditor(editing.name,path,true);
+  };
   for (const k of Object.keys(TPL)) $("e-tpl").append(el("option", { value: k, textContent: k }));
   code.value = draft.get() || TPL["Blank page"];
   code.addEventListener("input", () => { clearTimeout(ptimer); ptimer = setTimeout(() => { preview(); if (!editing) draft.set(code.value); }, 400); });
-  code.addEventListener("keydown", (e) => { if (e.key === "Tab" && !e.shiftKey && !e.ctrlKey && !e.altKey) { e.preventDefault(); code.setRangeText("  ", code.selectionStart, code.selectionEnd, "end"); } });
+  code.addEventListener("keydown", (e) => { if (e.key === "Tab" && !e.shiftKey && !e.ctrlKey && !e.altKey) { e.preventDefault(); code.setRangeText("  ", code.selectionStart, code.selectionEnd, "end"); code.dispatchEvent(new Event("input")); } });
   $("e-tpl").onchange = (e) => {
     const k = e.target.value; e.target.value = "";
     if (!k || (code.value.trim() && code.value !== TPL["Blank page"] && !confirm("Replace what's in the editor with the " + k + " template?"))) return;
-    code.value = TPL[k]; if (!editing) draft.set(code.value); preview();
+    code.value = TPL[k]; dirty = true; $("e-save-state").textContent = editing ? "Unpublished changes" : "Draft saved locally"; if (!editing) draft.set(code.value); preview();
   };
-  function resetEditor() { editing = null; $("e-name").value = ""; $("e-name").disabled = false; $("e-what").textContent = "New page"; code.value = draft.get() || TPL["Blank page"]; $("e-msg").hidden = true; preview(); }
-  $("e-new").onclick = () => { if (editing || confirm("Start a new blank page? This clears the editor.")) { if (!editing) draft.set(""); resetEditor(); } };
-  $("e-dl").onclick = () => { const a = el("a", { href: URL.createObjectURL(new Blob([code.value], { type: "text/html" })), download: "index.html" }); a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000); };
+  function resetEditor() { editing = null; dirty = false; $("e-file").replaceChildren(el("option", {textContent:"index.html"})); $("e-save-state").textContent = "Draft saved locally"; $("e-name").value = ""; $("e-name").disabled = false; $("e-what").textContent = "New page"; code.value = draft.get() || TPL["Blank page"]; $("e-msg").hidden = true; preview(); }
+  $("e-new").onclick = () => { if ((!dirty && editing) || confirm("Start a new blank page? This clears the editor.")) { if (!editing) draft.set(""); resetEditor(); } };
+  $("e-dl").onclick = () => { const a = el("a", { href: URL.createObjectURL(new Blob([code.value], { type: "text/html" })), download: editing?.file || "index.html" }); a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000); };
   $("e-go").onclick = async () => {
     const msg = $("e-msg");
     if (!(await me())) { note(msg, "Sign in first. Hosting needs a free Wezzet account.", true); return; }
@@ -152,22 +182,27 @@
     if (!code.value.trim()) { note(msg, "Write some HTML first.", true); return; }
     const m = code.value.match(/<title[^>]*>([^<]{1,80})/i);
     const data = { name, files: [{ path: editing ? editing.file : "index.html", data: b64(new TextEncoder().encode(code.value)) }] };
-    if (editing) Object.assign(data, { merge: true, title: editing.title, about: editing.about, listed: editing.listed });
+    if (editing) Object.assign(data, { merge: true, title: editing.title, about: editing.about, listed: editing.listed, expected_updated: editing.updated });
     else data.title = m ? m[1].trim() : "";
     $("e-go").disabled = true; note(msg, "Publishing...");
     const r = await call("upload", { method: "POST", body: JSON.stringify(data) });
     $("e-go").disabled = false;
     if (r.error) { note(msg, r.error + (r.pro ? ' <a href="/pro">Get Pro</a>' : ""), true, !!r.pro); return; }
     note(msg, live(r) + (editing ? ". Saved." : ""), false, true);
-    if (!editing) { draft.set(""); editing = { name, file: "index.html", title: data.title, about: "", listed: true }; $("e-name").value = name; $("e-name").disabled = true; $("e-what").textContent = "Editing /host/" + name; }
+    dirty = false; $("e-save-state").textContent = "Published just now";
+    if (editing) editing.updated = r.updated;
+    if (!editing) { draft.set(""); editing = { name, file: "index.html", title: data.title, about: "", listed: true, updated:r.updated }; $("e-name").value = name; $("e-name").disabled = true; $("e-what").textContent = "Editing /host/" + name; }
     loadExplore(true);
   };
-  async function openInEditor(name) {
-    const r = await call("source?name=" + encodeURIComponent(name));
+  async function openInEditor(name, file = "index.html", confirmed = false) {
+    if (dirty && editing && !confirmed && !confirm("Discard unpublished changes?")) return;
+    const r = await call("source?name=" + encodeURIComponent(name) + "&file=" + encodeURIComponent(file));
     if (r.error) { alert(r.error); return; }
-    editing = { name, file: r.file, title: r.title, about: r.about, listed: r.listed };
+    editing = { name, file: r.file, title: r.title, about: r.about, listed: r.listed, updated:r.updated };
+    dirty = false; $("e-save-state").textContent = "Published version";
+    $("e-file").replaceChildren(...r.files.filter(f=>/\.(html?|css|js|mjs|json|txt|md|csv|svg|xml|webmanifest)$/i.test(f.path)).map(f=>el("option",{value:f.path,textContent:f.path,selected:f.path===r.file})));
     code.value = r.text; $("e-name").value = name; $("e-name").disabled = true;
-    $("e-what").textContent = "Editing /host/" + name + (r.files.length > 1 ? " (index.html, other files are kept)" : "");
+    $("e-what").textContent = "Editing /host/" + name + " / " + r.file;
     $("e-msg").hidden = true; history.pushState(null, "", "#editor"); showTab("editor");
   }
 
@@ -194,6 +229,33 @@
         b("Delete", async () => { if (!confirm("Delete /host/" + s.name + "? This can't be undone.")) return; const d = await call("delete", { method: "POST", body: JSON.stringify({ name: s.name }) }); if (d.error) alert(d.error); loadMine(); loadExplore(true); }), set);
     }));
   }
+  async function loadKeys() {
+    const result = await call("keys");
+    $("h-key-list").replaceChildren();
+    if (result.error) { $("h-key-list").textContent = "Sign in to create and manage page access."; return; }
+    for (const key of result.keys) {
+      const row = el("li",{},el("span",{textContent:key.site + " · expires " + new Date(key.expires).toLocaleDateString()}));
+      row.append(el("button",{type:"button",className:"btn btn-quiet",textContent:"Revoke",onclick:async()=>{
+        const r = await call("key",{method:"POST",body:JSON.stringify({name:key.site,revoke:true})});
+        $("h-key-status").textContent = r.error || "Access revoked for " + key.site + ".";
+        if (!r.error) { $("h-key-result").hidden = true; $("h-key-value").value = ""; loadKeys(); }
+      }})); $("h-key-list").append(row);
+    }
+    if (!result.keys.length) $("h-key-list").textContent = "No hosting keys yet.";
+  }
+  let keyName = "";
+  $("h-key-form").onsubmit = async ev => {
+    ev.preventDefault(); const button = ev.submitter; button.disabled = true;
+    $("h-key-result").hidden = true; $("h-key-value").value = "";
+    try {
+      const r = await call("key",{method:"POST",body:JSON.stringify({name:$("h-key-name").value.trim()})});
+      $("h-key-status").textContent = r.error || "Key created. Copy it now; it will not be shown again.";
+      if (!r.error) { keyName = r.name; $("h-key-value").value = r.token; $("h-key-result").hidden = false; loadKeys(); }
+    } finally { button.disabled = false; }
+  };
+  $("h-key-copy").onclick = ev => copy($("h-key-value").value,ev.currentTarget);
+  $("h-ai-copy").onclick = ev => copy(`Build and publish my static HTML website/game on Wezzet. Read https://wezzet.com/host-api.md first. Page name: ${keyName}. Use host_publish and host_source through https://wezzet.com/mcp, or the HTTP API in that guide. My secret page-scoped hosting key is ${$("h-key-value").value}. Never put this key in public files, logs or responses. Publish index.html and any assets. For updates, read current source first, use merge:true to preserve other files, and pass expected_updated. Keep the same page name and return the live link. Ask me what to build if I have not described it.`,ev.currentTarget);
+
   const acct = $("host-account");
   const setAcct = () => { const m = window.wzAccount && window.wzAccount.me; acct.textContent = m ? m.name : "Sign in →"; if (m) acct.href = "#mine"; else acct.href = "/signin"; };
   document.addEventListener("wz-account", () => { setAcct(); if (!$("mine").hidden) loadMine(); });

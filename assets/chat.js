@@ -130,13 +130,25 @@
     if (here.length > 40) { const li = document.createElement("li"); li.className = "more"; li.textContent = "+" + (here.length - 40); $("on-row").append(li); }
     $("blk-wrap").hidden = !rooms.blocks.length;
     $("blocks").replaceChildren(...rooms.blocks.map((n) => row(n, "", [["Unblock", "unblock"]])));
-    badge(); mark(); head();
+    badge(); mark(); head(); filterRooms();
   }
+  function filterRooms() {
+    const query = $("conversation-search").value.trim().toLowerCase();
+    let visible = 0;
+    document.querySelectorAll(".side button.room").forEach(button => {
+      const match = !query || button.querySelector(".nm").textContent.toLowerCase().includes(query);
+      button.parentElement.hidden = !match;
+      if (match) visible++;
+    });
+    $("conversation-empty").hidden = !query || visible > 0;
+  }
+  $("conversation-search").addEventListener("input", filterRooms);
   // Unread total in the tab title.
   const badge = () => {
     const sum = (list, k) => list.reduce((t, d) => t + (k + d.id === cur && !document.hidden ? 0 : d.unread || 0), 0);
     const n = sum(rooms.dms, "d:") + sum(rooms.groups || [], "g:") + rooms.requests.filter((r) => r.incoming).length;
-    document.title = (n ? "(" + n + ") " : "") + "Chat | Wezzet";
+    if (window.parent !== window) window.parent.postMessage({ type: "wz-chat-unread", count: sum(rooms.dms, "d:") + sum(rooms.groups || [], "g:") }, location.origin);
+    document.title = (n ? "(" + n + ") " : "") + "Messages | Wezzet";
   };
   const mark = () => document.querySelectorAll("button.room").forEach((b) => b.setAttribute("aria-current", b.dataset.room === cur));
   const roomInfo = (key) => !key ? null : key[0] === "c" ? rooms.channels.find((c) => "c:" + c.id === key)
@@ -272,12 +284,14 @@
 
   function open(key, boot) {
     if (!roomInfo(key)) key = boot && innerWidth < 760 ? "" : rooms.dms[0] ? "d:" + rooms.dms[0].id : (rooms.groups || [])[0] ? "g:" + rooms.groups[0].id : rooms.channels[0] ? "c:" + rooms.channels[0].id : "";
+    if (sending) return;
+    clearAttachment();
     cur = key; last = 0; lastMsg = null; history.replaceState(null, "", key ? "#" + key : location.pathname);
     $("app").classList.toggle("in-room", !!key);
     $("send-form").hidden = !key;
     if (!key) {
       const p = document.createElement("div"); p.className = "empty";
-      p.innerHTML = "<b>Say hi to someone</b>Message anyone under Online now, or add a friend by their username.";
+      p.innerHTML = "<b>Your conversations start here</b>Choose a conversation, or search for a friend to send your first message.";
       $("log").replaceChildren(p); $("room-title").textContent = "Chat"; $("room-status").textContent = ""; $("room-av").replaceChildren();
       $("call-btn").hidden = $("info-btn").hidden = true; closePanel(); mark(); restart(); return;
     }
@@ -285,16 +299,44 @@
     mark(); badge(); restart();
     if (innerWidth >= 760) $("text").focus({ preventScroll: true });
   }
-  $("back-btn").addEventListener("click", () => { cur = ""; $("app").classList.remove("in-room"); history.replaceState(null, "", location.pathname); mark(); restart(); });
+  $("back-btn").addEventListener("click", () => { if (sending) return; clearAttachment(); cur = ""; $("app").classList.remove("in-room"); history.replaceState(null, "", location.pathname); mark(); restart(); });
 
-  $("dm-form").addEventListener("submit", async (ev) => {
-    ev.preventDefault();
+  let peopleTimer, peopleController;
+  async function searchPeople() {
+    clearTimeout(peopleTimer);
+    if (peopleController) peopleController.abort();
+    const query = $("dm-name").value.trim(), list = $("people-results");
+    list.replaceChildren();
+    if (query.length < 2) { list.textContent = query ? "Type at least two letters." : ""; return; }
+    const controller = peopleController = new AbortController();
+    list.textContent = "Searching…";
     try {
-      const j = await api("friend", { name: $("dm-name").value.trim() }); $("dm-name").value = ""; await loadRooms();
-      if (j.room) { open(j.room); showErr($("err")); } else { if (!cur) open(""); showErr($("err"), "Friend request sent to " + j.name + ".", true); }
-    }
-    catch (e) { showErr($("err"), e); }
+      const result = await api("users/search?q=" + encodeURIComponent(query), null, controller.signal);
+      if (controller !== peopleController) return;
+      list.replaceChildren();
+      for (const person of result.users) {
+        known[person.name] = person;
+        const row = el("div", "person-result"), button = el("button", "btn btn-quiet", "Add");
+        button.type = "button"; button.setAttribute("aria-label", "Add " + person.name);
+        button.onclick = async () => {
+          button.disabled = true;
+          try {
+            const j = await api("friend", { name: person.name }); await loadRooms();
+            if (j.room) open(j.room);
+            button.textContent = j.room ? "Friends" : "Requested";
+            showErr($("err"), j.room ? "You are already friends." : "Friend request sent to " + j.name + ".", true);
+          } catch (e) { button.disabled = false; showErr($("err"), e); }
+        };
+        row.append(avatar(person.name), el("span", "person-name", person.name), button); list.append(row);
+      }
+      if (!result.users.length) list.textContent = "No matching people. Try another spelling.";
+    } catch (e) { if (e.name !== "AbortError") list.textContent = "Search unavailable. Try again."; }
+  }
+  $("dm-name").addEventListener("input", () => {
+    if (peopleController) { peopleController.abort(); peopleController = null; }
+    clearTimeout(peopleTimer); peopleTimer = setTimeout(searchPeople, 250);
   });
+  $("dm-form").addEventListener("submit", (ev) => { ev.preventDefault(); searchPeople(); });
 
   // ---------- messages ----------
   const fmt = (ts) => new Date(ts).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
@@ -306,13 +348,24 @@
     const log = $("log");
     if (m.av !== undefined && m.name) known[m.name] = { id: m.uid, av: m.av };
     if (!lastMsg || new Date(lastMsg.ts).toDateString() !== new Date(m.ts).toDateString()) {
-      const d = document.createElement("div"); d.className = "day" + (pending ? " pending" : ""); d.textContent = dayName(m.ts); log.append(d); lastMsg = null;
+      const d = document.createElement("div"); d.className = "day" + (pending ? " pending" : "") + (m.uid === me.id ? " mine" : ""); d.textContent = dayName(m.ts); log.append(d); lastMsg = null;
     }
     // Group messages from the same person within 5 minutes.
     const first = !lastMsg || lastMsg.uid !== m.uid || m.ts - lastMsg.ts > 300e3;
     const div = document.createElement("div"), p = document.createElement("div");
-    div.className = "msg" + (first ? " first" : "") + (pending ? " pending" : "");
+    div.className = "msg" + (first ? " first" : "") + (pending ? " pending" : "") + (m.uid === me.id ? " mine" : "");
     p.className = "t"; p.textContent = m.body;
+    if (m.file_id && /^[a-f0-9-]{36}$/.test(m.file_id)) {
+      const url = "/api/chat/file?id=" + encodeURIComponent(m.file_id);
+      const link = el("a", "message-file"); link.href = url + "&download=1";
+      link.textContent = m.file_name + " · " + Math.max(1,Math.ceil(m.file_size/1024)) + " KB ↓";
+      if (/^image\/(jpeg|png)$/.test(m.file_type)) {
+        const img = el("img", "message-image"); img.src = url; img.alt = m.file_name; img.loading = "lazy";
+        img.onload = () => { if (atBottom()) toBottom(); };
+        p.append(img);
+      }
+      p.append(link);
+    }
     if (first) {
       const h = document.createElement("div"), b = document.createElement("b"), t = document.createElement("time");
       h.className = "head"; b.textContent = m.name; t.textContent = fmt(m.ts); t.dateTime = new Date(m.ts).toISOString();
@@ -369,16 +422,40 @@
   document.addEventListener("visibilitychange", () => { restart(); badge(); });
   window.addEventListener("focus", () => restart());
 
-  // Sending shows the message right away, then the poll swaps in the saved copy.
+  let attachment = null, sending = false, picking = 0;
+  function clearAttachment() {
+    picking++; attachment = null; $("attachment-input").value = "";
+    $("attachment-preview").replaceChildren(); $("attachment-preview").hidden = true;
+  }
+  $("attach-button").onclick = () => $("attachment-input").click();
+  $("attachment-input").onchange = async () => {
+    const file = $("attachment-input").files[0]; if (!file || sending) return;
+    clearAttachment(); const ticket = picking;
+    try {
+      const image = /\.(jpe?g|png)$/i.test(file.name), text = /\.(txt|md|csv|json)$/i.test(file.name);
+      if (!image && !text) throw Error("Choose JPEG, PNG, TXT, MD, CSV or JSON. Other formats cannot be checked yet.");
+      if (file.size > (image ? 1048576 : 12000)) throw Error(image ? "Images can be up to 1 MB." : "Text files can be up to 12 KB.");
+      const data = await new Promise((resolve,reject) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result.split(",")[1]); reader.onerror = () => reject(Error("Could not read this file.")); reader.readAsDataURL(file); });
+      if (ticket !== picking) return;
+      attachment = { name:file.name, data };
+      const preview = $("attachment-preview"), remove = el("button", "btn btn-quiet", "Remove"); remove.type = "button"; remove.onclick = clearAttachment;
+      preview.append(el("span", "", file.name + " · " + Math.max(1,Math.ceil(file.size/1024)) + " KB"), remove); preview.hidden = false;
+      showErr($("err"));
+    } catch (e) { showErr($("err"),e); }
+  };
   $("send-form").addEventListener("submit", async (ev) => {
     ev.preventDefault();
-    const box = $("text"), body = box.value.trim();
-    if (!body || !cur) return;
-    box.value = ""; grow();
-    const keep = lastMsg, el = render({ uid: me.id, name: me.name, body, ts: Date.now() }, true); toBottom();
-    lastMsg = keep;
-    try { await api("send", { room: cur, body }); restart(); }
-    catch (e) { el.remove(); box.value = body; grow(); showErr($("err"), e); }
+    const box = $("text"), body = box.value.trim(), room = cur;
+    if ((!body && !attachment) || !room || sending) return;
+    sending = true;
+    const controls = [...$("send-form").querySelectorAll("button, textarea, input")]; controls.forEach(x=>x.disabled=true);
+    $("attachment-status").textContent = attachment ? "Checking attachment before sending…" : "Sending…";
+    try {
+      await api("send", {room,body,...(attachment ? {attachment} : {})});
+      box.value = ""; clearAttachment(); grow(); restart();
+      $("attachment-status").textContent = "";
+    } catch (e) { $("attachment-status").textContent = e.message; }
+    finally { sending = false; controls.forEach(x=>x.disabled=false); }
   });
   const grow = () => { const t = $("text"); t.style.height = "auto"; t.style.height = Math.min(t.scrollHeight, 160) + "px"; };
   $("text").addEventListener("input", grow);
